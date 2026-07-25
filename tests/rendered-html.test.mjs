@@ -31,11 +31,18 @@ test("server-renders the BID market board", async () => {
   const html = await response.text();
   assert.match(html, /<title>BID — Bet the Block<\/title>/i);
   assert.match(html, /BET THE/);
-  assert.match(html, /Highest city price growth by EOY/);
-  assert.match(html, /Florida home-price growth showdown/);
-  assert.match(html, /Austin turns positive by year-end/);
+  assert.match(html, /Five-city EOY return/);
+  assert.match(html, /Miami vs\. Austin — EOY return/);
+  assert.match(html, /Austin positive from launch to EOY/);
+  assert.match(html, /100% of platform revenue/);
+  assert.match(html, /15-minute claim/);
+  assert.match(html, /pump\.fun creator fees/i);
+  assert.match(html, /liquidity reserve/i);
+  assert.match(html, /holder reserve/i);
+  assert.match(html, /Community market proposals are next/);
+  assert.match(html, /Parcl provides housing data and resolution services/);
   assert.match(html, /Connect wallet/);
-  assert.match(html, /Demo only\. Orders are simulated and never sent onchain\./);
+  assert.match(html, /Launch preview only\. Orders are simulated and never sent onchain\./);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 

@@ -28,91 +28,57 @@ type Market = {
 
 const markets: Market[] = [
   {
-    id: "miami-tampa-eoy",
-    code: "MIA / TPA",
+    id: "miami-austin-eoy",
+    code: "MIA / AUS",
     mode: "head-to-head",
-    question: "Which city will post the larger home-price increase by year-end?",
-    short: "Florida home-price growth showdown",
+    question: "Which city will deliver the higher home-price return from launch through year-end?",
+    short: "Miami vs. Austin — EOY return",
     outcomes: [
-      { label: "Miami", code: "MIA", price: 0.61, tone: "coral" },
-      { label: "Tampa", code: "TPA", price: 0.39, tone: "mint" },
+      { label: "Miami", code: "MIA", price: 0.54, tone: "coral" },
+      { label: "Austin", code: "AUS", price: 0.46, tone: "mint" },
     ],
-    volume: "$1.84M",
-    liquidity: "$482K",
+    volume: "$0",
+    liquidity: "$50",
     closes: "Dec 31, 2026",
-    signal: "MIA +4.8% · TPA +2.9%",
-    chart: [28, 31, 29, 35, 38, 36, 43, 41, 47, 52, 49, 55, 59, 57, 63, 68, 65, 71, 74, 72, 78, 82, 79, 86],
+    signal: "Parcl daily price feed",
+    chart: [42, 44, 43, 45, 46, 44, 47, 46, 48, 49, 47, 50, 51, 50, 52, 51, 53, 52, 54, 53, 54, 55, 54, 54],
   },
   {
     id: "city-field-eoy",
     code: "CITY / EOY",
     mode: "field",
-    question: "Which U.S. city will have the highest home-price increase by EOY?",
-    short: "Highest city price growth by EOY",
+    question: "Which city will deliver the highest home-price return from launch through EOY?",
+    short: "Five-city EOY return",
     outcomes: [
-      { label: "Miami", code: "MIA", price: 0.31, tone: "coral" },
-      { label: "Tampa", code: "TPA", price: 0.24, tone: "mint" },
-      { label: "New York", code: "NYC", price: 0.18, tone: "violet" },
-      { label: "Dallas", code: "DAL", price: 0.15, tone: "gold" },
-      { label: "Phoenix", code: "PHX", price: 0.12, tone: "coral" },
+      { label: "Miami", code: "MIA", price: 0.25, tone: "coral" },
+      { label: "New York", code: "NYC", price: 0.23, tone: "mint" },
+      { label: "Los Angeles", code: "LAX", price: 0.21, tone: "violet" },
+      { label: "Austin", code: "AUS", price: 0.17, tone: "gold" },
+      { label: "Phoenix", code: "PHX", price: 0.14, tone: "coral" },
     ],
-    volume: "$2.42M",
-    liquidity: "$618K",
+    volume: "$0",
+    liquidity: "$50",
     closes: "Dec 31, 2026",
-    signal: "5 cities · winner takes $1",
-    chart: [35, 39, 37, 42, 45, 49, 47, 51, 55, 53, 58, 61, 59, 64, 67, 65, 70, 73, 71, 75, 79, 77, 82, 84],
+    signal: "5-city relative return",
+    chart: [35, 36, 38, 37, 39, 41, 40, 42, 43, 41, 44, 45, 44, 46, 48, 47, 49, 50, 49, 51, 53, 52, 54, 55],
   },
   {
     id: "austin-positive",
-    code: "AUS / YOY",
+    code: "AUS / EOY",
     mode: "yes-no",
-    question: "Will Austin home prices finish 2026 positive year over year?",
-    short: "Austin turns positive by year-end",
+    question: "Will Austin’s home-price feed finish 2026 above its launch snapshot?",
+    short: "Austin positive from launch to EOY",
     outcomes: [
-      { label: "Yes", code: "YES", price: 0.43, tone: "mint" },
-      { label: "No", code: "NO", price: 0.57, tone: "coral" },
+      { label: "Yes", code: "YES", price: 0.47, tone: "mint" },
+      { label: "No", code: "NO", price: 0.53, tone: "coral" },
     ],
-    volume: "$713K",
-    liquidity: "$198K",
+    volume: "$0",
+    liquidity: "$50",
     closes: "Dec 31, 2026",
-    signal: "Current YoY -2.3%",
-    chart: [76, 73, 75, 69, 71, 66, 63, 65, 60, 57, 59, 54, 50, 53, 48, 45, 49, 43, 40, 44, 38, 41, 39, 42],
-  },
-  {
-    id: "la-san-diego-sep",
-    code: "LAX / SAN",
-    mode: "head-to-head",
-    question: "Which Southern California market will gain more by September?",
-    short: "SoCal price-growth showdown",
-    outcomes: [
-      { label: "Los Angeles", code: "LAX", price: 0.48, tone: "gold" },
-      { label: "San Diego", code: "SAN", price: 0.52, tone: "violet" },
-    ],
-    volume: "$1.21M",
-    liquidity: "$356K",
-    closes: "Sep 30, 2026",
-    signal: "LAX +3.6% · SAN +3.9%",
-    chart: [34, 36, 39, 37, 42, 45, 43, 48, 46, 52, 55, 53, 58, 62, 59, 65, 68, 66, 71, 75, 73, 78, 81, 84],
-  },
-  {
-    id: "national-index-three",
-    code: "US20 / 3%",
-    mode: "yes-no",
-    question: "Will the U.S. 20-city index gain more than 3% in 2026?",
-    short: "National index clears 3%",
-    outcomes: [
-      { label: "Yes", code: "YES", price: 0.62, tone: "mint" },
-      { label: "No", code: "NO", price: 0.38, tone: "coral" },
-    ],
-    volume: "$886K",
-    liquidity: "$244K",
-    closes: "Jan 29, 2027",
-    signal: "Current annual pace +2.6%",
-    chart: [30, 33, 31, 36, 39, 37, 42, 45, 43, 49, 52, 50, 55, 58, 56, 61, 64, 62, 66, 70, 68, 73, 76, 79],
+    signal: "Launch snapshot vs. Dec 31",
+    chart: [55, 53, 54, 52, 51, 50, 52, 49, 48, 50, 49, 47, 48, 46, 45, 47, 46, 48, 47, 46, 48, 47, 46, 47],
   },
 ];
-
-const filters = ["All markets", "Head to head", "5-city fields", "Yes / No"] as const;
 
 function BrandMark() {
   return (
@@ -164,25 +130,16 @@ function MarketVisual({ market, compact = false }: { market: Market; compact?: b
   );
 }
 
-function matchesFilter(market: Market, filter: (typeof filters)[number]) {
-  if (filter === "All markets") return true;
-  if (filter === "Head to head") return market.mode === "head-to-head";
-  if (filter === "5-city fields") return market.mode === "field";
-  return market.mode === "yes-no";
-}
-
 export default function Home() {
   const [selectedId, setSelectedId] = useState(markets[0].id);
-  const [filter, setFilter] = useState<(typeof filters)[number]>("All markets");
   const [selectedOutcome, setSelectedOutcome] = useState(0);
-  const [amount, setAmount] = useState("250");
+  const [amount, setAmount] = useState("10");
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [notice, setNotice] = useState("");
 
   const selected = markets.find((market) => market.id === selectedId) ?? markets[0];
   const outcome = selected.outcomes[selectedOutcome] ?? selected.outcomes[0];
-  const displayedMarkets = markets.filter((market) => matchesFilter(market, filter));
 
   const quote = useMemo(() => {
     const dollars = Math.max(0, Number(amount) || 0);
@@ -221,8 +178,8 @@ export default function Home() {
         </a>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <a className="active" href="#markets">Markets</a>
-          <a href="#how-it-works">How it works</a>
-          <a href="#portfolio">Portfolio</a>
+          <a href="#fees">Fee policy</a>
+          <a href="#roadmap">Roadmap</a>
         </nav>
         <div className="header-actions">
           <span className="network-pill"><i /> Solana</span>
@@ -238,11 +195,11 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <div className="eyebrow"><span>LIVE</span> REAL ESTATE MARKETS, REBUILT</div>
+          <div className="eyebrow"><span>GENESIS</span> RESOLUTION DATA BY PARCL LABS</div>
           <h1>BET THE<br /><em>BLOCK.</em></h1>
           <p>
-            Trade what happens next in housing. Pick a city, take a side, or
-            price the whole field—settled on Solana.
+            Three carefully defined housing markets. BID is allocating $50 USDC
+            to seed each market, with resolution designed around Parcl housing data.
           </p>
           <div className="hero-actions">
             <a className="primary-cta" href="#markets">Explore markets <span>↘</span></a>
@@ -252,21 +209,21 @@ export default function Home() {
 
         <div className="hero-market">
           <div className="hero-market-head">
-            <span>FEATURED // HEAD TO HEAD // MIA-TPA</span>
-            <span className="pulse-label"><i /> trading</span>
+            <span>FEATURED // BID FUNDED // MIA-AUS</span>
+            <span className="pulse-label"><i /> launch preview</span>
           </div>
           <div className="hero-market-body">
             <div className="hero-question">
               <span className="market-number">01</span>
-              <h2>Which city posts the bigger home-price gain by EOY? <strong>Miami or Tampa?</strong></h2>
+              <h2>Which city delivers the higher home-price return by EOY? <strong>Miami or Austin?</strong></h2>
             </div>
             <div className="odds-lockup">
-              <span className="odds-label">Miami leads</span>
-              <strong>61<span>%</span></strong>
-              <small>Tampa 39% · +7 pts this week</small>
+              <span className="odds-label">Opening indication</span>
+              <strong>54<span>%</span></strong>
+              <small>Miami 54% · Austin 46%</small>
             </div>
           </div>
-          <div className="mini-chart" aria-label="Miami probability trend rising to 61 percent">
+          <div className="mini-chart" aria-label="Illustrative Miami probability trend at 54 percent">
             {markets[0].chart.map((height, index) => (
               <i key={index} style={{ height: `${height}%` }} />
             ))}
@@ -275,46 +232,39 @@ export default function Home() {
             <span>JUL 01</span><span>JUL 08</span><span>JUL 15</span><span>NOW</span>
           </div>
           <div className="hero-market-foot">
-            <span>24H VOL <strong>$428K</strong></span>
-            <span>LIQUIDITY <strong>$482K</strong></span>
+            <span>VOLUME <strong>$0</strong></span>
+            <span>BID SEED <strong>$50 USDC</strong></span>
             <span>RESOLVES <strong>DEC 31</strong></span>
           </div>
         </div>
       </section>
 
       <section className="ticker" aria-label="Platform statistics">
-        <div><span>24H VOLUME</span><strong>$6.4M</strong><em>+18.2%</em></div>
-        <div><span>OPEN INTEREST</span><strong>$12.8M</strong><em>+6.4%</em></div>
-        <div><span>ACTIVE MARKETS</span><strong>24</strong><em>12 cities</em></div>
-        <div><span>AVG. SETTLEMENT</span><strong>0.8s</strong><em>Solana</em></div>
+        <div><span>LAUNCH MARKETS</span><strong>03</strong><em>curated by BID</em></div>
+        <div><span>INITIAL SEED</span><strong>$150</strong><em>$50 per market</em></div>
+        <div><span>CLAIM CADENCE</span><strong>15m</strong><em>pump.fun creator fees</em></div>
+        <div><span>FEE ROUTING</span><strong>50/50</strong><em>liquidity / rewards</em></div>
       </section>
 
       <section className="market-section" id="markets">
         <div className="section-heading">
           <div>
-            <span className="section-kicker">THE BOARD</span>
-            <h2>Price the city.</h2>
+            <span className="section-kicker">THE GENESIS BOARD</span>
+            <h2>Only what we fund.</h2>
           </div>
-          <p>YES/NO, head-to-head, or the full field. Every outcome settles against the same public index.</p>
+          <p>Three narrowly defined markets. Each receives a $50 USDC launch allocation and a published resolution rule.</p>
         </div>
 
-        <div className="filter-row" role="group" aria-label="Filter markets">
-          {filters.map((item) => (
-            <button
-              className={filter === item ? "active" : ""}
-              key={item}
-              type="button"
-              onClick={() => setFilter(item)}
-            >
-              {item}
-              {item === "All markets" && <span>05</span>}
-            </button>
-          ))}
+        <div className="launch-manifest" aria-label="Launch market policy">
+          <span><strong>03</strong> curated markets</span>
+          <span><strong>$50</strong> BID seed per market</span>
+          <span><strong>Parcl</strong> resolution data</span>
+          <span><strong>Solana</strong> settlement target</span>
         </div>
 
         <div className="trading-layout">
           <div className="market-list">
-            {displayedMarkets.map((market, index) => (
+            {markets.map((market, index) => (
               <button
                 className={`market-card ${selectedId === market.id ? "selected" : ""}`}
                 key={market.id}
@@ -330,7 +280,7 @@ export default function Home() {
                     <em>{market.signal}</em>
                   </span>
                   <strong>{market.short}</strong>
-                  <small>Resolves {market.closes} · Vol {market.volume}</small>
+                  <small>Resolves {market.closes} · BID seed {market.liquidity} USDC · Vol {market.volume}</small>
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
                   {market.outcomes.slice(0, market.mode === "field" ? 3 : 2).map((item) => (
@@ -374,7 +324,7 @@ export default function Home() {
             </div>
 
             <label className="amount-label" htmlFor="trade-amount">
-              <span>Amount</span><small>Balance $2,840.00</small>
+              <span>Amount</span><small>Balance shown after connection</small>
             </label>
             <div className="amount-input">
               <span>$</span>
@@ -389,7 +339,7 @@ export default function Home() {
               <em>USDC</em>
             </div>
             <div className="quick-amounts">
-              {[25, 100, 250, 500].map((value) => (
+              {[1, 5, 10, 25].map((value) => (
                 <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
               ))}
             </div>
@@ -410,14 +360,57 @@ export default function Home() {
               {walletConnected ? `Review ${outcome.label} order` : "Connect to preview"}
               <span>→</span>
             </button>
-            <p className="ticket-note">Demo only. Orders are simulated and never sent onchain.</p>
+            <p className="ticket-note">Launch preview only. Orders are simulated and never sent onchain.</p>
           </aside>
+        </div>
+      </section>
+
+      <section className="fee-section" id="fees">
+        <div className="fee-intro">
+          <div>
+            <span className="section-kicker">PUMP.FUN CREATOR FEES</span>
+            <h2>Fees go back<br />to the market.</h2>
+          </div>
+          <p>BID’s claim worker checks the creator vault every 15 minutes. Successful claims are recorded before funds move into two dedicated reserves.</p>
+        </div>
+        <div className="claim-flow" aria-label="Creator fee routing">
+          <span><small>01</small>pump.fun trades</span>
+          <i>→</i>
+          <span><small>02</small>creator vault</span>
+          <i>→</i>
+          <span><small>03</small>15-minute claim</span>
+          <i>→</i>
+          <span><small>04A</small>liquidity reserve</span>
+          <span><small>04B</small>holder reserve</span>
+        </div>
+        <div className="fee-grid">
+          <article className="fee-card liquidity-card">
+            <span>50%</span>
+            <div>
+              <small>LIQUIDITY RESERVE</small>
+              <h3>Thinner spreads.<br />Better execution.</h3>
+              <p>Half of every successful creator-fee claim is routed to a dedicated reserve for transparent BID liquidity support.</p>
+            </div>
+          </article>
+          <article className="fee-card rewards-card">
+            <span>50%</span>
+            <div>
+              <small>HOLDER REWARD RESERVE</small>
+              <h3>Participation<br />should compound.</h3>
+              <p>Half is reserved for later reward epochs using published holder snapshots, eligibility rules, and onchain receipts.</p>
+            </div>
+          </article>
+        </div>
+        <div className="holder-policy">
+          <span>PLANNED HOLDER POLICY</span>
+          <strong>100% of platform revenue, airdropped to holders.</strong>
+          <p>Creator fees follow the launch split above. Separately, our long-term target is to return BID platform revenue to eligible holders through published onchain distributions. Holder rewards are not paid every 15 minutes and remain subject to final eligibility, governance, and legal review.</p>
         </div>
       </section>
 
       <section className="how-section" id="how-it-works">
         <div className="how-intro">
-          <span className="section-kicker">NO DEEDS. NO DOWNTIME.</span>
+          <span className="section-kicker">PARCL-RESOLVED. SOLANA-SETTLED.</span>
           <h2>Housing moves slow.<br />BID doesn’t.</h2>
         </div>
         <div className="steps">
@@ -433,28 +426,29 @@ export default function Home() {
           </article>
           <article>
             <span>03 / SETTLE</span>
-            <strong>Let the index decide</strong>
-            <p>Public housing data resolves the winner. Winning contracts redeem at $1.</p>
+            <strong>Let the data decide</strong>
+            <p>Each launch market names its Parcl price feed, snapshot, close, and calculation before trading begins.</p>
           </article>
         </div>
         <div className="settlement-strip">
           <div className="settle-badge"><BrandMark /></div>
-          <p><span>VERIFIABLE BY DESIGN</span> Market terms, closing time, and settlement source are locked before trading opens.</p>
-          <div className="settle-flow"><span>Housing index</span><i>→</i><span>Oracle attestation</span><i>→</i><span>Solana settlement</span></div>
+          <p><span>INDEPENDENT RESOLUTION DATA</span> Parcl provides housing data and resolution services. BID defines and operates its own markets.</p>
+          <div className="settle-flow"><span>Parcl data</span><i>→</i><span>Published rule</span><i>→</i><span>Solana settlement</span></div>
         </div>
       </section>
 
-      <section className="portfolio-tease" id="portfolio">
-        <span>YOUR CITY. YOUR THESIS.</span>
-        <h2>Build the housing portfolio<br />you couldn’t buy.</h2>
-        <a href="#markets">Enter the market <span>↗</span></a>
+      <section className="portfolio-tease" id="roadmap">
+        <span>COMING NEXT / COMMUNITY MARKETS</span>
+        <h2>Bring the thesis.<br />Create the market.</h2>
+        <p>Community market proposals are next: choose the geography, define the resolution rule, and commit seed liquidity. BID will curate the first wave before opening creation more broadly.</p>
+        <a href="#markets">View genesis markets <span>↗</span></a>
       </section>
 
       <footer>
         <a className="brand footer-brand" href="#top"><BrandMark /><span>BID</span></a>
-        <p>Real estate prediction markets on Solana.</p>
-        <div><a href="#markets">Markets</a><a href="#how-it-works">How it works</a><a href="#top">Terms</a></div>
-        <small>© 2026 BID · PROTOTYPE ONLY · NOT INVESTMENT ADVICE</small>
+        <p>Three funded real estate markets. Built for Solana.</p>
+        <div><a href="#markets">Markets</a><a href="#fees">Fee policy</a><a href="#roadmap">Roadmap</a></div>
+        <small>© 2026 BID · LAUNCH PREVIEW ONLY · BID IS INDEPENDENT AND NOT AFFILIATED WITH PARCL OR PUMP.FUN · REWARDS ARE PLANNED, NOT ACTIVE OR GUARANTEED · NOT INVESTMENT ADVICE</small>
       </footer>
 
       {walletOpen && (
