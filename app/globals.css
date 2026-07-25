@@ -585,6 +585,7 @@ a {
 }
 
 .section-heading h2,
+.fee-intro h2,
 .how-intro h2,
 .portfolio-tease h2 {
   margin: 0;
@@ -602,48 +603,38 @@ a {
   line-height: 1.5;
 }
 
-.filter-row {
-  display: flex;
-  gap: 0;
+.launch-manifest {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   max-width: 1480px;
   margin: 0 auto 22px;
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
 }
 
-.filter-row button {
+.launch-manifest > span {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: #777b72;
-  cursor: pointer;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 15px;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  color: #8f968b;
   font-family: var(--font-geist-mono);
-  font-size: 9px;
+  font-size: 8px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.filter-row button:first-child {
-  padding-left: 0;
+.launch-manifest > span:last-child {
+  border-right: 0;
 }
 
-.filter-row button.active {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-.filter-row button span {
-  display: grid;
-  min-width: 19px;
-  height: 17px;
-  padding: 0 4px;
-  place-items: center;
-  background: var(--ink);
+.launch-manifest strong {
   color: var(--lime);
-  font-size: 7px;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .trading-layout {
@@ -1318,6 +1309,176 @@ a {
   text-align: center;
 }
 
+.fee-section {
+  padding: 110px 42px 120px;
+  border-top: 1px solid var(--line);
+  background: #e7e4dc;
+}
+
+.fee-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 40px;
+  max-width: 1480px;
+  margin: 0 auto 52px;
+}
+
+.fee-intro > p {
+  max-width: 390px;
+  margin: 0 0 6px;
+  color: #696e65;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.claim-flow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr 1fr;
+  align-items: stretch;
+  max-width: 1480px;
+  margin: 0 auto;
+  border: 1px solid var(--ink);
+  border-bottom: 0;
+  background: #f3f0e8;
+}
+
+.claim-flow > span {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.claim-flow > span:last-child {
+  border-left: 1px solid var(--ink);
+  background: linear-gradient(135deg, rgba(153, 69, 255, 0.16), rgba(20, 241, 149, 0.25));
+}
+
+.claim-flow small {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  place-items: center;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  font-size: 7px;
+}
+
+.claim-flow > i {
+  display: grid;
+  width: 24px;
+  place-items: center;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  color: #7b8177;
+  font-style: normal;
+}
+
+.fee-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 1480px;
+  margin: 0 auto;
+  border: 1px solid var(--ink);
+}
+
+.fee-card {
+  display: grid;
+  grid-template-columns: 0.65fr 1fr;
+  min-height: 360px;
+  padding: 34px;
+  background: var(--ink);
+  color: #fff;
+}
+
+.fee-card + .fee-card {
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.fee-card > span {
+  align-self: start;
+  color: var(--lime);
+  font-size: clamp(72px, 8vw, 126px);
+  font-weight: 760;
+  letter-spacing: -0.09em;
+  line-height: 0.78;
+}
+
+.rewards-card > span {
+  background: var(--solana-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.fee-card > div {
+  align-self: end;
+}
+
+.fee-card small,
+.holder-policy > span {
+  color: #7b8177;
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.fee-card h3 {
+  margin: 14px 0 18px;
+  font-size: clamp(30px, 3vw, 48px);
+  font-weight: 630;
+  letter-spacing: -0.065em;
+  line-height: 0.95;
+}
+
+.fee-card p {
+  max-width: 340px;
+  margin: 0;
+  color: #8f958a;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.holder-policy {
+  display: grid;
+  grid-template-columns: 190px minmax(280px, 1fr) minmax(320px, 0.75fr);
+  align-items: center;
+  gap: 28px;
+  max-width: 1480px;
+  min-height: 138px;
+  margin: 0 auto;
+  padding: 26px 30px;
+  border: 1px solid var(--ink);
+  border-top: 0;
+  background: var(--solana-gradient);
+}
+
+.holder-policy > span {
+  color: rgba(16, 18, 15, 0.66);
+}
+
+.holder-policy > strong {
+  max-width: 620px;
+  font-size: clamp(25px, 2.8vw, 42px);
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.holder-policy > p {
+  margin: 0;
+  color: rgba(16, 18, 15, 0.7);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
 .how-section {
   padding: 110px 42px 0;
   background: var(--ink);
@@ -1478,6 +1639,16 @@ a {
   z-index: 1;
   max-width: 1000px;
   font-size: clamp(58px, 7.5vw, 118px);
+}
+
+.portfolio-tease > p {
+  position: relative;
+  z-index: 1;
+  max-width: 570px;
+  margin: 36px 0 0;
+  color: rgba(16, 18, 15, 0.72);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .portfolio-tease a {
@@ -1758,6 +1929,35 @@ footer > small {
     grid-column: 1 / -1;
     margin-top: 20px;
   }
+
+  .claim-flow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .claim-flow > i {
+    display: none;
+  }
+
+  .claim-flow > span {
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .claim-flow > span:nth-of-type(even) {
+    border-left: 1px solid var(--ink);
+  }
+
+  .fee-card {
+    grid-template-columns: 1fr;
+    gap: 70px;
+  }
+
+  .holder-policy {
+    grid-template-columns: 150px 1fr;
+  }
+
+  .holder-policy > p {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 760px) {
@@ -1879,12 +2079,16 @@ footer > small {
     margin-top: 20px;
   }
 
-  .filter-row {
-    overflow-x: auto;
+  .launch-manifest {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .filter-row button {
-    flex: 0 0 auto;
+  .launch-manifest > span:nth-child(2) {
+    border-right: 0;
+  }
+
+  .launch-manifest > span:nth-child(-n+2) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
   }
 
   .market-card {
@@ -1992,6 +2196,63 @@ footer > small {
     width: 48px;
   }
 
+  .fee-section {
+    padding: 84px 18px;
+  }
+
+  .fee-intro {
+    display: block;
+    margin-bottom: 36px;
+  }
+
+  .fee-intro h2 {
+    font-size: 58px;
+  }
+
+  .fee-intro > p {
+    margin-top: 24px;
+  }
+
+  .fee-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .claim-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .claim-flow > span,
+  .claim-flow > span:nth-of-type(even),
+  .claim-flow > span:last-child {
+    min-height: 58px;
+    border-left: 0;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .fee-card {
+    min-height: 330px;
+    padding: 26px;
+  }
+
+  .fee-card + .fee-card {
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    border-left: 0;
+  }
+
+  .fee-card > span {
+    font-size: 86px;
+  }
+
+  .holder-policy {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 26px;
+  }
+
+  .holder-policy > p {
+    grid-column: 1;
+  }
+
   .how-section {
     padding: 84px 18px 0;
   }
@@ -2048,6 +2309,11 @@ footer > small {
 
   .portfolio-tease h2 {
     font-size: 64px;
+  }
+
+  .portfolio-tease > p {
+    max-width: none;
+    margin-top: 26px;
   }
 
   .portfolio-tease a {

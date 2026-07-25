@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(productionHost),
   title: "BID — Bet the Block",
   description:
-    "Trade real estate outcomes across the world’s fastest-moving cities. YES/NO, head-to-head, and five-city markets on Solana.",
+    "Three curated real estate prediction markets, seeded by BID and designed for Parcl-powered resolution on Solana.",
   icons: {
     icon: "/brand/bid-logo.png",
     apple: "/brand/bid-logo.png",
@@ -33,16 +33,16 @@ export const metadata: Metadata = {
   openGraph: {
     title: "BID — Bet the Block",
     description:
-      "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
+      "Three curated real estate markets. $50 USDC allocated to seed each. Resolution data by Parcl Labs.",
     url: "/",
     siteName: "BID",
     type: "website",
     images: [
       {
-        url: "/brand/bid-x-banner.png",
-        width: 1500,
-        height: 500,
-        alt: "BID — Bet the Block",
+        url: "/og.png",
+        width: 1200,
+        height: 600,
+        alt: "BID — three genesis real estate prediction markets",
       },
     ],
   },
@@ -50,8 +50,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "BID — Bet the Block",
     description:
-      "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
-    images: ["/brand/bid-x-banner.png"],
+      "Three curated real estate markets. $50 USDC allocated to seed each. Resolution data by Parcl Labs.",
+    images: ["/og.png"],
   },
 };
 
