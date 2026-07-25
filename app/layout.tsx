@@ -20,7 +20,7 @@ const productionHost =
 
 export const metadata: Metadata = {
   metadataBase: new URL(productionHost),
-  title: "BID — Bet the Block",
+  title: "BID — BID the Block",
   description:
     "Trade real estate outcomes across the world’s fastest-moving cities. YES/NO, head-to-head, and five-city markets on Solana.",
   icons: {
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "BID — Bet the Block",
+    title: "BID — BID the Block",
     description:
       "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
     url: "/",
@@ -42,13 +42,13 @@ export const metadata: Metadata = {
         url: "/brand/bid-x-banner.png",
         width: 1500,
         height: 500,
-        alt: "BID — Bet the Block",
+        alt: "BID — BID the Block",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "BID — Bet the Block",
+    title: "BID — BID the Block",
     description:
       "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
     images: ["/brand/bid-x-banner.png"],

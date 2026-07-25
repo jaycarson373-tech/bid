@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import { isDemo, isLive } from "@/lib/launchState";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
 
@@ -133,7 +134,23 @@ function CityStamp({ code, tone }: { code: string; tone: Tone }) {
   );
 }
 
-function MarketVisual({ market, compact = false }: { market: Market; compact?: boolean }) {
+function SampleBadge({ compact = false }: { compact?: boolean }) {
+  return <span className={`sample-badge ${compact ? "compact" : ""}`}>Sample data</span>;
+}
+
+function LockedValue({ children = "Opens at launch" }: { children?: string }) {
+  return <strong className="locked-value">{children}</strong>;
+}
+
+function MarketVisual({
+  market,
+  compact = false,
+  showPricing = false,
+}: {
+  market: Market;
+  compact?: boolean;
+  showPricing?: boolean;
+}) {
   if (market.mode === "yes-no") {
     return (
       <div className={`binary-visual ${compact ? "compact" : ""}`} aria-hidden="true">
@@ -148,7 +165,7 @@ function MarketVisual({ market, compact = false }: { market: Market; compact?: b
         {market.outcomes.map((outcome) => (
           <span className={outcome.tone} key={outcome.code}>
             <strong>{outcome.code}</strong>
-            <small>{Math.round(outcome.price * 100)}¢</small>
+            <small>{showPricing ? `${Math.round(outcome.price * 100)}¢` : "BID"}</small>
           </span>
         ))}
       </div>
@@ -175,7 +192,7 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState(markets[0].id);
   const [filter, setFilter] = useState<(typeof filters)[number]>("All markets");
   const [selectedOutcome, setSelectedOutcome] = useState(0);
-  const [amount, setAmount] = useState("250");
+  const [amount, setAmount] = useState(isDemo ? "250" : "");
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [notice, setNotice] = useState("");
@@ -183,6 +200,7 @@ export default function Home() {
   const selected = markets.find((market) => market.id === selectedId) ?? markets[0];
   const outcome = selected.outcomes[selectedOutcome] ?? selected.outcomes[0];
   const displayedMarkets = markets.filter((market) => matchesFilter(market, filter));
+  const showSampleData = isDemo;
 
   const quote = useMemo(() => {
     const dollars = Math.max(0, Number(amount) || 0);
@@ -210,6 +228,10 @@ export default function Home() {
       setWalletOpen(true);
       return;
     }
+    if (!showSampleData) {
+      setNotice("Order previews open at launch. No transaction was sent.");
+      return;
+    }
     setNotice(`Preview ready: ${outcome.label} for $${(Number(amount) || 0).toLocaleString()}. No transaction was sent.`);
   };
 
@@ -231,15 +253,15 @@ export default function Home() {
             type="button"
             onClick={() => walletConnected ? setNotice("Demo wallet is ready.") : setWalletOpen(true)}
           >
-            {walletConnected ? "7xP…3mQ" : "Connect wallet"}
+            {walletConnected ? "Preview wallet" : "Connect wallet"}
           </button>
         </div>
       </header>
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <div className="eyebrow"><span>LIVE</span> REAL ESTATE MARKETS, REBUILT</div>
-          <h1>BET THE<br /><em>BLOCK.</em></h1>
+          <div className="eyebrow"><span>{showSampleData ? "DEMO" : isLive ? "PENDING" : "PRELAUNCH"}</span> REAL ESTATE MARKETS, REBUILT</div>
+          <h1>BID THE<br /><em>BLOCK.</em></h1>
           <p>
             Trade what happens next in housing. Pick a city, take a side, or
             price the whole field—settled on Solana.
@@ -253,40 +275,70 @@ export default function Home() {
         <div className="hero-market">
           <div className="hero-market-head">
             <span>FEATURED // HEAD TO HEAD // MIA-TPA</span>
-            <span className="pulse-label"><i /> trading</span>
-          </div>
-          <div className="hero-market-body">
+              <span className="pulse-label"><i /> {showSampleData ? "trading" : isLive ? "pending" : "prelaunch"}</span>
+            </div>
+            <div className="hero-market-body">
             <div className="hero-question">
               <span className="market-number">01</span>
               <h2>Which city posts the bigger home-price gain by EOY? <strong>Miami or Tampa?</strong></h2>
             </div>
-            <div className="odds-lockup">
-              <span className="odds-label">Miami leads</span>
-              <strong>61<span>%</span></strong>
-              <small>Tampa 39% · +7 pts this week</small>
+              {showSampleData ? (
+                <div className="odds-lockup">
+                  <SampleBadge compact />
+                  <span className="odds-label">Miami leads</span>
+                  <strong>61<span>%</span></strong>
+                  <small>Tampa 39% · +7 pts this week</small>
+                </div>
+              ) : (
+                <div className="odds-lockup locked">
+                  <span className="odds-label">{isLive ? "Live data pending" : "Markets open at launch"}</span>
+                  <LockedValue />
+                  <small>Pricing appears when funded markets open</small>
+                </div>
+              )}
             </div>
-          </div>
-          <div className="mini-chart" aria-label="Miami probability trend rising to 61 percent">
-            {markets[0].chart.map((height, index) => (
-              <i key={index} style={{ height: `${height}%` }} />
-            ))}
-          </div>
-          <div className="chart-scale">
-            <span>JUL 01</span><span>JUL 08</span><span>JUL 15</span><span>NOW</span>
-          </div>
+          {showSampleData ? (
+            <>
+              <div className="mini-chart" aria-label="Sample Miami probability trend">
+                <SampleBadge compact />
+                {markets[0].chart.map((height, index) => (
+                  <i key={index} style={{ height: `${height}%` }} />
+                ))}
+              </div>
+              <div className="chart-scale">
+                <span>JUL 01</span><span>JUL 08</span><span>JUL 15</span><span>NOW</span>
+              </div>
+            </>
+          ) : (
+            <div className="chart-placeholder">
+              {/* TODO(live-data): replace with /api/markets/featured probability history once the real BID/Parcl data feed exists. */}
+              <span>Chart opens at launch</span>
+            </div>
+          )}
           <div className="hero-market-foot">
-            <span>24H VOL <strong>$428K</strong></span>
-            <span>LIQUIDITY <strong>$482K</strong></span>
+            <span>{showSampleData ? <><SampleBadge compact /> 24H VOL <strong>$428K</strong></> : <>24H VOL <LockedValue /></>}</span>
+            <span>{showSampleData ? <>LIQUIDITY <strong>$482K</strong></> : <>LIQUIDITY <LockedValue /></>}</span>
             <span>RESOLVES <strong>DEC 31</strong></span>
           </div>
         </div>
       </section>
 
       <section className="ticker" aria-label="Platform statistics">
-        <div><span>24H VOLUME</span><strong>$6.4M</strong><em>+18.2%</em></div>
-        <div><span>OPEN INTEREST</span><strong>$12.8M</strong><em>+6.4%</em></div>
-        <div><span>ACTIVE MARKETS</span><strong>24</strong><em>12 cities</em></div>
-        <div><span>AVG. SETTLEMENT</span><strong>0.8s</strong><em>Solana</em></div>
+        {showSampleData ? (
+          <>
+            <div><SampleBadge /><span>24H VOLUME</span><strong>$6.4M</strong><em>+18.2%</em></div>
+            <div><SampleBadge /><span>OPEN INTEREST</span><strong>$12.8M</strong><em>+6.4%</em></div>
+            <div><SampleBadge /><span>ACTIVE MARKETS</span><strong>24</strong><em>12 cities</em></div>
+            <div><SampleBadge /><span>SOLANA SETTLEMENT</span><strong>0.8s</strong><em>sample claim</em></div>
+          </>
+        ) : (
+          <div className="launch-strip">
+            {/* TODO(live-data): replace with /api/platform/stats once real BID volume, open interest, and market telemetry exists. */}
+            <span>{isLive ? "Live data pending" : "Markets open at launch"}</span>
+            <strong>Funded real estate markets are being prepared.</strong>
+            <em>Built on Solana. No sample stats shown.</em>
+          </div>
+        )}
       </section>
 
       <section className="market-section" id="markets">
@@ -307,7 +359,7 @@ export default function Home() {
               onClick={() => setFilter(item)}
             >
               {item}
-              {item === "All markets" && <span>05</span>}
+              {item === "All markets" && <span>{String(markets.length).padStart(2, "0")}</span>}
             </button>
           ))}
         </div>
@@ -323,21 +375,25 @@ export default function Home() {
                 aria-pressed={selectedId === market.id}
               >
                 <span className="card-index">{String(index + 1).padStart(2, "0")}</span>
-                <MarketVisual market={market} />
+                <MarketVisual market={market} showPricing={showSampleData} />
                 <span className="market-copy">
                   <span className="market-meta">
                     <span>{market.mode.replaceAll("-", " ")}</span>
-                    <em>{market.signal}</em>
+                    {showSampleData ? <em><SampleBadge compact /> {market.signal}</em> : <em>Opens at launch</em>}
                   </span>
                   <strong>{market.short}</strong>
-                  <small>Resolves {market.closes} · Vol {market.volume}</small>
+                  <small>Resolves {market.closes} · {showSampleData ? `Vol ${market.volume}` : "Opens at launch"}</small>
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
-                  {market.outcomes.slice(0, market.mode === "field" ? 3 : 2).map((item) => (
-                    <span className="outcome-quote" key={item.code}>
-                      <em>{item.code}</em><strong>{Math.round(item.price * 100)}¢</strong>
-                    </span>
-                  ))}
+                  {showSampleData ? (
+                    market.outcomes.slice(0, market.mode === "field" ? 3 : 2).map((item) => (
+                      <span className="outcome-quote" key={item.code}>
+                        <em>{item.code}</em><strong>{Math.round(item.price * 100)}¢</strong>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="outcome-quote locked-quote"><LockedValue /></span>
+                  )}
                   {market.mode === "field" && <small>+2 more cities</small>}
                 </span>
                 <span className="select-arrow">↗</span>
@@ -351,7 +407,7 @@ export default function Home() {
               <span className="ticket-code">{selected.code} / USDC</span>
             </div>
             <div className={`selected-market ${selected.mode === "field" ? "field" : ""}`}>
-              <MarketVisual market={selected} compact />
+              <MarketVisual market={selected} compact showPricing={showSampleData} />
               <div>
                 <span>{selected.mode.replaceAll("-", " ")} · resolves {selected.closes}</span>
                 <h3>{selected.question}</h3>
@@ -367,14 +423,15 @@ export default function Home() {
                   onClick={() => setSelectedOutcome(index)}
                 >
                   <span>{selected.mode === "yes-no" ? `Buy ${item.label}` : item.label}</span>
-                  <strong>{Math.round(item.price * 100)}¢</strong>
+                  {showSampleData ? <strong>{Math.round(item.price * 100)}¢</strong> : <LockedValue />}
                   {selected.mode === "field" && <small>{item.code}</small>}
                 </button>
               ))}
             </div>
 
+            <p className="ticket-note ticket-note-top">Demo only. Orders are simulated and never sent onchain.</p>
             <label className="amount-label" htmlFor="trade-amount">
-              <span>Amount</span><small>Balance $2,840.00</small>
+              <span>Amount</span><small>Balance {showSampleData ? "—" : "—"}</small>
             </label>
             <div className="amount-input">
               <span>$</span>
@@ -388,29 +445,39 @@ export default function Home() {
               />
               <em>USDC</em>
             </div>
-            <div className="quick-amounts">
-              {[25, 100, 250, 500].map((value) => (
-                <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
-              ))}
-            </div>
+            {showSampleData && (
+              <div className="quick-amounts">
+                {[25, 100, 250, 500].map((value) => (
+                  <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
+                ))}
+              </div>
+            )}
 
             <div className="quote-lines">
-              <p><span>{outcome.label} price</span><strong>{Math.round(quote.price * 100)}¢</strong></p>
-              <p><span>Est. contracts</span><strong>{quote.contracts.toFixed(2)}</strong></p>
-              <p><span>Est. network fee</span><strong>&lt; $0.01</strong></p>
+              <p><span>{outcome.label} price</span>{showSampleData ? <strong>{Math.round(quote.price * 100)}¢</strong> : <LockedValue />}</p>
+              <p><span>Est. contracts</span>{showSampleData ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
+              <p><span>Est. network fee</span>{showSampleData ? <strong>&lt; $0.01</strong> : <LockedValue />}</p>
             </div>
 
             <div className="return-box">
               <span>YOU RECEIVE IF {outcome.label.toUpperCase()} WINS</span>
-              <strong>${quote.contracts.toFixed(2)}</strong>
-              <small>+${quote.profit.toFixed(2)} potential profit</small>
+              {showSampleData ? (
+                <>
+                  <strong>${quote.contracts.toFixed(2)}</strong>
+                  <small>+${quote.profit.toFixed(2)} potential profit</small>
+                </>
+              ) : (
+                <>
+                  <LockedValue />
+                  <small>Quotes open at launch</small>
+                </>
+              )}
             </div>
 
             <button className="review-button" type="button" onClick={reviewOrder}>
               {walletConnected ? `Review ${outcome.label} order` : "Connect to preview"}
               <span>→</span>
             </button>
-            <p className="ticket-note">Demo only. Orders are simulated and never sent onchain.</p>
           </aside>
         </div>
       </section>
@@ -429,12 +496,12 @@ export default function Home() {
           <article>
             <span>02 / PRICE</span>
             <strong>Back an outcome</strong>
-            <p>Each price from 1¢ to 99¢ reflects the market’s live probability.</p>
+            <p>Each funded market shows its live probability once trading opens.</p>
           </article>
           <article>
             <span>03 / SETTLE</span>
             <strong>Let the index decide</strong>
-            <p>Public housing data resolves the winner. Winning contracts redeem at $1.</p>
+            <p>Public housing data resolves the winner. Winning contracts redeem according to locked market terms.</p>
           </article>
         </div>
         <div className="settlement-strip">

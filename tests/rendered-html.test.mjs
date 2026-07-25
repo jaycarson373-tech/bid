@@ -23,34 +23,40 @@ async function render() {
   );
 }
 
-test("server-renders the BID market board", async () => {
+test("server-renders the BID market board in prelaunch without fabricated telemetry", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>BID — Bet the Block<\/title>/i);
-  assert.match(html, /BET THE/);
+  assert.match(html, /<title>BID — BID the Block<\/title>/i);
+  assert.match(html, /BID THE/);
   assert.match(html, /Highest city price growth by EOY/);
   assert.match(html, /Florida home-price growth showdown/);
   assert.match(html, /Austin turns positive by year-end/);
   assert.match(html, /Connect wallet/);
   assert.match(html, /Demo only\. Orders are simulated and never sent onchain\./);
+  assert.match(html, /Markets open at launch/);
+  assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 
 test("keeps the finished product free of starter-preview code", async () => {
-  const [page, layout, packageJson] = await Promise.all([
+  const [page, layout, packageJson, launchState] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../lib/launchState.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /mode: "head-to-head"/);
   assert.match(page, /mode: "field"/);
   assert.match(page, /mode: "yes-no"/);
   assert.match(page, /No transaction was sent/);
-  assert.match(layout, /title: "BID — Bet the Block"/);
+  assert.match(page, /Sample data/);
+  assert.match(page, /Markets open at launch/);
+  assert.match(layout, /title: "BID — BID the Block"/);
+  assert.match(launchState, /"prelaunch"/);
   assert.match(packageJson, /"name": "bid-real-estate-markets"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 
