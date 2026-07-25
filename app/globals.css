@@ -377,6 +377,43 @@ a {
   text-transform: uppercase;
 }
 
+.sample-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 21px;
+  padding: 4px 7px;
+  border: 1px solid rgba(16, 18, 15, 0.35);
+  background: var(--ink);
+  color: var(--lime);
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.sample-badge.compact {
+  min-height: 17px;
+  padding: 3px 5px;
+  font-size: 6px;
+}
+
+.locked-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: currentColor;
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
 .hero-market-body {
   display: grid;
   grid-template-columns: 1fr 190px;
@@ -416,6 +453,22 @@ a {
   flex-direction: column;
   align-items: flex-end;
   border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.odds-lockup .sample-badge {
+  margin-bottom: 10px;
+}
+
+.odds-lockup.locked {
+  justify-content: center;
+  gap: 10px;
+}
+
+.odds-lockup.locked .locked-value {
+  max-width: 150px;
+  color: var(--lime);
+  font-size: 18px;
+  text-align: right;
 }
 
 .odds-label {
@@ -462,6 +515,13 @@ a {
     repeating-linear-gradient(0deg, transparent 0 45px, rgba(255, 255, 255, 0.06) 45px 46px);
 }
 
+.mini-chart .sample-badge {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  z-index: 2;
+}
+
 .mini-chart i {
   flex: 1;
   min-width: 3px;
@@ -484,6 +544,24 @@ a {
   color: #596057;
   font-family: var(--font-geist-mono);
   font-size: 7px;
+}
+
+.chart-placeholder {
+  position: absolute;
+  right: 30px;
+  bottom: 87px;
+  left: 30px;
+  display: grid;
+  height: 210px;
+  place-items: center;
+  border: 1px dashed rgba(20, 241, 149, 0.28);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 45px, rgba(255, 255, 255, 0.06) 45px 46px);
+  color: #747b72;
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hero-market-foot {
@@ -518,6 +596,14 @@ a {
   font-weight: 500;
 }
 
+.hero-market-foot .sample-badge {
+  margin-right: 4px;
+}
+
+.hero-market-foot .locked-value {
+  color: #b8bdb2;
+}
+
 .ticker {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -533,6 +619,35 @@ a {
   gap: 5px 15px;
   padding: 0 30px;
   border-right: 1px solid rgba(16, 18, 15, 0.18);
+}
+
+.ticker .sample-badge {
+  grid-column: 1 / -1;
+  margin-bottom: 6px;
+}
+
+.ticker .launch-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 0.55fr 1fr auto;
+  align-items: center;
+  min-height: 98px;
+  gap: 18px;
+  border-right: 0;
+}
+
+.ticker .launch-strip span,
+.ticker .launch-strip em {
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ticker .launch-strip strong {
+  font-size: 18px;
+  letter-spacing: -0.02em;
 }
 
 .ticker div:last-child {
@@ -887,6 +1002,9 @@ a {
 }
 
 .market-meta em {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 3px 5px;
   background: rgba(16, 18, 15, 0.08);
   color: #666b61;
@@ -935,6 +1053,11 @@ a {
   font-size: 17px;
   font-weight: 620;
   letter-spacing: -0.045em;
+}
+
+.outcome-quote.locked-quote .locked-value {
+  color: #5f655b;
+  text-align: right;
 }
 
 .market-odds > small {
@@ -1102,6 +1225,12 @@ a {
 .outcome-picker button strong {
   font-size: 25px;
   line-height: 1;
+}
+
+.outcome-picker button .locked-value {
+  color: var(--ink);
+  font-size: 10px;
+  text-align: left;
 }
 
 .outcome-picker button small {
@@ -1316,6 +1445,15 @@ a {
   color: #8a8e85;
   font-size: 9px;
   text-align: center;
+}
+
+.ticket-note-top {
+  margin: 4px 18px 10px;
+  padding: 10px;
+  border: 1px solid rgba(16, 18, 15, 0.14);
+  background: rgba(16, 18, 15, 0.04);
+  color: #565c53;
+  text-align: left;
 }
 
 .how-section {
@@ -1835,6 +1973,13 @@ footer > small {
     gap: 3px;
   }
 
+  .chart-placeholder {
+    right: 18px;
+    bottom: 85px;
+    left: 18px;
+    height: 145px;
+  }
+
   .chart-scale {
     right: 18px;
     left: 18px;
@@ -1851,6 +1996,12 @@ footer > small {
 
   .ticker {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .ticker .launch-strip {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    min-height: 118px;
   }
 
   .ticker div {
