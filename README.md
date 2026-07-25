@@ -21,14 +21,25 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Deploy to Vercel
+
+[Import the GitHub repository into Vercel](https://vercel.com/new/clone?repository-url=https://github.com/jaycarson373-tech/bid).
+The repository includes a standard Next.js build, a clean lockfile, and
+`vercel.json` configuration.
+
+Set `NEXT_PUBLIC_SITE_URL` to the production URL if you attach a custom domain.
+Vercel's production URL is detected automatically otherwise.
+
 ## Validate
 
 ```bash
 npm test
+npm run test:vercel
 ```
 
-The test command builds the Cloudflare-compatible vinext output and verifies the
-rendered BID market board.
+The first command verifies the rendered BID market board through the
+Cloudflare-compatible build. The second runs the same Next.js production build
+used by Vercel.
 
 ## Solana status
 

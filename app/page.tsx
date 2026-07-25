@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
 
@@ -115,8 +116,8 @@ const filters = ["All markets", "Head to head", "5-city fields", "Yes / No"] as 
 
 function BrandMark() {
   return (
-    <span className="brand-mark" aria-hidden="true">
-      <i /><i /><i /><i /><i />
+    <span className="brand-mark brand-mark-image" aria-hidden="true">
+      <Image src="/brand/bid-logo.png" alt="" width={36} height={36} priority />
     </span>
   );
 }

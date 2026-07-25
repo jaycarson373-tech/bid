@@ -12,10 +12,47 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const productionHost =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(productionHost),
   title: "BID — Bet the Block",
   description:
-    "Trade real estate outcomes across the world’s fastest-moving cities. A Solana prediction market concept.",
+    "Trade real estate outcomes across the world’s fastest-moving cities. YES/NO, head-to-head, and five-city markets on Solana.",
+  icons: {
+    icon: "/brand/bid-logo.png",
+    apple: "/brand/bid-logo.png",
+  },
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "BID — Bet the Block",
+    description:
+      "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
+    url: "/",
+    siteName: "BID",
+    type: "website",
+    images: [
+      {
+        url: "/brand/bid-x-banner.png",
+        width: 1500,
+        height: 500,
+        alt: "BID — Bet the Block",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BID — Bet the Block",
+    description:
+      "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
+    images: ["/brand/bid-x-banner.png"],
+  },
 };
 
 export default function RootLayout({
