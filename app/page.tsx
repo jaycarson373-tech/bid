@@ -6,6 +6,23 @@ import { isDemo } from "@/lib/launchState";
 import { siteConfig } from "@/lib/site";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
+type WalletProviderName = "Phantom" | "Solflare" | "Backpack";
+type PaymentRail = "USDC" | "SOL";
+
+type SolanaProvider = {
+  isPhantom?: boolean;
+  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey?: { toString: () => string } } | void>;
+  publicKey?: { toString: () => string };
+};
+
+declare global {
+  interface Window {
+    solana?: SolanaProvider;
+    solflare?: SolanaProvider;
+    backpack?: { solana?: SolanaProvider };
+    phantom?: { solana?: SolanaProvider };
+  }
+}
 
 type Outcome = {
   label: string;
@@ -88,6 +105,17 @@ function truncateAddress(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
+function getWalletProvider(name: WalletProviderName) {
+  if (typeof window === "undefined") return undefined;
+
+  if (name === "Phantom") {
+    return window.phantom?.solana ?? (window.solana?.isPhantom ? window.solana : undefined);
+  }
+
+  if (name === "Solflare") return window.solflare;
+  return window.backpack?.solana;
+}
+
 function BrandMark() {
   return (
     <span className="brand-mark brand-mark-image" aria-hidden="true">
@@ -166,10 +194,14 @@ export default function Home() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("All markets");
   const [selectedOutcome, setSelectedOutcome] = useState(0);
   const [amount, setAmount] = useState(isDemo ? "250" : "");
+  const [paymentRail, setPaymentRail] = useState<PaymentRail>("USDC");
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [walletName, setWalletName] = useState<WalletProviderName | "">("");
   const [notice, setNotice] = useState("");
   const contractAddress = siteConfig.contractAddress;
+  const marketProgramConfigured = Boolean(siteConfig.marketProgramId);
 
   const selected = markets.find((market) => market.id === selectedId) ?? markets[0];
   const outcome = selected.outcomes[selectedOutcome] ?? selected.outcomes[0];
@@ -191,10 +223,31 @@ export default function Home() {
     setSelectedOutcome(0);
   };
 
-  const connectWallet = () => {
-    setWalletConnected(true);
-    setWalletOpen(false);
-    setNotice("Wallet preview connected. No blockchain permissions were requested.");
+  const connectWallet = async (name: WalletProviderName) => {
+    const provider = getWalletProvider(name);
+
+    if (!provider) {
+      setNotice(`${name} was not detected. Install or unlock the wallet, then try again.`);
+      return;
+    }
+
+    try {
+      const response = await provider.connect({ onlyIfTrusted: false });
+      const address = response?.publicKey?.toString() ?? provider.publicKey?.toString() ?? "";
+
+      if (!address) {
+        setNotice(`${name} connected, but no wallet address was returned.`);
+        return;
+      }
+
+      setWalletConnected(true);
+      setWalletAddress(address);
+      setWalletName(name);
+      setWalletOpen(false);
+      setNotice(`${name} connected: ${truncateAddress(address)}. No signature requested.`);
+    } catch {
+      setNotice(`${name} connection was cancelled or failed.`);
+    }
   };
 
   const reviewOrder = () => {
@@ -202,11 +255,15 @@ export default function Home() {
       setWalletOpen(true);
       return;
     }
-    if (!showSampleData) {
-      setNotice("Order previews open at launch. No transaction was sent.");
+
+    if (!marketProgramConfigured) {
+      setNotice("Wallet connected. BID market routing is not configured yet, so no transaction was built.");
       return;
     }
-    setNotice(`Preview ready: ${outcome.label} for $${(Number(amount) || 0).toLocaleString()}. No transaction was sent.`);
+
+    // TODO(onchain): build a market-program transaction after BID publishes the program ID,
+    // pool accounts, escrow account, and exact instruction schema. Simulate before signing.
+    setNotice(`Ready to quote ${outcome.label} with ${paymentRail}. Transaction build remains disabled until the market program is wired.`);
   };
 
   const copyContractAddress = async () => {
@@ -241,9 +298,9 @@ export default function Home() {
           <button
             className={`wallet-button ${walletConnected ? "connected" : ""}`}
             type="button"
-            onClick={() => walletConnected ? setNotice("Demo wallet is ready.") : setWalletOpen(true)}
+            onClick={() => walletConnected ? setNotice(`${walletName} connected: ${truncateAddress(walletAddress)}.`) : setWalletOpen(true)}
           >
-            {walletConnected ? "Preview wallet" : "Connect wallet"}
+            {walletConnected ? truncateAddress(walletAddress) : "Connect wallet"}
           </button>
         </div>
       </header>
@@ -394,7 +451,7 @@ export default function Home() {
           <aside className="trade-ticket" aria-label={`Trade ${selected.short}`}>
             <div className="ticket-top">
               <span>ORDER TICKET</span>
-              <span className="ticket-code">{selected.code} / USDC</span>
+              <span className="ticket-code">{selected.code} / {paymentRail}</span>
             </div>
             <div className={`selected-market ${selected.mode === "field" ? "field" : ""}`}>
               <MarketVisual market={selected} compact showPricing={showSampleData} />
@@ -419,23 +476,39 @@ export default function Home() {
               ))}
             </div>
 
-            <p className="ticket-note ticket-note-top">Preview only. Orders are simulated and never sent onchain.</p>
+            <div className="rail-selector" role="group" aria-label="Payment rail">
+              {(["USDC", "SOL"] as const).map((rail) => (
+                <button
+                  className={paymentRail === rail ? "active" : ""}
+                  key={rail}
+                  type="button"
+                  onClick={() => setPaymentRail(rail)}
+                >
+                  <span>{rail}</span>
+                  <small>{rail === "USDC" ? "Stablecoin rail" : "Native SOL rail"}</small>
+                </button>
+              ))}
+            </div>
+
+            <p className="ticket-note ticket-note-top">
+              Wallet connect is live. Order signing stays disabled until BID market pools and the Solana program are configured.
+            </p>
             <label className="amount-label" htmlFor="trade-amount">
-              <span>Amount</span><small>Balance {showSampleData ? "—" : "—"}</small>
+              <span>Amount</span><small>{walletConnected ? `${truncateAddress(walletAddress)}` : "Connect wallet"}</small>
             </label>
             <div className="amount-input">
-              <span>$</span>
+              <span>{paymentRail === "USDC" ? "$" : "◎"}</span>
               <input
                 id="trade-amount"
                 inputMode="decimal"
                 min="0"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
-                aria-label="Trade amount in USDC"
+                aria-label={`Trade amount in ${paymentRail}`}
               />
-              <em>USDC</em>
+              <em>{paymentRail}</em>
             </div>
-            {showSampleData && (
+            {showSampleData && paymentRail === "USDC" && (
               <div className="quick-amounts">
                 {[25, 100, 250, 500].map((value) => (
                   <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
@@ -445,13 +518,14 @@ export default function Home() {
 
             <div className="quote-lines">
               <p><span>{outcome.label} price</span>{showSampleData ? <strong>{Math.round(quote.price * 100)}¢</strong> : <LockedValue />}</p>
-              <p><span>Est. contracts</span>{showSampleData ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
-              <p><span>Est. network fee</span>{showSampleData ? <strong>&lt; $0.01</strong> : <LockedValue />}</p>
+              <p><span>Pay with</span><strong>{paymentRail}</strong></p>
+              <p><span>Est. contracts</span>{showSampleData && paymentRail === "USDC" ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
+              <p><span>Network</span><strong>{siteConfig.solanaCluster}</strong></p>
             </div>
 
             <div className="return-box">
               <span>YOU RECEIVE IF {outcome.label.toUpperCase()} WINS</span>
-              {showSampleData ? (
+              {showSampleData && paymentRail === "USDC" ? (
                 <>
                   <strong>${quote.contracts.toFixed(2)}</strong>
                   <small>+${quote.profit.toFixed(2)} potential profit</small>
@@ -465,9 +539,12 @@ export default function Home() {
             </div>
 
             <button className="review-button" type="button" onClick={reviewOrder}>
-              {walletConnected ? `Review ${outcome.label} order` : "Connect to preview"}
+              {walletConnected ? `Review ${outcome.label} order` : "Connect wallet"}
               <span>→</span>
             </button>
+            {!marketProgramConfigured && (
+              <p className="integration-status">Needs BID market program + funded pool accounts before real order signing can turn on.</p>
+            )}
           </aside>
         </div>
       </section>
@@ -535,19 +612,19 @@ export default function Home() {
               <div><BrandMark /><span>BID</span></div>
               <button type="button" onClick={() => setWalletOpen(false)} aria-label="Close wallet dialog">×</button>
             </div>
-            <span className="modal-kicker">WALLET PREVIEW</span>
+            <span className="modal-kicker">SOLANA WALLET</span>
             <h2 id="wallet-title">Choose a wallet</h2>
-            <p>This preview won’t request a signature or move funds.</p>
-            <button className="wallet-choice" type="button" onClick={connectWallet}>
-              <span className="wallet-icon violet-dot">P</span><strong>Phantom</strong><em>Detected</em>
+            <p>Connect read-only. BID will not request a signature until a real order transaction is ready for review.</p>
+            <button className="wallet-choice" type="button" onClick={() => connectWallet("Phantom")}>
+              <span className="wallet-icon violet-dot">P</span><strong>Phantom</strong><em>Connect</em>
             </button>
-            <button className="wallet-choice" type="button" onClick={connectWallet}>
-              <span className="wallet-icon red-dot">S</span><strong>Solflare</strong><em>Preview</em>
+            <button className="wallet-choice" type="button" onClick={() => connectWallet("Solflare")}>
+              <span className="wallet-icon red-dot">S</span><strong>Solflare</strong><em>Connect</em>
             </button>
-            <button className="wallet-choice" type="button" onClick={connectWallet}>
-              <span className="wallet-icon blue-dot">B</span><strong>Backpack</strong><em>Preview</em>
+            <button className="wallet-choice" type="button" onClick={() => connectWallet("Backpack")}>
+              <span className="wallet-icon blue-dot">B</span><strong>Backpack</strong><em>Connect</em>
             </button>
-            <small>Production version: Wallet Standard + simulated transaction review before signing.</small>
+            <small>No private keys. No seed phrases. No order signing until market routing is configured and simulated.</small>
           </div>
         </div>
       )}

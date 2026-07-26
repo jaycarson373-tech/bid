@@ -35,7 +35,8 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /Florida home-price growth showdown/);
   assert.match(html, /Austin turns positive by year-end/);
   assert.match(html, /Connect wallet/);
-  assert.match(html, /Preview only\. Orders are simulated and never sent onchain\./);
+  assert.match(html, /Wallet connect is live/);
+  assert.match(html, /Order signing stays disabled until BID market pools and the Solana program are configured/);
   assert.match(html, /BID markets/);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
@@ -52,7 +53,8 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /mode: "head-to-head"/);
   assert.match(page, /mode: "field"/);
   assert.match(page, /mode: "yes-no"/);
-  assert.match(page, /No transaction was sent/);
+  assert.match(page, /No signature requested/);
+  assert.match(page, /no transaction was built/);
   assert.match(page, /Sample data/);
   assert.match(page, /Opening soon/);
   assert.match(layout, /title: "BID — BID the Block"/);

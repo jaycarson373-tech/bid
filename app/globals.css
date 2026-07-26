@@ -1303,6 +1303,47 @@ a {
   font-size: 20px;
 }
 
+.rail-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 18px 12px;
+}
+
+.rail-selector button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rail-selector button.active {
+  border-color: var(--ink);
+  background:
+    linear-gradient(#f7f5ef, #f7f5ef) padding-box,
+    var(--solana-gradient) border-box;
+  box-shadow: inset 0 0 0 1px rgba(20, 241, 149, 0.16);
+}
+
+.rail-selector span {
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.rail-selector small {
+  color: #73776f;
+  font-family: var(--font-geist-mono);
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
 .amount-label {
   display: flex;
   justify-content: space-between;
@@ -1462,6 +1503,15 @@ a {
 
 .review-button span {
   font-size: 18px;
+}
+
+.integration-status {
+  margin: 10px 18px 0;
+  color: #71766c;
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  line-height: 1.45;
+  text-transform: uppercase;
 }
 
 .ticket-note {
