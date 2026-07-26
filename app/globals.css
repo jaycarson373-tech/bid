@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #10120f;
-  --paper: #f0eee7;
-  --panel: #e6e3da;
+  --ink: #070807;
+  --paper: #050607;
+  --panel: rgba(255, 255, 255, 0.045);
   --lime: #14f195;
   --acid: #7cf7c6;
-  --muted: #74786e;
-  --line: rgba(16, 18, 15, 0.18);
+  --muted: #8c938a;
+  --line: rgba(255, 255, 255, 0.13);
   --coral: #00c2ff;
   --mint: #14f195;
   --violet: #9945ff;
@@ -25,8 +25,11 @@ html {
 
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
+  background:
+    radial-gradient(circle at 14% 8%, rgba(153, 69, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 86% 20%, rgba(20, 241, 149, 0.13), transparent 28%),
+    var(--paper);
+  color: #f5f8f3;
   font-family: var(--font-geist-sans), Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -65,7 +68,7 @@ a {
   height: 76px;
   padding: 0 42px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(16, 18, 15, 0.94);
+  background: rgba(5, 6, 7, 0.9);
   color: #fff;
   backdrop-filter: blur(18px);
 }
@@ -632,8 +635,12 @@ a {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   min-height: 98px;
+  border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: var(--solana-gradient);
+  background:
+    linear-gradient(90deg, rgba(20, 241, 149, 0.12), rgba(0, 209, 255, 0.08), rgba(153, 69, 255, 0.12)),
+    #060706;
+  color: #f5f8f3;
 }
 
 .ticker div {
@@ -642,7 +649,7 @@ a {
   align-content: center;
   gap: 5px 15px;
   padding: 0 30px;
-  border-right: 1px solid rgba(16, 18, 15, 0.18);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .ticker .sample-badge {
@@ -692,7 +699,7 @@ a {
 
 .ticker em {
   align-self: end;
-  color: rgba(16, 18, 15, 0.64);
+  color: #96a095;
   font-family: var(--font-geist-mono);
   font-size: 8px;
   font-style: normal;
@@ -700,6 +707,11 @@ a {
 
 .market-section {
   padding: 110px 42px 120px;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(20, 241, 149, 0.08), transparent 26%),
+    radial-gradient(circle at 86% 68%, rgba(153, 69, 255, 0.1), transparent 30%),
+    var(--paper);
+  color: #f5f8f3;
 }
 
 .section-heading {
@@ -713,13 +725,13 @@ a {
 
 .section-kicker {
   margin-bottom: 16px;
-  color: #6b7067;
+  color: #9aa49a;
 }
 
 .section-kicker::before {
   width: 18px;
   height: 5px;
-  background: var(--ink);
+  background: var(--solana-gradient);
   content: "";
 }
 
@@ -736,7 +748,7 @@ a {
 .section-heading > p {
   max-width: 320px;
   margin: 0 0 8px;
-  color: #6d716a;
+  color: #8f998f;
   font-size: 14px;
   line-height: 1.5;
 }
@@ -770,8 +782,8 @@ a {
 }
 
 .filter-row button.active {
-  border-color: var(--ink);
-  color: var(--ink);
+  border-color: var(--lime);
+  color: #f5f8f3;
 }
 
 .filter-row button span {
@@ -780,7 +792,7 @@ a {
   height: 17px;
   padding: 0 4px;
   place-items: center;
-  background: var(--ink);
+  background: var(--solana-gradient);
   color: var(--lime);
   font-size: 7px;
 }
@@ -807,17 +819,24 @@ a {
   align-items: center;
   min-height: 154px;
   padding: 13px 18px 13px 12px;
-  border: 1px solid transparent;
-  background: #e8e5dd;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025)),
+    rgba(10, 12, 11, 0.86);
+  color: #f5f8f3;
   text-align: left;
   cursor: pointer;
-  transition: border 160ms ease, background 160ms ease, transform 160ms ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
 .market-card:hover,
 .market-card.selected {
-  border-color: var(--ink);
-  background: #f7f5ee;
+  border-color: rgba(20, 241, 149, 0.55);
+  background:
+    linear-gradient(135deg, rgba(20, 241, 149, 0.08), rgba(153, 69, 255, 0.07)),
+    rgba(12, 14, 13, 0.94);
+  box-shadow: 0 0 34px rgba(20, 241, 149, 0.08);
   transform: translateX(4px);
 }
 
@@ -828,14 +847,14 @@ a {
   left: -1px;
   width: 4px;
   background: linear-gradient(180deg, #14f195, #00d1ff 55%, #9945ff);
-  border-right: 1px solid var(--ink);
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
   content: "";
 }
 
 .card-index {
   align-self: flex-start;
   padding-top: 7px;
-  color: #8a8e85;
+  color: #707970;
   font-family: var(--font-geist-mono);
   font-size: 8px;
 }
@@ -863,7 +882,7 @@ a {
   width: 30px;
   height: 30px;
   place-items: center;
-  border: 2px solid #f7f5ef;
+  border: 2px solid #101310;
   border-radius: 50%;
   background: var(--ink);
   color: #fff;
@@ -1063,12 +1082,12 @@ a {
   justify-content: flex-end;
   gap: 8px;
   width: 100%;
-  color: var(--ink);
+  color: #f5f8f3;
   font-family: var(--font-geist-mono);
 }
 
 .outcome-quote em {
-  color: #6e7369;
+  color: #8f998f;
   font-size: 7px;
   font-style: normal;
 }
@@ -1127,9 +1146,13 @@ a {
   top: 94px;
   align-self: start;
   min-height: 620px;
-  border: 1px solid var(--ink);
-  background: #f7f5ef;
-  box-shadow: 10px 10px 0 #dad7ce;
+  border: 1px solid rgba(20, 241, 149, 0.28);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(153, 69, 255, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+    rgba(8, 10, 9, 0.96);
+  color: #f5f8f3;
+  box-shadow: 12px 12px 0 rgba(20, 241, 149, 0.07), 0 0 42px rgba(153, 69, 255, 0.08);
 }
 
 .ticket-top {
@@ -1138,14 +1161,14 @@ a {
   justify-content: space-between;
   height: 42px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--ink);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.13);
   font-family: var(--font-geist-mono);
   font-size: 8px;
   letter-spacing: 0.08em;
 }
 
 .ticket-code {
-  color: #71766c;
+  color: #9ba59b;
 }
 
 .selected-market {
@@ -1205,7 +1228,7 @@ a {
 }
 
 .selected-market > div:last-child > span {
-  color: #72776d;
+  color: #8d978d;
   font-family: var(--font-geist-mono);
   font-size: 7px;
   text-transform: uppercase;
@@ -1235,12 +1258,12 @@ a {
   height: 74px;
   padding: 12px;
   border: 1px solid var(--line);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.025);
   cursor: pointer;
 }
 
 .outcome-picker button span {
-  color: #6e7369;
+  color: #9ba59b;
   font-family: var(--font-geist-mono);
   font-size: 8px;
   text-transform: uppercase;
@@ -1252,7 +1275,7 @@ a {
 }
 
 .outcome-picker button .locked-value {
-  color: var(--ink);
+  color: #f5f8f3;
   font-size: 10px;
   text-align: left;
 }
@@ -1261,29 +1284,29 @@ a {
   position: absolute;
   right: 10px;
   bottom: 10px;
-  color: #74796f;
+  color: #899389;
   font-family: var(--font-geist-mono);
   font-size: 7px;
 }
 
 .outcome-picker button.mint.active {
-  border-color: #4f8e70;
-  background: rgba(116, 223, 177, 0.25);
+  border-color: rgba(20, 241, 149, 0.68);
+  background: rgba(20, 241, 149, 0.12);
 }
 
 .outcome-picker button.coral.active {
-  border-color: #c85945;
-  background: rgba(255, 107, 74, 0.17);
+  border-color: rgba(0, 194, 255, 0.68);
+  background: rgba(0, 194, 255, 0.1);
 }
 
 .outcome-picker button.violet.active {
-  border-color: #725cd7;
-  background: rgba(154, 131, 255, 0.19);
+  border-color: rgba(153, 69, 255, 0.68);
+  background: rgba(153, 69, 255, 0.12);
 }
 
 .outcome-picker button.gold.active {
-  border-color: #b48d27;
-  background: rgba(244, 201, 93, 0.22);
+  border-color: rgba(192, 140, 255, 0.68);
+  background: rgba(192, 140, 255, 0.12);
 }
 
 .field-picker {
@@ -1318,15 +1341,15 @@ a {
   min-height: 54px;
   padding: 10px 12px;
   border: 1px solid var(--line);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.025);
   cursor: pointer;
   text-align: left;
 }
 
 .rail-selector button.active {
-  border-color: var(--ink);
+  border-color: rgba(20, 241, 149, 0.68);
   background:
-    linear-gradient(#f7f5ef, #f7f5ef) padding-box,
+    linear-gradient(rgba(12, 14, 13, 0.95), rgba(12, 14, 13, 0.95)) padding-box,
     var(--solana-gradient) border-box;
   box-shadow: inset 0 0 0 1px rgba(20, 241, 149, 0.16);
 }
@@ -1338,7 +1361,7 @@ a {
 }
 
 .rail-selector small {
-  color: #73776f;
+  color: #889288;
   font-family: var(--font-geist-mono);
   font-size: 7px;
   text-transform: uppercase;
@@ -1354,7 +1377,7 @@ a {
 }
 
 .amount-label small {
-  color: #74796f;
+  color: #899389;
   font-size: inherit;
 }
 
@@ -1365,12 +1388,12 @@ a {
   height: 60px;
   margin: 0 18px;
   padding: 0 14px;
-  border: 1px solid var(--ink);
-  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .amount-input > span {
-  color: #7c8078;
+  color: #8f998f;
   font-size: 18px;
 }
 
@@ -1379,6 +1402,7 @@ a {
   border: 0;
   outline: none;
   background: transparent;
+  color: #fff;
   font-size: 28px;
   font-weight: 620;
   letter-spacing: -0.045em;
@@ -1386,7 +1410,8 @@ a {
 
 .amount-input em {
   padding: 5px 7px;
-  background: #e7e4dc;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--lime);
   font-family: var(--font-geist-mono);
   font-size: 8px;
   font-style: normal;
@@ -1403,15 +1428,15 @@ a {
   height: 28px;
   border: 1px solid var(--line);
   background: transparent;
-  color: #6a6f65;
+  color: #9ba59b;
   cursor: pointer;
   font-family: var(--font-geist-mono);
   font-size: 8px;
 }
 
 .quick-amounts button:hover {
-  border-color: var(--ink);
-  color: var(--ink);
+  border-color: var(--lime);
+  color: var(--lime);
 }
 
 .quote-lines {
@@ -1424,14 +1449,14 @@ a {
   display: flex;
   justify-content: space-between;
   margin: 7px 0;
-  color: #73776f;
+  color: #8d978d;
   font-family: var(--font-geist-mono);
   font-size: 8px;
   text-transform: uppercase;
 }
 
 .quote-lines strong {
-  color: var(--ink);
+  color: #f5f8f3;
   font-weight: 500;
 }
 
@@ -1444,7 +1469,9 @@ a {
   margin: 0 18px 14px;
   padding: 14px;
   overflow: hidden;
-  background: var(--ink);
+  background:
+    radial-gradient(circle at 92% 20%, rgba(20, 241, 149, 0.16), transparent 36%),
+    #050607;
   color: #fff;
 }
 
@@ -1516,7 +1543,7 @@ a {
 
 .ticket-note {
   margin: 10px 18px 16px;
-  color: #8a8e85;
+  color: #8f998f;
   font-size: 9px;
   text-align: center;
 }
@@ -1524,9 +1551,9 @@ a {
 .ticket-note-top {
   margin: 4px 18px 10px;
   padding: 10px;
-  border: 1px solid rgba(16, 18, 15, 0.14);
-  background: rgba(16, 18, 15, 0.04);
-  color: #565c53;
+  border: 1px solid rgba(20, 241, 149, 0.18);
+  background: rgba(20, 241, 149, 0.055);
+  color: #aeb8ae;
   text-align: left;
 }
 
@@ -1732,9 +1759,12 @@ a {
   padding: 130px 42px;
   overflow: hidden;
   background:
-    linear-gradient(90deg, transparent 0 50%, rgba(16, 18, 15, 0.12) 50% 50.1%, transparent 50.1%),
-    repeating-linear-gradient(0deg, transparent 0 74px, rgba(16, 18, 15, 0.07) 74px 75px),
-    linear-gradient(115deg, #14f195 0%, #00d1ff 58%, #9945ff 120%);
+    radial-gradient(circle at 16% 20%, rgba(20, 241, 149, 0.18), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(153, 69, 255, 0.2), transparent 32%),
+    linear-gradient(90deg, transparent 0 50%, rgba(255, 255, 255, 0.06) 50% 50.1%, transparent 50.1%),
+    repeating-linear-gradient(0deg, transparent 0 74px, rgba(255, 255, 255, 0.035) 74px 75px),
+    #050607;
+  color: #f5f8f3;
 }
 
 .portfolio-tease::after {
@@ -1743,7 +1773,7 @@ a {
   bottom: -140px;
   width: 420px;
   height: 420px;
-  border: 80px solid rgba(16, 18, 15, 0.07);
+  border: 80px solid rgba(20, 241, 149, 0.06);
   border-radius: 50%;
   content: "";
 }
@@ -2281,7 +2311,7 @@ footer > small {
   }
 
   .trade-ticket {
-    box-shadow: 6px 6px 0 #dad7ce;
+    box-shadow: 6px 6px 0 rgba(20, 241, 149, 0.07);
   }
 
   .selected-market {
