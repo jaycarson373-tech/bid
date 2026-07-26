@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import postgres from "postgres";
@@ -18,12 +18,16 @@ async function main(): Promise<void> {
   });
 
   try {
-    const migration = await readFile(
-      resolve(process.cwd(), "migrations/001_fee_accounting.sql"),
-      "utf8",
-    );
-    await sql.unsafe(migration);
-    console.log(JSON.stringify({ event: "migration_complete", migration: "001_fee_accounting" }));
+    const migrationsDir = resolve(process.cwd(), "migrations");
+    const migrations = (await readdir(migrationsDir))
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
+
+    for (const file of migrations) {
+      const migration = await readFile(resolve(migrationsDir, file), "utf8");
+      await sql.unsafe(migration);
+      console.log(JSON.stringify({ event: "migration_complete", migration: file }));
+    }
   } finally {
     await sql.end();
   }

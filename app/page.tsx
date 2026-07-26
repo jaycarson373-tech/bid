@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { isDemo, isLive } from "@/lib/launchState";
+import { isDemo } from "@/lib/launchState";
 import { siteConfig } from "@/lib/site";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
@@ -79,38 +79,6 @@ const markets: Market[] = [
     closes: "Dec 31, 2026",
     signal: "Current YoY -2.3%",
     chart: [76, 73, 75, 69, 71, 66, 63, 65, 60, 57, 59, 54, 50, 53, 48, 45, 49, 43, 40, 44, 38, 41, 39, 42],
-  },
-  {
-    id: "la-san-diego-sep",
-    code: "LAX / SAN",
-    mode: "head-to-head",
-    question: "Which Southern California market will gain more by September?",
-    short: "SoCal price-growth showdown",
-    outcomes: [
-      { label: "Los Angeles", code: "LAX", price: 0.48, tone: "gold" },
-      { label: "San Diego", code: "SAN", price: 0.52, tone: "violet" },
-    ],
-    volume: "$1.21M",
-    liquidity: "$356K",
-    closes: "Sep 30, 2026",
-    signal: "LAX +3.6% · SAN +3.9%",
-    chart: [34, 36, 39, 37, 42, 45, 43, 48, 46, 52, 55, 53, 58, 62, 59, 65, 68, 66, 71, 75, 73, 78, 81, 84],
-  },
-  {
-    id: "national-index-three",
-    code: "US20 / 3%",
-    mode: "yes-no",
-    question: "Will the U.S. 20-city index gain more than 3% in 2026?",
-    short: "National index clears 3%",
-    outcomes: [
-      { label: "Yes", code: "YES", price: 0.62, tone: "mint" },
-      { label: "No", code: "NO", price: 0.38, tone: "coral" },
-    ],
-    volume: "$886K",
-    liquidity: "$244K",
-    closes: "Jan 29, 2027",
-    signal: "Current annual pace +2.6%",
-    chart: [30, 33, 31, 36, 39, 37, 42, 45, 43, 49, 52, 50, 55, 58, 56, 61, 64, 62, 66, 70, 68, 73, 76, 79],
   },
 ];
 
@@ -226,7 +194,7 @@ export default function Home() {
   const connectWallet = () => {
     setWalletConnected(true);
     setWalletOpen(false);
-    setNotice("Demo wallet connected. No blockchain permissions were requested.");
+    setNotice("Wallet preview connected. No blockchain permissions were requested.");
   };
 
   const reviewOrder = () => {
@@ -282,7 +250,7 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <div className="eyebrow"><span>{showSampleData ? "DEMO" : isLive ? "PENDING" : "PRELAUNCH"}</span> REAL ESTATE MARKETS, REBUILT</div>
+          <div className="eyebrow"><span>{showSampleData ? "SAMPLE" : "BID"}</span> REAL ESTATE MARKETS, REBUILT</div>
           <h1>BID THE<br /><em>BLOCK.</em></h1>
           <p>
             Trade what happens next in housing. Pick a city, take a side, or
@@ -297,7 +265,7 @@ export default function Home() {
         <div className="hero-market">
           <div className="hero-market-head">
             <span>FEATURED // HEAD TO HEAD // MIA-TPA</span>
-              <span className="pulse-label"><i /> {showSampleData ? "trading" : isLive ? "pending" : "prelaunch"}</span>
+              <span className="pulse-label"><i /> {showSampleData ? "sample" : "markets"}</span>
             </div>
             <div className="hero-market-body">
             <div className="hero-question">
@@ -313,9 +281,9 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="odds-lockup locked">
-                  <span className="odds-label">{isLive ? "Live data pending" : "Markets open at launch"}</span>
+                  <span className="odds-label">Markets opening</span>
                   <LockedValue />
-                  <small>Pricing appears when funded markets open</small>
+                  <small>Pricing appears when funded pools open</small>
                 </div>
               )}
             </div>
@@ -334,7 +302,7 @@ export default function Home() {
           ) : (
             <div className="chart-placeholder">
               {/* TODO(live-data): replace with /api/markets/featured probability history once the real BID/Parcl data feed exists. */}
-              <span>Chart opens at launch</span>
+              <span>Chart opens with funded pools</span>
             </div>
           )}
           <div className="hero-market-foot">
@@ -356,9 +324,9 @@ export default function Home() {
         ) : (
           <div className="launch-strip">
             {/* TODO(live-data): replace with /api/platform/stats once real BID volume, open interest, and market telemetry exists. */}
-            <span>{isLive ? "Live data pending" : "Markets open at launch"}</span>
+            <span>BID markets</span>
             <strong>Funded real estate markets are being prepared.</strong>
-            <em>Built on Solana. No sample stats shown.</em>
+            <em>Built on Solana. Live stats appear with funded pools.</em>
           </div>
         )}
       </section>
@@ -401,10 +369,10 @@ export default function Home() {
                 <span className="market-copy">
                   <span className="market-meta">
                     <span>{market.mode.replaceAll("-", " ")}</span>
-                    {showSampleData ? <em><SampleBadge compact /> {market.signal}</em> : <em>Opens at launch</em>}
+                    {showSampleData ? <em><SampleBadge compact /> {market.signal}</em> : <em>Opening soon</em>}
                   </span>
                   <strong>{market.short}</strong>
-                  <small>Resolves {market.closes} · {showSampleData ? `Vol ${market.volume}` : "Opens at launch"}</small>
+                  <small>Resolves {market.closes} · {showSampleData ? `Vol ${market.volume}` : "Opening soon"}</small>
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
                   {showSampleData ? (
@@ -451,7 +419,7 @@ export default function Home() {
               ))}
             </div>
 
-            <p className="ticket-note ticket-note-top">Demo only. Orders are simulated and never sent onchain.</p>
+            <p className="ticket-note ticket-note-top">Preview only. Orders are simulated and never sent onchain.</p>
             <label className="amount-label" htmlFor="trade-amount">
               <span>Amount</span><small>Balance {showSampleData ? "—" : "—"}</small>
             </label>
@@ -491,7 +459,7 @@ export default function Home() {
               ) : (
                 <>
                   <LockedValue />
-                  <small>Quotes open at launch</small>
+                  <small>Quotes open with funded pools</small>
                 </>
               )}
             </div>
@@ -551,7 +519,7 @@ export default function Home() {
             </button>
           )}
         </div>
-        <small>© 2026 BID · PROTOTYPE ONLY · NOT INVESTMENT ADVICE</small>
+        <small>© 2026 BID · NOT INVESTMENT ADVICE</small>
       </footer>
 
       {walletOpen && (
@@ -567,17 +535,17 @@ export default function Home() {
               <div><BrandMark /><span>BID</span></div>
               <button type="button" onClick={() => setWalletOpen(false)} aria-label="Close wallet dialog">×</button>
             </div>
-            <span className="modal-kicker">DEMO CONNECTION</span>
+            <span className="modal-kicker">WALLET PREVIEW</span>
             <h2 id="wallet-title">Choose a wallet</h2>
-            <p>This prototype won’t request a signature or move funds.</p>
+            <p>This preview won’t request a signature or move funds.</p>
             <button className="wallet-choice" type="button" onClick={connectWallet}>
               <span className="wallet-icon violet-dot">P</span><strong>Phantom</strong><em>Detected</em>
             </button>
             <button className="wallet-choice" type="button" onClick={connectWallet}>
-              <span className="wallet-icon red-dot">S</span><strong>Solflare</strong><em>Demo</em>
+              <span className="wallet-icon red-dot">S</span><strong>Solflare</strong><em>Preview</em>
             </button>
             <button className="wallet-choice" type="button" onClick={connectWallet}>
-              <span className="wallet-icon blue-dot">B</span><strong>Backpack</strong><em>Demo</em>
+              <span className="wallet-icon blue-dot">B</span><strong>Backpack</strong><em>Preview</em>
             </button>
             <small>Production version: Wallet Standard + simulated transaction review before signing.</small>
           </div>
