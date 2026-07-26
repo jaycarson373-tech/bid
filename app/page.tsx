@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { isDemo, isLive } from "@/lib/launchState";
+import { siteConfig } from "@/lib/site";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
 
@@ -115,6 +116,10 @@ const markets: Market[] = [
 
 const filters = ["All markets", "Head to head", "5-city fields", "Yes / No"] as const;
 
+function truncateAddress(address: string) {
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
 function BrandMark() {
   return (
     <span className="brand-mark brand-mark-image" aria-hidden="true">
@@ -196,6 +201,7 @@ export default function Home() {
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [notice, setNotice] = useState("");
+  const contractAddress = siteConfig.contractAddress;
 
   const selected = markets.find((market) => market.id === selectedId) ?? markets[0];
   const outcome = selected.outcomes[selectedOutcome] ?? selected.outcomes[0];
@@ -235,6 +241,17 @@ export default function Home() {
     setNotice(`Preview ready: ${outcome.label} for $${(Number(amount) || 0).toLocaleString()}. No transaction was sent.`);
   };
 
+  const copyContractAddress = async () => {
+    if (!contractAddress) return;
+
+    try {
+      await navigator.clipboard.writeText(contractAddress);
+      setNotice("Contract address copied.");
+    } catch {
+      setNotice("Contract address ready. Copy failed in this browser.");
+    }
+  };
+
   return (
     <main className="site-shell">
       <header className="topbar">
@@ -247,6 +264,11 @@ export default function Home() {
           <a href="#portfolio">Portfolio</a>
         </nav>
         <div className="header-actions">
+          {contractAddress && (
+            <button className="ca-pill" type="button" onClick={copyContractAddress}>
+              CA <span>{truncateAddress(contractAddress)}</span>
+            </button>
+          )}
           <span className="network-pill"><i /> Solana</span>
           <button
             className={`wallet-button ${walletConnected ? "connected" : ""}`}
@@ -520,7 +542,15 @@ export default function Home() {
       <footer>
         <a className="brand footer-brand" href="#top"><BrandMark /><span>BID</span></a>
         <p>Real estate prediction markets on Solana.</p>
-        <div><a href="#markets">Markets</a><a href="#how-it-works">How it works</a><a href="#top">Terms</a></div>
+        <div>
+          <a href="#markets">Markets</a>
+          <a href="#how-it-works">How it works</a>
+          {contractAddress && (
+            <button className="footer-ca" type="button" onClick={copyContractAddress}>
+              CA {truncateAddress(contractAddress)}
+            </button>
+          )}
+        </div>
         <small>© 2026 BID · PROTOTYPE ONLY · NOT INVESTMENT ADVICE</small>
       </footer>
 

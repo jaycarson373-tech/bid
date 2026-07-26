@@ -36,6 +36,7 @@
     "db",
     "examples",
     "worker",
+    "services/fee-worker",
     "drizzle.config.ts",
     "vite.config.ts"
   ]

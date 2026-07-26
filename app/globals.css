@@ -183,6 +183,30 @@ a {
   text-transform: uppercase;
 }
 
+.ca-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(153, 69, 255, 0.55);
+  background: rgba(153, 69, 255, 0.12);
+  color: #d8c5ff;
+  cursor: pointer;
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ca-pill span {
+  color: var(--lime);
+}
+
+.ca-pill:hover {
+  border-color: var(--lime);
+}
+
 .network-pill i,
 .pulse-label i {
   width: 6px;
@@ -1665,11 +1689,21 @@ footer > p {
 
 footer > div {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 24px;
   color: #9ba097;
   font-family: var(--font-geist-mono);
   font-size: 8px;
+  text-transform: uppercase;
+}
+
+.footer-ca {
+  border: 0;
+  background: transparent;
+  color: var(--lime);
+  cursor: pointer;
+  font: inherit;
   text-transform: uppercase;
 }
 
@@ -1906,7 +1940,8 @@ footer > small {
   }
 
   .desktop-nav,
-  .network-pill {
+  .network-pill,
+  .ca-pill {
     display: none;
   }
 
