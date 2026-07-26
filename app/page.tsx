@@ -558,7 +558,7 @@ export default function Home() {
           <article>
             <span>01 / PICK</span>
             <strong>Choose the market</strong>
-            <p>Trade a YES/NO question, a city matchup, or a five-city field.</p>
+            <p>Trade a YES/NO question, a city matchup, or a five-city field, all powered by $BID.</p>
           </article>
           <article>
             <span>02 / PRICE</span>
@@ -576,11 +576,28 @@ export default function Home() {
           <p><span>VERIFIABLE BY DESIGN</span> Market terms, closing time, and settlement source are locked before trading opens.</p>
           <div className="settle-flow"><span>Housing index</span><i>→</i><span>Oracle attestation</span><i>→</i><span>Solana settlement</span></div>
         </div>
+        <div className="revenue-panel">
+          <div className="revenue-copy">
+            <span className="section-kicker">POWERED BY $BID</span>
+            <h3>Two fee streams.</h3>
+            <p>
+              Platform revenue fees are designed to flow 100% into BID buybacks and burns.
+              Creator fees use the launch split below to deepen markets and reward active users.
+            </p>
+          </div>
+          <div className="fee-grid" aria-label="Target fee allocation">
+            <article className="platform-fee"><strong>100%</strong><span>Platform revenue fees → BID buyback + burn</span></article>
+            <article><strong>10%</strong><span>Creator fees → treasury</span></article>
+            <article><strong>30%</strong><span>Creator fees → improve market liquidity</span></article>
+            <article><strong>30%</strong><span>Creator fees → SOL rewards for active users</span></article>
+            <article><strong>30%</strong><span>Creator fees → BID buybacks and burns</span></article>
+          </div>
+        </div>
       </section>
 
       <section className="portfolio-tease" id="portfolio">
-        <span>YOUR CITY. YOUR THESIS.</span>
-        <h2>Build the housing portfolio<br />you couldn’t buy.</h2>
+        <span>ROADMAP / CREATE MARKETS</span>
+        <h2>Soon, anyone can<br />make the market.</h2>
         <a href="#markets">Enter the market <span>↗</span></a>
       </section>
 

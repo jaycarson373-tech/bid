@@ -1655,6 +1655,77 @@ a {
   font-style: normal;
 }
 
+.revenue-panel {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.1fr);
+  gap: 40px;
+  max-width: 1480px;
+  margin: 34px auto 0;
+  padding: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(153, 69, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 100% 85%, rgba(20, 241, 149, 0.12), transparent 38%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.revenue-copy h3 {
+  margin: 18px 0 14px;
+  font-size: clamp(38px, 4.2vw, 70px);
+  font-weight: 650;
+  letter-spacing: -0.075em;
+  line-height: 0.9;
+}
+
+.revenue-copy p {
+  max-width: 520px;
+  margin: 0;
+  color: #8e9488;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.fee-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.fee-grid article {
+  min-height: 132px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(7, 8, 7, 0.34);
+}
+
+.fee-grid .platform-fee {
+  grid-column: 1 / -1;
+  min-height: 116px;
+  background:
+    linear-gradient(112deg, rgba(20, 241, 149, 0.14), rgba(153, 69, 255, 0.16)),
+    rgba(7, 8, 7, 0.44);
+}
+
+.fee-grid strong {
+  display: block;
+  color: var(--lime);
+  font-size: 42px;
+  font-weight: 650;
+  letter-spacing: -0.07em;
+  line-height: 1;
+}
+
+.fee-grid span {
+  display: block;
+  margin-top: 20px;
+  color: #d7dcd1;
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  letter-spacing: 0.07em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
 .portfolio-tease {
   position: relative;
   min-height: 580px;
@@ -2275,6 +2346,20 @@ footer > small {
 
   .settle-flow i {
     transform: rotate(90deg);
+  }
+
+  .revenue-panel {
+    grid-template-columns: 1fr;
+    margin-top: 22px;
+    padding: 22px;
+  }
+
+  .fee-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fee-grid .platform-fee {
+    grid-column: auto;
   }
 
   .portfolio-tease {
