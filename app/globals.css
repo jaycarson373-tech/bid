@@ -210,6 +210,26 @@ a {
   border-color: var(--lime);
 }
 
+.x-button {
+  display: inline-grid;
+  width: 38px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.045);
+  color: #fff;
+  font-family: var(--font-geist-mono);
+  font-size: 11px;
+  font-weight: 800;
+  transition: border 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.x-button:hover {
+  border-color: var(--lime);
+  color: var(--lime);
+  transform: translateY(-2px);
+}
+
 .network-pill i,
 .pulse-label i {
   width: 6px;
@@ -2094,6 +2114,11 @@ footer > small {
   .network-pill,
   .ca-pill {
     display: none;
+  }
+
+  .x-button {
+    width: 34px;
+    height: 34px;
   }
 
   .brand {

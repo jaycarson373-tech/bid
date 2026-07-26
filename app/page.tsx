@@ -295,6 +295,9 @@ export default function Home() {
             </button>
           )}
           <span className="network-pill"><i /> Solana</span>
+          <a className="x-button" href={siteConfig.xUrl} target="_blank" rel="noreferrer">
+            X
+          </a>
           <button
             className={`wallet-button ${walletConnected ? "connected" : ""}`}
             type="button"

@@ -1,4 +1,5 @@
 export const siteConfig = {
+  xUrl: "https://x.com/Bid_on_Solana",
   contractAddress: process.env.NEXT_PUBLIC_BID_CONTRACT_ADDRESS?.trim() || "",
   solanaCluster: process.env.NEXT_PUBLIC_SOLANA_CLUSTER?.trim() || "mainnet-beta",
   solanaRpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim() || "",
