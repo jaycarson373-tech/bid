@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/brand/bid-x-banner.png",
+        url: "/og.png",
         width: 1500,
         height: 500,
         alt: "BID — BID the Block",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     title: "BID — BID the Block",
     description:
       "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
-    images: ["/brand/bid-x-banner.png"],
+    images: ["/og.png"],
   },
 };
 
