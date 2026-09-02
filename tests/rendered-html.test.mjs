@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
+async function render(pathname = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(`http://localhost${pathname}`, {
       headers: { accept: "text/html" },
     }),
     {
@@ -30,7 +30,7 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
 
   const html = await response.text();
   assert.match(html, /<title>BID — BID the Block<\/title>/i);
-  assert.match(html, /BID THE/);
+  assert.match(html, /BID: real estate prediction markets/);
   assert.match(html, /Highest city price growth by EOY/);
   assert.match(html, /Florida home-price growth showdown/);
   assert.match(html, /Austin turns positive by year-end/);
@@ -39,6 +39,7 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /Orders use USDG collateral/);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
+  assert.match(html, /Liquidity/);
   assert.match(html, /Pons creator tax/i);
   assert.match(html, /2\.5%/);
   assert.match(html, /prediction-market rewards/);
@@ -47,6 +48,20 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /RWA HOUSING MARKETS/);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
+});
+
+test("server-renders professional protocol documentation with honest deployment status", async () => {
+  const response = await render("/docs");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /BID Protocol Docs/);
+  assert.match(html, /Fixed-product pricing/);
+  assert.match(html, /Liquidity/);
+  assert.match(html, /Keeper required/);
+  assert.match(html, /The 2\.5% Pons v2 creator tax applies to \$BID token trading/);
+  assert.match(html, /not audited or deployed to mainnet yet/i);
+  assert.match(html, /Production requirements/);
 });
 
 test("keeps the finished product free of starter-preview code", async () => {
@@ -64,6 +79,10 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /no signature requested/i);
   assert.match(page, /no transaction was built/);
   assert.match(page, /placeBuyLimit/);
+  assert.match(page, /addFunding/);
+  assert.match(page, /removeFundingToCollateral/);
+  assert.match(page, /Add liquidity/);
+  assert.match(page, /Withdraw liquidity/);
   assert.match(page, /waitForTransactionReceipt/);
   assert.match(page, /0% BID protocol fee at launch/);
   assert.match(page, /creator tax fixed at 2\.5%/);
@@ -71,6 +90,7 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /Pons/);
   assert.match(page, /Sample data/);
   assert.match(page, /Opening soon/);
+  assert.match(page, /\/docs/);
   assert.match(layout, /title: "BID — BID the Block"/);
   assert.match(launchState, /"prelaunch"/);
   assert.match(siteConfig, /creatorTaxBps: 250/);

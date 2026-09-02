@@ -4,7 +4,9 @@ This package contains the Robinhood Chain prediction-market MVP:
 
 - `BidMarket`: a 2-8 outcome fixed-product AMM with collateral-backed outcome
   balances, LP shares, market buys/sells, fillable limit orders, resolution,
-  and redemption.
+  and redemption. LP deposits and direct-to-collateral withdrawals both use
+  caller-provided minimums; imbalanced withdrawal inventory remains available
+  to the LP as outcome balances.
 - `BidMarketFactory`: owner-created launch markets plus a disabled-by-default
   community path with $BID holding, burn, and creator-royalty settings.
 - `BidFlywheelTreasury`: receives claimed Pons creator-tax proceeds and splits

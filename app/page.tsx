@@ -21,7 +21,8 @@ import { isDemo } from "@/lib/launchState";
 import { siteConfig } from "@/lib/site";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
-type OrderType = "market" | "limit";
+type OrderType = "market" | "limit" | "liquidity";
+type LiquidityAction = "add" | "remove";
 
 declare global {
   interface Window {
@@ -114,6 +115,12 @@ function truncateAddress(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
+function displayTokenAmount(value: bigint, decimals: number, maximumFractionDigits = 2) {
+  return Number(formatUnits(value, decimals)).toLocaleString("en-US", {
+    maximumFractionDigits,
+  });
+}
+
 function providerErrorCode(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error
     ? Number((error as { code?: unknown }).code)
@@ -123,7 +130,7 @@ function providerErrorCode(error: unknown) {
 function BrandMark() {
   return (
     <span className="brand-mark brand-mark-image" aria-hidden="true">
-      <Image src="/brand/bid-logo.png" alt="" width={36} height={36} priority />
+      <Image src="/brand/bid-logo.jpg" alt="" width={36} height={36} priority />
     </span>
   );
 }
@@ -201,6 +208,7 @@ export default function Home() {
   const [selectedOutcome, setSelectedOutcome] = useState(0);
   const [amount, setAmount] = useState(isDemo ? "250" : "");
   const [orderType, setOrderType] = useState<OrderType>("market");
+  const [liquidityAction, setLiquidityAction] = useState<LiquidityAction>("add");
   const [limitPrice, setLimitPrice] = useState("50");
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
@@ -215,6 +223,17 @@ export default function Home() {
     creatorFee: bigint;
     decimals: number;
   } | null>(null);
+  const [lpPosition, setLpPosition] = useState<{
+    key: string;
+    balance: bigint;
+    decimals: number;
+  } | null>(null);
+  const [liquidityQuote, setLiquidityQuote] = useState<{
+    key: string;
+    primaryAmount: bigint;
+    residualAmounts: readonly bigint[];
+    decimals: number;
+  } | null>(null);
   const contractAddress = siteConfig.contractAddress;
   const creatorTaxPercent = siteConfig.creatorTaxBps / 100;
   const rewardsPercent = creatorTaxPercent * siteConfig.predictionRewardsShareBps / 10_000;
@@ -226,8 +245,6 @@ export default function Home() {
   const outcome = selected.outcomes[selectedOutcome] ?? selected.outcomes[0];
   const displayedMarkets = markets.filter((market) => matchesFilter(market, filter));
   const showSampleData = isDemo;
-  const heroPrices = livePrices[markets[0].id];
-  const showHeroPricing = Boolean(heroPrices) || showSampleData;
   const selectedPrices = livePrices[selected.id];
   const showSelectedPricing = Boolean(selectedPrices) || showSampleData;
   const displayedOutcomePrice = selectedPrices?.[selectedOutcome] !== undefined
@@ -235,6 +252,23 @@ export default function Home() {
     : outcome.price;
   const quoteKey = `${selected.id}:${selectedOutcome}:${amount}`;
   const currentLiveQuote = liveQuote?.key === quoteKey ? liveQuote : null;
+  const liquidityQuoteKey = `${selected.id}:${liquidityAction}:${amount}:${walletAddress}`;
+  const currentLiquidityQuote = liquidityQuote?.key === liquidityQuoteKey ? liquidityQuote : null;
+  const lpPositionKey = `${selected.id}:${walletAddress}`;
+  const currentLpPosition = lpPosition?.key === lpPositionKey ? lpPosition : null;
+  const lpBalanceDisplay = currentLpPosition
+    ? displayTokenAmount(currentLpPosition.balance, currentLpPosition.decimals, 4)
+    : walletConnected ? "—" : "Connect wallet";
+  const liquidityPrimaryDisplay = currentLiquidityQuote
+    ? displayTokenAmount(currentLiquidityQuote.primaryAmount, currentLiquidityQuote.decimals, 4)
+    : "—";
+  const liquidityResidualDisplay = currentLiquidityQuote
+    ? displayTokenAmount(
+      currentLiquidityQuote.residualAmounts.reduce((total, value) => total + value, 0n),
+      currentLiquidityQuote.decimals,
+      4,
+    )
+    : "—";
 
   useEffect(() => {
     let cancelled = false;
@@ -268,7 +302,12 @@ export default function Home() {
     let cancelled = false;
     const collateralAmount = Number(amount);
 
-    if (!selectedMarketAddress || !Number.isFinite(collateralAmount) || collateralAmount <= 0) {
+    if (
+      orderType === "liquidity" ||
+      !selectedMarketAddress ||
+      !Number.isFinite(collateralAmount) ||
+      collateralAmount <= 0
+    ) {
       return;
     }
 
@@ -302,7 +341,112 @@ export default function Home() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [amount, quoteKey, refreshNonce, selectedMarketAddress, selectedOutcome]);
+  }, [amount, orderType, quoteKey, refreshNonce, selectedMarketAddress, selectedOutcome]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const account = configuredAddress(walletAddress);
+
+    if (!selectedMarketAddress || !account || !walletConnected) {
+      return;
+    }
+
+    async function loadLpPosition() {
+      try {
+        const [balance, decimals] = await Promise.all([
+          robinhoodPublicClient.readContract({
+            address: selectedMarketAddress!,
+            abi: bidMarketAbi,
+            functionName: "balanceOf",
+            args: [account!],
+          }),
+          robinhoodPublicClient.readContract({
+            address: selectedMarketAddress!,
+            abi: bidMarketAbi,
+            functionName: "decimals",
+          }),
+        ]);
+        if (!cancelled) setLpPosition({ key: lpPositionKey, balance, decimals });
+      } catch {
+        // A missing or incompatible market remains an unquoted prelaunch pool.
+      }
+    }
+
+    void loadLpPosition();
+    return () => { cancelled = true; };
+  }, [lpPositionKey, refreshNonce, selectedMarketAddress, walletAddress, walletConnected]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const numericAmount = Number(amount);
+    const account = configuredAddress(walletAddress);
+
+    if (
+      orderType !== "liquidity" ||
+      !selectedMarketAddress ||
+      !Number.isFinite(numericAmount) ||
+      numericAmount <= 0 ||
+      (liquidityAction === "remove" && !account)
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const collateral = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "collateral",
+        });
+        const decimals = await robinhoodPublicClient.readContract({
+          address: collateral,
+          abi: erc20TradeAbi,
+          functionName: "decimals",
+        });
+        const inputAmount = parseUnits(amount, decimals);
+
+        if (liquidityAction === "add") {
+          const [sharesMinted, residualAmounts] = await robinhoodPublicClient.readContract({
+            address: selectedMarketAddress,
+            abi: bidMarketAbi,
+            functionName: "quoteAddFunding",
+            args: [inputAmount],
+          });
+          if (!cancelled) {
+            setLiquidityQuote({
+              key: liquidityQuoteKey,
+              primaryAmount: sharesMinted,
+              residualAmounts,
+              decimals,
+            });
+          }
+        } else {
+          const [collateralOut, residualAmounts] = await robinhoodPublicClient.readContract({
+            account: account!,
+            address: selectedMarketAddress,
+            abi: bidMarketAbi,
+            functionName: "quoteRemoveFundingToCollateral",
+            args: [inputAmount],
+          });
+          if (!cancelled) {
+            setLiquidityQuote({
+              key: liquidityQuoteKey,
+              primaryAmount: collateralOut,
+              residualAmounts,
+              decimals,
+            });
+          }
+        }
+      } catch {
+        if (!cancelled) setLiquidityQuote(null);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [amount, liquidityAction, liquidityQuoteKey, orderType, selectedMarketAddress, walletAddress]);
 
   const quote = (() => {
     const dollars = Math.max(0, Number(amount) || 0);
@@ -412,55 +556,108 @@ export default function Home() {
         abi: erc20TradeAbi,
         functionName: "decimals",
       });
-      const collateralIn = parseUnits(amount, decimals);
-      const allowance = await robinhoodPublicClient.readContract({
-        address: collateral,
-        abi: erc20TradeAbi,
-        functionName: "allowance",
-        args: [account, selectedMarketAddress],
-      });
+      const inputAmount = parseUnits(amount, decimals);
+      const needsCollateralApproval = orderType !== "liquidity" || liquidityAction === "add";
 
-      if (allowance < collateralIn) {
-        setNotice(`Approve ${siteConfig.collateralSymbol} in your wallet to continue.`);
-        const approvalHash = await walletClient.writeContract({
-          address: collateral,
-          abi: erc20TradeAbi,
-          functionName: "approve",
-          args: [selectedMarketAddress, collateralIn],
+      if (orderType === "liquidity" && liquidityAction === "remove") {
+        const lpBalance = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "balanceOf",
+          args: [account],
         });
-        await robinhoodPublicClient.waitForTransactionReceipt({ hash: approvalHash });
+        if (inputAmount > lpBalance) {
+          setNotice("That withdrawal is larger than your BID-LP position.");
+          return;
+        }
       }
 
-      setNotice(orderType === "market" ? "Confirm the market order." : "Confirm the onchain limit order.");
+      if (needsCollateralApproval) {
+        const allowance = await robinhoodPublicClient.readContract({
+          address: collateral,
+          abi: erc20TradeAbi,
+          functionName: "allowance",
+          args: [account, selectedMarketAddress],
+        });
+
+        if (allowance < inputAmount) {
+          setNotice(`Approve ${siteConfig.collateralSymbol} in your wallet to continue.`);
+          const approvalHash = await walletClient.writeContract({
+            address: collateral,
+            abi: erc20TradeAbi,
+            functionName: "approve",
+            args: [selectedMarketAddress, inputAmount],
+          });
+          await robinhoodPublicClient.waitForTransactionReceipt({ hash: approvalHash });
+        }
+      }
+
+      setNotice(
+        orderType === "liquidity"
+          ? `Confirm the liquidity ${liquidityAction === "add" ? "deposit" : "withdrawal"}.`
+          : orderType === "market" ? "Confirm the market order." : "Confirm the onchain limit order.",
+      );
       let transactionHash: Hex;
 
-      if (orderType === "market") {
+      if (orderType === "liquidity" && liquidityAction === "add") {
+        const [quotedShares] = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "quoteAddFunding",
+          args: [inputAmount],
+        });
+        const minSharesMinted = quotedShares * 9_950n / 10_000n;
+        transactionHash = await walletClient.writeContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "addFunding",
+          args: [inputAmount, minSharesMinted],
+        });
+      } else if (orderType === "liquidity") {
+        const [quotedCollateral] = await robinhoodPublicClient.readContract({
+          account,
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "quoteRemoveFundingToCollateral",
+          args: [inputAmount],
+        });
+        const minCollateralOut = quotedCollateral * 9_950n / 10_000n;
+        transactionHash = await walletClient.writeContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "removeFundingToCollateral",
+          args: [inputAmount, minCollateralOut],
+        });
+      } else if (orderType === "market") {
         const [quotedTokens] = await robinhoodPublicClient.readContract({
           address: selectedMarketAddress,
           abi: bidMarketAbi,
           functionName: "quoteBuy",
-          args: [collateralIn, BigInt(selectedOutcome)],
+          args: [inputAmount, BigInt(selectedOutcome)],
         });
         const minOutcomeTokensOut = quotedTokens * 9_950n / 10_000n;
         transactionHash = await walletClient.writeContract({
           address: selectedMarketAddress,
           abi: bidMarketAbi,
           functionName: "buy",
-          args: [collateralIn, BigInt(selectedOutcome), minOutcomeTokensOut],
+          args: [inputAmount, BigInt(selectedOutcome), minOutcomeTokensOut],
         });
       } else {
-        const minOutcomeTokensOut = (collateralIn * 10_000n + priceBps - 1n) / priceBps;
+        const minOutcomeTokensOut = (inputAmount * 10_000n + priceBps - 1n) / priceBps;
         transactionHash = await walletClient.writeContract({
           address: selectedMarketAddress,
           abi: bidMarketAbi,
           functionName: "placeBuyLimit",
-          args: [collateralIn, BigInt(selectedOutcome), minOutcomeTokensOut],
+          args: [inputAmount, BigInt(selectedOutcome), minOutcomeTokensOut],
         });
       }
 
       await robinhoodPublicClient.waitForTransactionReceipt({ hash: transactionHash });
       setRefreshNonce((value) => value + 1);
-      setNotice(`${orderType === "market" ? "Market order filled" : "Limit order placed"}. Transaction ${truncateAddress(transactionHash)} confirmed.`);
+      const actionLabel = orderType === "liquidity"
+        ? `Liquidity ${liquidityAction === "add" ? "added" : "withdrawn"}`
+        : orderType === "market" ? "Market order filled" : "Limit order placed";
+      setNotice(`${actionLabel}. Transaction ${truncateAddress(transactionHash)} confirmed.`);
     } catch (error) {
       const message = typeof error === "object" && error !== null && "shortMessage" in error
         ? String((error as { shortMessage: unknown }).shortMessage)
@@ -492,6 +689,7 @@ export default function Home() {
           <a className="active" href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
           <a href="#flywheel">Flywheel</a>
+          <a href="/docs">Docs</a>
         </nav>
         <div className="header-actions">
           {contractAddress && (
@@ -513,68 +711,34 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <div className="eyebrow"><span>{showSampleData ? "SAMPLE" : "BID"}</span> RWA HOUSING MARKETS // ROBINHOOD CHAIN</div>
-          <h1>BID THE<br /><em>BLOCK.</em></h1>
-          <p>
-            Trade where housing moves next against community-owned liquidity.
-            $BID on Pons keeps the pools thick and rewards real market volume.
-          </p>
+      <section className="hero" id="top" aria-labelledby="hero-title">
+        <Image
+          className="hero-banner-image"
+          src="/brand/bid-banner.jpg"
+          alt="BID real estate prediction markets on Robinhood Chain"
+          fill
+          priority
+          sizes="100vw"
+        />
+        <div className="hero-shade" aria-hidden="true" />
+        <div className="hero-content">
+          <div className="hero-copy">
+            <div className="eyebrow"><span>BID</span> RWA HOUSING MARKETS // ROBINHOOD CHAIN</div>
+            <h1 id="hero-title">BID: real estate prediction markets.</h1>
+            <p>
+              USDG-backed outcome pools turn housing data into tradable odds.
+              $BID activity on Pons funds trader rewards and deeper liquidity.
+            </p>
+          </div>
           <div className="hero-actions">
-            <a className="primary-cta" href="#markets">Explore markets <span>↘</span></a>
-            <a className="text-link" href="#how-it-works">See how it settles <span>→</span></a>
+            <a className="primary-cta" href="#markets">Explore markets <span>↓</span></a>
+            <a className="secondary-cta" href="/docs">Read protocol docs <span>→</span></a>
           </div>
         </div>
-
-        <div className="hero-market">
-          <div className="hero-market-head">
-            <span>FEATURED // HEAD TO HEAD // MIA-TPA</span>
-              <span className="pulse-label"><i /> {showSampleData ? "sample" : "markets"}</span>
-            </div>
-            <div className="hero-market-body">
-            <div className="hero-question">
-              <span className="market-number">01</span>
-              <h2>Which city posts the bigger home-price gain by EOY? <strong>Miami or Tampa?</strong></h2>
-            </div>
-              {showHeroPricing ? (
-                <div className="odds-lockup">
-                  {showSampleData && <SampleBadge compact />}
-                  <span className="odds-label">Miami leads</span>
-                  <strong>{Math.round((heroPrices?.[0] ?? markets[0].outcomes[0].price) * 100)}<span>%</span></strong>
-                  <small>Tampa {Math.round((heroPrices?.[1] ?? markets[0].outcomes[1].price) * 100)}% · pool-priced odds</small>
-                </div>
-              ) : (
-                <div className="odds-lockup locked">
-                  <span className="odds-label">Markets opening</span>
-                  <LockedValue />
-                  <small>Pricing appears when funded pools open</small>
-                </div>
-              )}
-            </div>
-          {showSampleData ? (
-            <>
-              <div className="mini-chart" aria-label="Sample Miami probability trend">
-                <SampleBadge compact />
-                {markets[0].chart.map((height, index) => (
-                  <i key={index} style={{ height: `${height}%` }} />
-                ))}
-              </div>
-              <div className="chart-scale">
-                <span>JUL 01</span><span>JUL 08</span><span>JUL 15</span><span>NOW</span>
-              </div>
-            </>
-          ) : (
-            <div className="chart-placeholder">
-              {/* TODO(live-data): replace with /api/markets/featured probability history once the real BID/Parcl data feed exists. */}
-              <span>Chart opens with funded pools</span>
-            </div>
-          )}
-          <div className="hero-market-foot">
-            <span>{showSampleData ? <><SampleBadge compact /> 24H VOL <strong>$428K</strong></> : <>24H VOL <LockedValue /></>}</span>
-            <span>{showSampleData ? <>LIQUIDITY <strong>$482K</strong></> : <>LIQUIDITY <LockedValue /></>}</span>
-            <span>RESOLVES <strong>DEC 31</strong></span>
-          </div>
+        <div className="hero-status" aria-label="Protocol highlights">
+          <span><i /> {marketContractConfigured ? "AMM connected" : "Mainnet prelaunch"}</span>
+          <span>0% genesis market fee</span>
+          <span>2.5% Pons creator tax → rewards + LP</span>
         </div>
       </section>
 
@@ -679,40 +843,62 @@ export default function Home() {
               </div>
             </div>
 
-            <div className={`outcome-picker ${selected.mode === "field" ? "field-picker" : ""}`}>
-              {selected.outcomes.map((item, index) => (
-                <button
-                  className={`${item.tone} ${selectedOutcome === index ? "active" : ""}`}
-                  key={item.code}
-                  type="button"
-                  onClick={() => setSelectedOutcome(index)}
-                >
-                  <span>{selected.mode === "yes-no" ? `Buy ${item.label}` : item.label}</span>
-                  {showSelectedPricing
-                    ? <strong>{Math.round((selectedPrices?.[index] ?? item.price * 10_000) / 100)}¢</strong>
-                    : <LockedValue />}
-                  {selected.mode === "field" && <small>{item.code}</small>}
-                </button>
-              ))}
-            </div>
-
             <div className="rail-selector" role="group" aria-label="Order type">
-              {(["market", "limit"] as const).map((type) => (
+              {(["market", "limit", "liquidity"] as const).map((type) => (
                 <button
                   className={orderType === type ? "active" : ""}
                   key={type}
                   type="button"
                   onClick={() => setOrderType(type)}
                 >
-                  <span>{type === "market" ? "Market" : "Limit"}</span>
-                  <small>{type === "market" ? "Fill from the pool" : "Set your max price"}</small>
+                  <span>{type === "market" ? "Market" : type === "limit" ? "Limit" : "Liquidity"}</span>
+                  <small>
+                    {type === "market"
+                      ? "Fill from pool"
+                      : type === "limit" ? "Set max price" : "Earn LP share"}
+                  </small>
                 </button>
               ))}
             </div>
 
             <p className="ticket-note ticket-note-top">
-              0% BID protocol fee at launch. Orders use USDG collateral; Robinhood Chain gas still applies.
+              {orderType === "liquidity"
+                ? "Supply USDG to deepen every outcome. Withdrawals merge balanced inventory back into USDG."
+                : "0% BID protocol fee at launch. Orders use USDG collateral; Robinhood Chain gas still applies."}
             </p>
+            {orderType !== "liquidity" && (
+              <div className={`outcome-picker ${selected.mode === "field" ? "field-picker" : ""}`}>
+                {selected.outcomes.map((item, index) => (
+                  <button
+                    className={`${item.tone} ${selectedOutcome === index ? "active" : ""}`}
+                    key={item.code}
+                    type="button"
+                    onClick={() => setSelectedOutcome(index)}
+                  >
+                    <span>{selected.mode === "yes-no" ? `Buy ${item.label}` : item.label}</span>
+                    {showSelectedPricing
+                      ? <strong>{Math.round((selectedPrices?.[index] ?? item.price * 10_000) / 100)}¢</strong>
+                      : <LockedValue />}
+                    {selected.mode === "field" && <small>{item.code}</small>}
+                  </button>
+                ))}
+              </div>
+            )}
+            {orderType === "liquidity" && (
+              <div className="liquidity-selector" role="group" aria-label="Liquidity action">
+                {(["add", "remove"] as const).map((action) => (
+                  <button
+                    className={liquidityAction === action ? "active" : ""}
+                    key={action}
+                    type="button"
+                    onClick={() => setLiquidityAction(action)}
+                  >
+                    <span>{action === "add" ? "Add liquidity" : "Withdraw"}</span>
+                    <small>{action === "add" ? "USDG → BID-LP" : "BID-LP → USDG"}</small>
+                  </button>
+                ))}
+              </div>
+            )}
             {orderType === "limit" && (
               <label className="limit-price-row" htmlFor="limit-price">
                 <span>Max price</span>
@@ -732,52 +918,96 @@ export default function Home() {
               </label>
             )}
             <label className="amount-label" htmlFor="trade-amount">
-              <span>Amount</span><small>{walletConnected ? `${truncateAddress(walletAddress)}` : "Connect wallet"}</small>
+              <span>
+                {orderType === "liquidity"
+                  ? liquidityAction === "add" ? "USDG to supply" : "LP shares to withdraw"
+                  : "Trade amount"}
+              </span>
+              <small>
+                {orderType === "liquidity" ? `BID-LP ${lpBalanceDisplay}` : walletConnected ? truncateAddress(walletAddress) : "Connect wallet"}
+              </small>
             </label>
             <div className="amount-input">
-              <span>$</span>
+              <span>{orderType === "liquidity" && liquidityAction === "remove" ? "LP" : "$"}</span>
               <input
                 id="trade-amount"
                 inputMode="decimal"
                 min="0"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
-                aria-label={`Trade amount in ${siteConfig.collateralSymbol}`}
+                aria-label={orderType === "liquidity" && liquidityAction === "remove"
+                  ? "BID-LP shares to withdraw"
+                  : `Amount in ${siteConfig.collateralSymbol}`}
               />
-              <em>{siteConfig.collateralSymbol}</em>
+              <em>{orderType === "liquidity" && liquidityAction === "remove" ? "BID-LP" : siteConfig.collateralSymbol}</em>
             </div>
             <div className="quick-amounts">
               {[25, 100, 250, 500].map((value) => (
                 <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
               ))}
-            </div>
-
-            <div className="quote-lines">
-              <p><span>{orderType === "market" ? `${outcome.label} pool price` : "Limit price"}</span>{showSelectedPricing || orderType === "limit" ? <strong>{Math.round(quote.price * 10000) / 100}¢</strong> : <LockedValue />}</p>
-              <p><span>Protocol fee</span><strong>0.00%</strong></p>
-              <p><span>Est. contracts</span>{showSelectedPricing || orderType === "limit" ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
-              <p><span>Network</span><strong>{siteConfig.networkName}</strong></p>
-            </div>
-
-            <div className="return-box">
-              <span>YOU RECEIVE IF {outcome.label.toUpperCase()} WINS</span>
-              {showSelectedPricing || orderType === "limit" ? (
-                <>
-                  <strong>${quote.contracts.toFixed(2)}</strong>
-                  <small>+${quote.profit.toFixed(2)} potential profit</small>
-                </>
-              ) : (
-                <>
-                  <LockedValue />
-                  <small>Quotes open with funded pools</small>
-                </>
+              {orderType === "liquidity" && liquidityAction === "remove" && currentLpPosition && (
+                <button
+                  className="max-amount"
+                  type="button"
+                  onClick={() => setAmount(formatUnits(currentLpPosition.balance, currentLpPosition.decimals))}
+                >
+                  Max
+                </button>
               )}
             </div>
+
+            {orderType === "liquidity" ? (
+              <>
+                <div className="quote-lines">
+                  <p><span>Your position</span><strong>{lpBalanceDisplay} BID-LP</strong></p>
+                  <p><span>Genesis LP fee</span><strong>0.00%</strong></p>
+                  <p><span>Slippage guard</span><strong>0.50%</strong></p>
+                  <p><span>Network</span><strong>{siteConfig.networkName}</strong></p>
+                </div>
+                <div className="return-box liquidity-return">
+                  <span>{liquidityAction === "add" ? "ESTIMATED LP SHARES" : "ESTIMATED USDG WITHDRAWAL"}</span>
+                  <strong>{liquidityPrimaryDisplay}</strong>
+                  <small>
+                    {liquidityAction === "add"
+                      ? `${liquidityResidualDisplay} excess outcome inventory`
+                      : `${liquidityResidualDisplay} residual outcome position`}
+                  </small>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="quote-lines">
+                  <p><span>{orderType === "market" ? `${outcome.label} pool price` : "Limit price"}</span>{showSelectedPricing || orderType === "limit" ? <strong>{Math.round(quote.price * 10000) / 100}¢</strong> : <LockedValue />}</p>
+                  <p><span>Protocol fee</span><strong>0.00%</strong></p>
+                  <p><span>Est. contracts</span>{showSelectedPricing || orderType === "limit" ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
+                  <p><span>Network</span><strong>{siteConfig.networkName}</strong></p>
+                </div>
+
+                <div className="return-box">
+                  <span>YOU RECEIVE IF {outcome.label.toUpperCase()} WINS</span>
+                  {showSelectedPricing || orderType === "limit" ? (
+                    <>
+                      <strong>${quote.contracts.toFixed(2)}</strong>
+                      <small>+${quote.profit.toFixed(2)} potential profit</small>
+                    </>
+                  ) : (
+                    <>
+                      <LockedValue />
+                      <small>Quotes open with funded pools</small>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
 
             <button className="review-button" type="button" onClick={reviewOrder} disabled={transactionPending}>
               {transactionPending
                 ? "Waiting for confirmation"
-                : walletConnected ? `${orderType === "market" ? "Buy" : "Place limit"} ${outcome.label}` : "Connect wallet"}
+                : walletConnected
+                  ? orderType === "liquidity"
+                    ? liquidityAction === "add" ? "Add liquidity" : "Withdraw liquidity"
+                    : `${orderType === "market" ? "Buy" : "Place limit"} ${outcome.label}`
+                  : "Connect wallet"}
               <span>→</span>
             </button>
             {!marketContractConfigured && (
@@ -858,6 +1088,7 @@ export default function Home() {
         <div>
           <a href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
+          <a href="/docs">Docs</a>
           {contractAddress && (
             <button className="footer-ca" type="button" onClick={copyContractAddress}>
               CA {truncateAddress(contractAddress)}

@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -47,6 +48,9 @@ contract BidMarket is ERC20, ReentrancyGuard {
 
     event FundingAdded(address indexed provider, uint256 collateralIn, uint256 sharesMinted);
     event FundingRemoved(address indexed provider, uint256 sharesBurned, uint256[] outcomeTokensOut);
+    event FundingWithdrawn(
+        address indexed provider, uint256 sharesBurned, uint256 collateralOut, uint256[] residualOutcomeTokensOut
+    );
     event Trade(
         address indexed trader,
         bool indexed isBuy,
@@ -75,6 +79,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
     address public immutable marketCreator;
     uint64 public immutable closesAt;
     uint16 public immutable creatorFeeBps;
+    uint8 private immutable _collateralDecimals;
     string public question;
 
     bool public resolved;
@@ -114,6 +119,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
         marketCreator = marketCreator_;
         closesAt = closesAt_;
         creatorFeeBps = creatorFeeBps_;
+        _collateralDecimals = IERC20Metadata(address(collateral_)).decimals();
         question = question_;
         _outcomeLabels = outcomeLabels_;
         _poolBalances = new uint256[](outcomeLabels_.length);
@@ -121,6 +127,10 @@ contract BidMarket is ERC20, ReentrancyGuard {
 
     function outcomeCount() external view returns (uint256) {
         return _outcomeLabels.length;
+    }
+
+    function decimals() public view override returns (uint8) {
+        return _collateralDecimals;
     }
 
     function outcomeLabel(uint256 outcomeIndex) external view returns (string memory) {
@@ -174,11 +184,33 @@ contract BidMarket is ERC20, ReentrancyGuard {
         emit FundingAdded(provider, collateralAmount, collateralAmount);
     }
 
-    function addFunding(uint256 collateralAmount)
+    function addFunding(uint256 collateralAmount, uint256 minSharesMinted)
         external
         onlyOpen
         nonReentrant
         returns (uint256 sharesMinted)
+    {
+        if (collateralAmount == 0) revert ZeroAmount();
+        uint256[] memory outcomeTokensOut;
+        (sharesMinted, outcomeTokensOut) = quoteAddFunding(collateralAmount);
+        if (sharesMinted < minSharesMinted) revert SlippageExceeded();
+
+        collateral.safeTransferFrom(msg.sender, address(this), collateralAmount);
+
+        for (uint256 i; i < _poolBalances.length; ++i) {
+            uint256 amountIntoPool = collateralAmount - outcomeTokensOut[i];
+            _poolBalances[i] += amountIntoPool;
+            _outcomeBalances[msg.sender][i] += outcomeTokensOut[i];
+        }
+
+        _mint(msg.sender, sharesMinted);
+        emit FundingAdded(msg.sender, collateralAmount, sharesMinted);
+    }
+
+    function quoteAddFunding(uint256 collateralAmount)
+        public
+        view
+        returns (uint256 sharesMinted, uint256[] memory outcomeTokensOut)
     {
         if (collateralAmount == 0) revert ZeroAmount();
         uint256 supply = totalSupply();
@@ -189,25 +221,17 @@ contract BidMarket is ERC20, ReentrancyGuard {
             if (_poolBalances[i] > poolWeight) poolWeight = _poolBalances[i];
         }
 
-        collateral.safeTransferFrom(msg.sender, address(this), collateralAmount);
         sharesMinted = Math.mulDiv(collateralAmount, supply, poolWeight);
         if (sharesMinted == 0) revert ZeroAmount();
+        outcomeTokensOut = new uint256[](_poolBalances.length);
 
         for (uint256 i; i < _poolBalances.length; ++i) {
             uint256 amountIntoPool = Math.mulDiv(collateralAmount, _poolBalances[i], poolWeight);
-            _poolBalances[i] += amountIntoPool;
-            _outcomeBalances[msg.sender][i] += collateralAmount - amountIntoPool;
+            outcomeTokensOut[i] = collateralAmount - amountIntoPool;
         }
-
-        _mint(msg.sender, sharesMinted);
-        emit FundingAdded(msg.sender, collateralAmount, sharesMinted);
     }
 
-    function removeFunding(uint256 sharesToBurn)
-        external
-        nonReentrant
-        returns (uint256[] memory outcomeTokensOut)
-    {
+    function removeFunding(uint256 sharesToBurn) external nonReentrant returns (uint256[] memory outcomeTokensOut) {
         if (sharesToBurn == 0) revert ZeroAmount();
         uint256 supply = totalSupply();
         outcomeTokensOut = new uint256[](_poolBalances.length);
@@ -221,6 +245,47 @@ contract BidMarket is ERC20, ReentrancyGuard {
 
         _burn(msg.sender, sharesToBurn);
         emit FundingRemoved(msg.sender, sharesToBurn, outcomeTokensOut);
+    }
+
+    function quoteRemoveFundingToCollateral(uint256 sharesToBurn)
+        public
+        view
+        returns (uint256 collateralOut, uint256[] memory residualOutcomeTokensOut)
+    {
+        if (sharesToBurn == 0) revert ZeroAmount();
+        uint256 supply = totalSupply();
+
+        residualOutcomeTokensOut = new uint256[](_poolBalances.length);
+        collateralOut = type(uint256).max;
+        for (uint256 i; i < _poolBalances.length; ++i) {
+            uint256 amount = Math.mulDiv(_poolBalances[i], sharesToBurn, supply);
+            if (amount < collateralOut) collateralOut = amount;
+            residualOutcomeTokensOut[i] = amount;
+        }
+
+        for (uint256 i; i < residualOutcomeTokensOut.length; ++i) {
+            residualOutcomeTokensOut[i] -= collateralOut;
+        }
+    }
+
+    function removeFundingToCollateral(uint256 sharesToBurn, uint256 minCollateralOut)
+        external
+        nonReentrant
+        returns (uint256 collateralOut, uint256[] memory residualOutcomeTokensOut)
+    {
+        (collateralOut, residualOutcomeTokensOut) = quoteRemoveFundingToCollateral(sharesToBurn);
+        if (collateralOut < minCollateralOut) revert SlippageExceeded();
+        uint256 supply = totalSupply();
+
+        for (uint256 i; i < _poolBalances.length; ++i) {
+            uint256 amount = Math.mulDiv(_poolBalances[i], sharesToBurn, supply);
+            _poolBalances[i] -= amount;
+            _outcomeBalances[msg.sender][i] += residualOutcomeTokensOut[i];
+        }
+
+        _burn(msg.sender, sharesToBurn);
+        collateral.safeTransfer(msg.sender, collateralOut);
+        emit FundingWithdrawn(msg.sender, sharesToBurn, collateralOut, residualOutcomeTokensOut);
     }
 
     function quoteBuy(uint256 collateralIn, uint256 outcomeIndex)
@@ -237,12 +302,8 @@ contract BidMarket is ERC20, ReentrancyGuard {
 
         for (uint256 i; i < _poolBalances.length; ++i) {
             if (i == outcomeIndex) continue;
-            endingBalanceFixed = Math.mulDiv(
-                endingBalanceFixed,
-                _poolBalances[i],
-                _poolBalances[i] + netInvestment,
-                Math.Rounding.Ceil
-            );
+            endingBalanceFixed =
+                Math.mulDiv(endingBalanceFixed, _poolBalances[i], _poolBalances[i] + netInvestment, Math.Rounding.Ceil);
         }
 
         uint256 endingBalance = Math.ceilDiv(endingBalanceFixed, PAYOUT_SCALE);
@@ -267,29 +328,18 @@ contract BidMarket is ERC20, ReentrancyGuard {
         _requireOutcome(outcomeIndex);
         if (collateralOut == 0 || totalSupply() == 0) revert ZeroAmount();
 
-        uint256 grossReturn = Math.mulDiv(
-            collateralOut,
-            BPS,
-            BPS - creatorFeeBps,
-            Math.Rounding.Ceil
-        );
+        uint256 grossReturn = Math.mulDiv(collateralOut, BPS, BPS - creatorFeeBps, Math.Rounding.Ceil);
         creatorFee = grossReturn - collateralOut;
         uint256 endingBalanceFixed = _poolBalances[outcomeIndex] * PAYOUT_SCALE;
 
         for (uint256 i; i < _poolBalances.length; ++i) {
             if (i == outcomeIndex) continue;
             if (_poolBalances[i] <= grossReturn) revert SlippageExceeded();
-            endingBalanceFixed = Math.mulDiv(
-                endingBalanceFixed,
-                _poolBalances[i],
-                _poolBalances[i] - grossReturn,
-                Math.Rounding.Ceil
-            );
+            endingBalanceFixed =
+                Math.mulDiv(endingBalanceFixed, _poolBalances[i], _poolBalances[i] - grossReturn, Math.Rounding.Ceil);
         }
 
-        outcomeTokensIn = grossReturn
-            + Math.ceilDiv(endingBalanceFixed, PAYOUT_SCALE)
-            - _poolBalances[outcomeIndex];
+        outcomeTokensIn = grossReturn + Math.ceilDiv(endingBalanceFixed, PAYOUT_SCALE) - _poolBalances[outcomeIndex];
     }
 
     function sell(uint256 collateralOut, uint256 outcomeIndex, uint256 maxOutcomeTokensIn)
@@ -307,11 +357,12 @@ contract BidMarket is ERC20, ReentrancyGuard {
         _executeSell(msg.sender, collateralOut, outcomeIndex, outcomeTokensIn, creatorFee);
     }
 
-    function placeBuyLimit(
-        uint256 collateralIn,
-        uint256 outcomeIndex,
-        uint256 minOutcomeTokensOut
-    ) external onlyOpen nonReentrant returns (uint256 orderId) {
+    function placeBuyLimit(uint256 collateralIn, uint256 outcomeIndex, uint256 minOutcomeTokensOut)
+        external
+        onlyOpen
+        nonReentrant
+        returns (uint256 orderId)
+    {
         _requireOutcome(outcomeIndex);
         if (collateralIn == 0 || minOutcomeTokensOut == 0) revert ZeroAmount();
         collateral.safeTransferFrom(msg.sender, address(this), collateralIn);
@@ -326,14 +377,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
             outcomeTokenLimit: minOutcomeTokensOut,
             active: quotedTokens < minOutcomeTokensOut
         });
-        emit LimitOrderPlaced(
-            orderId,
-            msg.sender,
-            OrderKind.Buy,
-            outcomeIndex,
-            collateralIn,
-            minOutcomeTokensOut
-        );
+        emit LimitOrderPlaced(orderId, msg.sender, OrderKind.Buy, outcomeIndex, collateralIn, minOutcomeTokensOut);
 
         if (quotedTokens >= minOutcomeTokensOut) {
             _executeBuy(msg.sender, collateralIn, outcomeIndex, minOutcomeTokensOut);
@@ -341,16 +385,18 @@ contract BidMarket is ERC20, ReentrancyGuard {
         }
     }
 
-    function placeSellLimit(
-        uint256 collateralOut,
-        uint256 outcomeIndex,
-        uint256 maxOutcomeTokensIn
-    ) external onlyOpen nonReentrant returns (uint256 orderId) {
+    function placeSellLimit(uint256 collateralOut, uint256 outcomeIndex, uint256 maxOutcomeTokensIn)
+        external
+        onlyOpen
+        nonReentrant
+        returns (uint256 orderId)
+    {
         _requireOutcome(outcomeIndex);
         if (collateralOut == 0 || maxOutcomeTokensIn == 0) revert ZeroAmount();
         if (_outcomeBalances[msg.sender][outcomeIndex] < maxOutcomeTokensIn) {
             revert SlippageExceeded();
         }
+        (uint256 quotedTokens, uint256 creatorFee) = quoteSell(collateralOut, outcomeIndex);
         _outcomeBalances[msg.sender][outcomeIndex] -= maxOutcomeTokensIn;
 
         orderId = nextLimitOrderId++;
@@ -360,16 +406,15 @@ contract BidMarket is ERC20, ReentrancyGuard {
             outcomeIndex: outcomeIndex,
             collateralAmount: collateralOut,
             outcomeTokenLimit: maxOutcomeTokensIn,
-            active: true
+            active: quotedTokens > maxOutcomeTokensIn
         });
-        emit LimitOrderPlaced(
-            orderId,
-            msg.sender,
-            OrderKind.Sell,
-            outcomeIndex,
-            collateralOut,
-            maxOutcomeTokensIn
-        );
+        emit LimitOrderPlaced(orderId, msg.sender, OrderKind.Sell, outcomeIndex, collateralOut, maxOutcomeTokensIn);
+
+        if (quotedTokens <= maxOutcomeTokensIn) {
+            _outcomeBalances[msg.sender][outcomeIndex] += maxOutcomeTokensIn - quotedTokens;
+            _executeSell(msg.sender, collateralOut, outcomeIndex, quotedTokens, creatorFee);
+            emit LimitOrderFilled(orderId, msg.sender);
+        }
     }
 
     function fillLimitOrder(uint256 orderId) external onlyOpen nonReentrant {
@@ -378,27 +423,12 @@ contract BidMarket is ERC20, ReentrancyGuard {
         order.active = false;
 
         if (order.kind == OrderKind.Buy) {
-            _executeBuy(
-                order.owner,
-                order.collateralAmount,
-                order.outcomeIndex,
-                order.outcomeTokenLimit
-            );
+            _executeBuy(order.owner, order.collateralAmount, order.outcomeIndex, order.outcomeTokenLimit);
         } else {
-            (uint256 outcomeTokensIn, uint256 creatorFee) = quoteSell(
-                order.collateralAmount,
-                order.outcomeIndex
-            );
+            (uint256 outcomeTokensIn, uint256 creatorFee) = quoteSell(order.collateralAmount, order.outcomeIndex);
             if (outcomeTokensIn > order.outcomeTokenLimit) revert SlippageExceeded();
-            _outcomeBalances[order.owner][order.outcomeIndex] +=
-                order.outcomeTokenLimit - outcomeTokensIn;
-            _executeSell(
-                order.owner,
-                order.collateralAmount,
-                order.outcomeIndex,
-                outcomeTokensIn,
-                creatorFee
-            );
+            _outcomeBalances[order.owner][order.outcomeIndex] += order.outcomeTokenLimit - outcomeTokensIn;
+            _executeSell(order.owner, order.collateralAmount, order.outcomeIndex, outcomeTokensIn, creatorFee);
         }
 
         emit LimitOrderFilled(orderId, msg.sender);
@@ -425,7 +455,9 @@ contract BidMarket is ERC20, ReentrancyGuard {
         if (payoutVector.length != _outcomeLabels.length) revert InvalidPayouts();
 
         uint256 total;
-        for (uint256 i; i < payoutVector.length; ++i) total += payoutVector[i];
+        for (uint256 i; i < payoutVector.length; ++i) {
+            total += payoutVector[i];
+        }
         if (total != PAYOUT_SCALE) revert InvalidPayouts();
 
         resolved = true;
@@ -457,12 +489,10 @@ contract BidMarket is ERC20, ReentrancyGuard {
         emit CreatorFeesClaimed(marketCreator, amount);
     }
 
-    function _executeBuy(
-        address recipient,
-        uint256 collateralIn,
-        uint256 outcomeIndex,
-        uint256 minOutcomeTokensOut
-    ) private returns (uint256 outcomeTokensOut) {
+    function _executeBuy(address recipient, uint256 collateralIn, uint256 outcomeIndex, uint256 minOutcomeTokensOut)
+        private
+        returns (uint256 outcomeTokensOut)
+    {
         uint256 creatorFee;
         (outcomeTokensOut, creatorFee) = quoteBuy(collateralIn, outcomeIndex);
         if (outcomeTokensOut < minOutcomeTokensOut) revert SlippageExceeded();

@@ -24,8 +24,8 @@ export const metadata: Metadata = {
   description:
     "Trade real estate outcomes across the world’s fastest-moving cities on Robinhood Chain, powered by $BID on Pons.",
   icons: {
-    icon: "/brand/bid-logo.png",
-    apple: "/brand/bid-logo.png",
+    icon: "/brand/bid-logo.jpg",
+    apple: "/brand/bid-logo.jpg",
   },
   alternates: {
     canonical: "/",
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-robinhood.png",
-        width: 2172,
-        height: 724,
+        url: "/og-robinhood.jpg",
+        width: 1280,
+        height: 426,
         alt: "BID — BID the Block",
       },
     ],
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     title: "BID — BID the Block",
     description:
       "Real estate prediction markets on Robinhood Chain, powered by $BID on Pons.",
-    images: ["/og-robinhood.png"],
+    images: ["/og-robinhood.jpg"],
   },
 };
 

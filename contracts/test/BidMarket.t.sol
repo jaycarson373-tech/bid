@@ -11,9 +11,7 @@ import {BidFlywheelTreasury} from "../src/BidFlywheelTreasury.sol";
 contract MockToken is ERC20 {
     uint8 private immutable _tokenDecimals;
 
-    constructor(string memory name_, string memory symbol_, uint8 decimals_)
-        ERC20(name_, symbol_)
-    {
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
         _tokenDecimals = decimals_;
     }
 
@@ -49,12 +47,7 @@ contract BidMarketTest is Test {
         outcomes[0] = "Miami";
         outcomes[1] = "Tampa";
         market = BidMarket(
-            factory.createGenesisMarket(
-                "Which city posts the larger home-price gain?",
-                outcomes,
-                closesAt,
-                100_000e6
-            )
+            factory.createGenesisMarket("Which city posts the larger home-price gain?", outcomes, closesAt, 100_000e6)
         );
 
         usdg.mint(trader, 100_000e6);
@@ -67,6 +60,7 @@ contract BidMarketTest is Test {
         assertEq(prices[0], 5_000);
         assertEq(prices[1], 5_000);
         assertEq(market.balanceOf(address(this)), 100_000e6);
+        assertEq(market.decimals(), usdg.decimals());
     }
 
     function testMarketBuyMovesPriceAndChargesZeroLaunchFee() public {
@@ -98,12 +92,55 @@ contract BidMarketTest is Test {
 
     function testLiquidityCanBeAddedAndRemoved() public {
         usdg.approve(address(market), type(uint256).max);
-        uint256 shares = market.addFunding(25_000e6);
+        uint256 shares = market.addFunding(25_000e6, 25_000e6);
         assertEq(shares, 25_000e6);
 
         uint256[] memory amounts = market.removeFunding(shares);
         assertEq(amounts[0], 25_000e6);
         assertEq(amounts[1], 25_000e6);
+    }
+
+    function testBalancedLiquidityCanBeWithdrawnDirectlyToCollateral() public {
+        usdg.approve(address(market), type(uint256).max);
+        uint256 shares = market.addFunding(25_000e6, 25_000e6);
+        uint256 balanceBefore = usdg.balanceOf(address(this));
+
+        (uint256 quotedCollateral, uint256[] memory quotedResiduals) = market.quoteRemoveFundingToCollateral(shares);
+        assertEq(quotedCollateral, 25_000e6);
+        assertEq(quotedResiduals[0], 0);
+        assertEq(quotedResiduals[1], 0);
+
+        (uint256 collateralOut, uint256[] memory residuals) = market.removeFundingToCollateral(shares, quotedCollateral);
+        assertEq(collateralOut, 25_000e6);
+        assertEq(residuals[0], 0);
+        assertEq(residuals[1], 0);
+        assertEq(usdg.balanceOf(address(this)), balanceBefore + collateralOut);
+    }
+
+    function testImbalancedLiquidityWithdrawalReturnsCollateralAndResidualPosition() public {
+        vm.prank(trader);
+        market.buy(20_000e6, 0, 0);
+
+        uint256 shares = market.balanceOf(address(this)) / 10;
+        (uint256 collateralOut, uint256[] memory residuals) = market.removeFundingToCollateral(shares, 0);
+
+        assertGt(collateralOut, 0);
+        assertEq(residuals[0], 0);
+        assertGt(residuals[1], 0);
+        assertEq(market.outcomeBalanceOf(address(this), 1), residuals[1]);
+    }
+
+    function testFuzzBuyPreservesPriceNormalizationAndMovesSelectedPrice(uint96 rawAmount) public {
+        uint256 amount = bound(uint256(rawAmount), 1e6, 50_000e6);
+        vm.prank(trader);
+        uint256 received = market.buy(amount, 0, 0);
+
+        uint256[] memory prices = market.spotPricesBps();
+        uint256[] memory balances = market.poolBalances();
+        assertGt(received, 0);
+        assertLt(balances[0], balances[1]);
+        assertGe(prices[0], 5_000);
+        assertEq(prices[0] + prices[1], 10_000);
     }
 
     function testMarketableLimitBuyFillsImmediately() public {
@@ -138,6 +175,32 @@ contract BidMarketTest is Test {
         assertFalse(activeAfterFill);
     }
 
+    function testCancellingRestingLimitBuyRefundsEscrow() public {
+        uint256 balanceBefore = usdg.balanceOf(trader);
+        vm.startPrank(trader);
+        uint256 orderId = market.placeBuyLimit(5_000e6, 1, 50_000e6);
+        assertEq(usdg.balanceOf(trader), balanceBefore - 5_000e6);
+        market.cancelLimitOrder(orderId);
+        vm.stopPrank();
+
+        assertEq(usdg.balanceOf(trader), balanceBefore);
+        (,,,,, bool active) = market.limitOrders(orderId);
+        assertFalse(active);
+    }
+
+    function testMarketableLimitSellFillsImmediately() public {
+        vm.startPrank(trader);
+        market.buy(10_000e6, 0, 0);
+        (uint256 tokensRequired,) = market.quoteSell(3_000e6, 0);
+        uint256 balanceBefore = usdg.balanceOf(trader);
+        uint256 orderId = market.placeSellLimit(3_000e6, 0, tokensRequired);
+        vm.stopPrank();
+
+        assertEq(usdg.balanceOf(trader), balanceBefore + 3_000e6);
+        (,,,,, bool active) = market.limitOrders(orderId);
+        assertFalse(active);
+    }
+
     function testWinningOutcomeRedeemsForCollateral() public {
         vm.prank(trader);
         uint256 bought = market.buy(10_000e6, 0, 0);
@@ -163,22 +226,29 @@ contract BidMarketTest is Test {
         vm.prank(trader);
         factory.createCommunityMarket("Will Austin finish positive?", outcomes, closesAt, 10_000e6);
 
-        factory.setCommunityCreationConfig(true, 10_000e18, 100e18, 100);
+        factory.setCommunityCreationConfig(true, 10_000e18, 100e18, 250);
         bid.mint(trader, 10_000e18);
         vm.startPrank(trader);
         bid.approve(address(factory), 100e18);
         usdg.approve(address(factory), 10_000e6);
-        address created = factory.createCommunityMarket(
-            "Will Austin finish positive?",
-            outcomes,
-            closesAt,
-            10_000e6
-        );
+        address created = factory.createCommunityMarket("Will Austin finish positive?", outcomes, closesAt, 10_000e6);
         vm.stopPrank();
 
         assertEq(bid.balanceOf(factory.BURN_ADDRESS()), 100e18);
-        assertEq(BidMarket(created).creatorFeeBps(), 100);
+        assertEq(BidMarket(created).creatorFeeBps(), 250);
         assertEq(BidMarket(created).marketCreator(), trader);
+
+        usdg.mint(keeper, 1_000e6);
+        vm.startPrank(keeper);
+        usdg.approve(created, 1_000e6);
+        BidMarket(created).buy(1_000e6, 0, 0);
+        vm.stopPrank();
+
+        uint256 creatorBalanceBefore = usdg.balanceOf(trader);
+        vm.prank(trader);
+        uint256 claimed = BidMarket(created).claimCreatorFees();
+        assertEq(claimed, 25e6);
+        assertEq(usdg.balanceOf(trader), creatorBalanceBefore + claimed);
     }
 }
 

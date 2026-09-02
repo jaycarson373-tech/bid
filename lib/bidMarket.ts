@@ -41,6 +41,20 @@ export const bidMarketAbi = [
   },
   {
     type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "decimals",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+  {
+    type: "function",
     name: "quoteBuy",
     stateMutability: "view",
     inputs: [
@@ -73,6 +87,49 @@ export const bidMarketAbi = [
       { name: "minOutcomeTokensOut", type: "uint256" },
     ],
     outputs: [{ name: "orderId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "quoteAddFunding",
+    stateMutability: "view",
+    inputs: [{ name: "collateralAmount", type: "uint256" }],
+    outputs: [
+      { name: "sharesMinted", type: "uint256" },
+      { name: "outcomeTokensOut", type: "uint256[]" },
+    ],
+  },
+  {
+    type: "function",
+    name: "addFunding",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "collateralAmount", type: "uint256" },
+      { name: "minSharesMinted", type: "uint256" },
+    ],
+    outputs: [{ name: "sharesMinted", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "quoteRemoveFundingToCollateral",
+    stateMutability: "view",
+    inputs: [{ name: "sharesToBurn", type: "uint256" }],
+    outputs: [
+      { name: "collateralOut", type: "uint256" },
+      { name: "residualOutcomeTokensOut", type: "uint256[]" },
+    ],
+  },
+  {
+    type: "function",
+    name: "removeFundingToCollateral",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "sharesToBurn", type: "uint256" },
+      { name: "minCollateralOut", type: "uint256" },
+    ],
+    outputs: [
+      { name: "collateralOut", type: "uint256" },
+      { name: "residualOutcomeTokensOut", type: "uint256[]" },
+    ],
   },
 ] as const;
 

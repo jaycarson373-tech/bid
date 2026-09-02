@@ -43,4 +43,5 @@ next-env.d.ts
 /work/
 /contracts/out/
 /contracts/cache/
+/cache/
 *.tsbuildinfo
