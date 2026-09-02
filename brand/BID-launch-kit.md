@@ -1,29 +1,32 @@
 # BID Launch Kit
 
+## One-liner
+
+RWA housing prediction markets on Robinhood Chain. Price the city. BID the block.
+
 ## X bio
 
-Real estate prediction markets on Solana. Trade cities, price housing, bet the block. 🏙️
+Housing is the market. Cities are the tickers. $BID on Pons. Built on Robinhood Chain.
 
-## Alternative X bio
+## Pons description
 
-Cities are the tickers. Housing is the market. Built on Solana. BET THE BLOCK.
+BID turns housing data into finite-outcome markets backed by USDG liquidity.
+Trade YES/NO housing calls, city matchups, and full fields through pool-priced
+odds. The 2.5% Pons creator tax fuels prediction-market rewards and deeper LP.
 
-## Pump description
+## Launch post
 
-BID is the culture coin behind a real-estate prediction market thesis: turn
-cities into tickers and housing data into tradable outcomes. YES/NO markets,
-city-vs-city matchups, and five-city fields—built for Solana. No property
-ownership, yield, or promises. Just the belief that the next great market is
-the block itself.
+The housing market finally has a live price.
 
-## Live thesis tweet
+Market and limit orders. USDG-backed outcome pools. 0% BID protocol fee at launch.
 
-THE $BID THESIS:
+$BID launches on Pons, and its 2.5% creator tax splits into trader rewards and
+protocol-owned liquidity. More volume feeds deeper fills. Deeper fills bring
+more volume.
 
-Real estate is the world’s biggest slow market. Housing data is becoming live,
-verifiable, and tradable.
+Built on Robinhood Chain. BID THE BLOCK.
 
-BID turns cities into tickers—YES/NO, head-to-head, and five-city markets on
-Solana.
+## Creator roadmap
 
-No deeds. No tenants. BET THE BLOCK.
+Community markets come later. Creators will hold a minimum $BID balance, burn a
+small launch amount, and earn a capped royalty from the markets they originate.

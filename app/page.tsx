@@ -1,26 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
+import {
+  createWalletClient,
+  custom,
+  formatUnits,
+  parseUnits,
+  type EIP1193Provider,
+  type Hex,
+} from "viem";
+import {
+  bidMarketAbi,
+  configuredAddress,
+  erc20TradeAbi,
+  robinhoodChain,
+  robinhoodPublicClient,
+} from "@/lib/bidMarket";
 import { isDemo } from "@/lib/launchState";
 import { siteConfig } from "@/lib/site";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
-type WalletProviderName = "Phantom" | "Solflare" | "Backpack";
-type PaymentRail = "USDC" | "SOL";
-
-type SolanaProvider = {
-  isPhantom?: boolean;
-  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey?: { toString: () => string } } | void>;
-  publicKey?: { toString: () => string };
-};
+type OrderType = "market" | "limit";
 
 declare global {
   interface Window {
-    solana?: SolanaProvider;
-    solflare?: SolanaProvider;
-    backpack?: { solana?: SolanaProvider };
-    phantom?: { solana?: SolanaProvider };
+    ethereum?: EIP1193Provider;
   }
 }
 
@@ -33,6 +38,7 @@ type Outcome = {
 
 type Market = {
   id: string;
+  contractAddress: string;
   code: string;
   mode: "yes-no" | "head-to-head" | "field";
   question: string;
@@ -48,6 +54,7 @@ type Market = {
 const markets: Market[] = [
   {
     id: "miami-tampa-eoy",
+    contractAddress: siteConfig.marketAddresses.miamiTampa,
     code: "MIA / TPA",
     mode: "head-to-head",
     question: "Which city will post the larger home-price increase by year-end?",
@@ -64,6 +71,7 @@ const markets: Market[] = [
   },
   {
     id: "city-field-eoy",
+    contractAddress: siteConfig.marketAddresses.cityField,
     code: "CITY / EOY",
     mode: "field",
     question: "Which U.S. city will have the highest home-price increase by EOY?",
@@ -83,6 +91,7 @@ const markets: Market[] = [
   },
   {
     id: "austin-positive",
+    contractAddress: siteConfig.marketAddresses.austinPositive,
     code: "AUS / YOY",
     mode: "yes-no",
     question: "Will Austin home prices finish 2026 positive year over year?",
@@ -105,15 +114,10 @@ function truncateAddress(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
-function getWalletProvider(name: WalletProviderName) {
-  if (typeof window === "undefined") return undefined;
-
-  if (name === "Phantom") {
-    return window.phantom?.solana ?? (window.solana?.isPhantom ? window.solana : undefined);
-  }
-
-  if (name === "Solflare") return window.solflare;
-  return window.backpack?.solana;
+function providerErrorCode(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error
+    ? Number((error as { code?: unknown }).code)
+    : undefined;
 }
 
 function BrandMark() {
@@ -147,10 +151,12 @@ function MarketVisual({
   market,
   compact = false,
   showPricing = false,
+  prices,
 }: {
   market: Market;
   compact?: boolean;
   showPricing?: boolean;
+  prices?: number[];
 }) {
   if (market.mode === "yes-no") {
     return (
@@ -163,10 +169,10 @@ function MarketVisual({
   if (market.mode === "field") {
     return (
       <div className={`field-visual ${compact ? "compact" : ""}`} aria-hidden="true">
-        {market.outcomes.map((outcome) => (
+        {market.outcomes.map((outcome, index) => (
           <span className={outcome.tone} key={outcome.code}>
             <strong>{outcome.code}</strong>
-            <small>{showPricing ? `${Math.round(outcome.price * 100)}¢` : "BID"}</small>
+            <small>{showPricing ? `${Math.round((prices?.[index] ?? outcome.price) * 100)}¢` : "BID"}</small>
           </span>
         ))}
       </div>
@@ -194,76 +200,275 @@ export default function Home() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("All markets");
   const [selectedOutcome, setSelectedOutcome] = useState(0);
   const [amount, setAmount] = useState(isDemo ? "250" : "");
-  const [paymentRail, setPaymentRail] = useState<PaymentRail>("USDC");
+  const [orderType, setOrderType] = useState<OrderType>("market");
+  const [limitPrice, setLimitPrice] = useState("50");
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
-  const [walletName, setWalletName] = useState<WalletProviderName | "">("");
   const [notice, setNotice] = useState("");
+  const [transactionPending, setTransactionPending] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [livePrices, setLivePrices] = useState<Record<string, number[]>>({});
+  const [liveQuote, setLiveQuote] = useState<{
+    key: string;
+    outcomeTokensOut: bigint;
+    creatorFee: bigint;
+    decimals: number;
+  } | null>(null);
   const contractAddress = siteConfig.contractAddress;
-  const marketProgramConfigured = Boolean(siteConfig.marketProgramId);
+  const creatorTaxPercent = siteConfig.creatorTaxBps / 100;
+  const rewardsPercent = creatorTaxPercent * siteConfig.predictionRewardsShareBps / 10_000;
+  const liquidityPercent = creatorTaxPercent * siteConfig.liquidityShareBps / 10_000;
 
   const selected = markets.find((market) => market.id === selectedId) ?? markets[0];
+  const selectedMarketAddress = configuredAddress(selected.contractAddress);
+  const marketContractConfigured = selectedMarketAddress !== null;
   const outcome = selected.outcomes[selectedOutcome] ?? selected.outcomes[0];
   const displayedMarkets = markets.filter((market) => matchesFilter(market, filter));
   const showSampleData = isDemo;
+  const heroPrices = livePrices[markets[0].id];
+  const showHeroPricing = Boolean(heroPrices) || showSampleData;
+  const selectedPrices = livePrices[selected.id];
+  const showSelectedPricing = Boolean(selectedPrices) || showSampleData;
+  const displayedOutcomePrice = selectedPrices?.[selectedOutcome] !== undefined
+    ? selectedPrices[selectedOutcome] / 10_000
+    : outcome.price;
+  const quoteKey = `${selected.id}:${selectedOutcome}:${amount}`;
+  const currentLiveQuote = liveQuote?.key === quoteKey ? liveQuote : null;
 
-  const quote = useMemo(() => {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMarketPrices() {
+      const loaded = await Promise.all(markets.map(async (market) => {
+        const address = configuredAddress(market.contractAddress);
+        if (!address) return null;
+
+        try {
+          const prices = await robinhoodPublicClient.readContract({
+            address,
+            abi: bidMarketAbi,
+            functionName: "spotPricesBps",
+          });
+          return [market.id, prices.map(Number)] as const;
+        } catch {
+          return null;
+        }
+      }));
+
+      if (cancelled) return;
+      setLivePrices(Object.fromEntries(loaded.filter((entry) => entry !== null)));
+    }
+
+    void loadMarketPrices();
+    return () => { cancelled = true; };
+  }, [refreshNonce]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const collateralAmount = Number(amount);
+
+    if (!selectedMarketAddress || !Number.isFinite(collateralAmount) || collateralAmount <= 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const collateral = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "collateral",
+        });
+        const decimals = await robinhoodPublicClient.readContract({
+          address: collateral,
+          abi: erc20TradeAbi,
+          functionName: "decimals",
+        });
+        const collateralIn = parseUnits(amount, decimals);
+        const [outcomeTokensOut, creatorFee] = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "quoteBuy",
+          args: [collateralIn, BigInt(selectedOutcome)],
+        });
+
+        if (!cancelled) setLiveQuote({ key: quoteKey, outcomeTokensOut, creatorFee, decimals });
+      } catch {
+        if (!cancelled) setLiveQuote(null);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [amount, quoteKey, refreshNonce, selectedMarketAddress, selectedOutcome]);
+
+  const quote = (() => {
     const dollars = Math.max(0, Number(amount) || 0);
-    const contracts = outcome.price > 0 ? dollars / outcome.price : 0;
+    const limitPriceDollars = Math.max(0, Number(limitPrice) || 0) / 100;
+    const price = orderType === "limit" ? limitPriceDollars : displayedOutcomePrice;
+    const liveContracts = currentLiveQuote
+      ? Number(formatUnits(currentLiveQuote.outcomeTokensOut, currentLiveQuote.decimals))
+      : null;
+    const contracts = orderType === "market" && liveContracts !== null
+      ? liveContracts
+      : price > 0 ? dollars / price : 0;
     return {
-      price: outcome.price,
+      price,
       contracts,
       profit: Math.max(0, contracts - dollars),
     };
-  }, [amount, outcome]);
+  })();
 
   const chooseMarket = (market: Market) => {
     setSelectedId(market.id);
     setSelectedOutcome(0);
   };
 
-  const connectWallet = async (name: WalletProviderName) => {
-    const provider = getWalletProvider(name);
+  const connectWallet = async () => {
+    const provider = window.ethereum;
 
     if (!provider) {
-      setNotice(`${name} was not detected. Install or unlock the wallet, then try again.`);
+      setNotice("No EVM browser wallet was detected. Install or unlock one, then try again.");
       return;
     }
 
     try {
-      const response = await provider.connect({ onlyIfTrusted: false });
-      const address = response?.publicKey?.toString() ?? provider.publicKey?.toString() ?? "";
+      const accounts = await provider.request({ method: "eth_requestAccounts" }) as string[];
+      const address = accounts[0] ?? "";
 
       if (!address) {
-        setNotice(`${name} connected, but no wallet address was returned.`);
+        setNotice("The wallet connected, but no account was returned.");
         return;
+      }
+
+      try {
+        await provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: siteConfig.robinhoodChainHex }],
+        });
+      } catch (error) {
+        if (providerErrorCode(error) !== 4902) throw error;
+        await provider.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: siteConfig.robinhoodChainHex,
+            chainName: siteConfig.networkName,
+            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+            rpcUrls: [siteConfig.rpcUrl],
+            blockExplorerUrls: [siteConfig.explorerUrl],
+          }],
+        });
       }
 
       setWalletConnected(true);
       setWalletAddress(address);
-      setWalletName(name);
       setWalletOpen(false);
-      setNotice(`${name} connected: ${truncateAddress(address)}. No signature requested.`);
+      setNotice(`Wallet connected: ${truncateAddress(address)}. Robinhood Chain selected; no signature requested.`);
     } catch {
-      setNotice(`${name} connection was cancelled or failed.`);
+      setNotice("Wallet connection or network switching was cancelled.");
     }
   };
 
-  const reviewOrder = () => {
+  const reviewOrder = async () => {
     if (!walletConnected) {
       setWalletOpen(true);
       return;
     }
 
-    if (!marketProgramConfigured) {
-      setNotice("Wallet connected. BID market routing is not configured yet, so no transaction was built.");
+    const account = configuredAddress(walletAddress);
+    const provider = window.ethereum;
+    if (!selectedMarketAddress || !account || !provider) {
+      setNotice("Wallet connected. This market is not deployed yet, so no transaction was built.");
       return;
     }
 
-    // TODO(onchain): build a market-program transaction after BID publishes the program ID,
-    // pool accounts, escrow account, and exact instruction schema. Simulate before signing.
-    setNotice(`Ready to quote ${outcome.label} with ${paymentRail}. Transaction build remains disabled until the market program is wired.`);
+    if (!amount || Number(amount) <= 0) {
+      setNotice("Enter a USDG amount first.");
+      return;
+    }
+
+    const priceBps = BigInt(Math.round(Number(limitPrice) * 100));
+    if (orderType === "limit" && (priceBps <= 0n || priceBps >= 10_000n)) {
+      setNotice("Set a limit price between 0.01c and 99.99c.");
+      return;
+    }
+
+    setTransactionPending(true);
+    try {
+      const walletClient = createWalletClient({
+        account,
+        chain: robinhoodChain,
+        transport: custom(provider),
+      });
+      const collateral = await robinhoodPublicClient.readContract({
+        address: selectedMarketAddress,
+        abi: bidMarketAbi,
+        functionName: "collateral",
+      });
+      const decimals = await robinhoodPublicClient.readContract({
+        address: collateral,
+        abi: erc20TradeAbi,
+        functionName: "decimals",
+      });
+      const collateralIn = parseUnits(amount, decimals);
+      const allowance = await robinhoodPublicClient.readContract({
+        address: collateral,
+        abi: erc20TradeAbi,
+        functionName: "allowance",
+        args: [account, selectedMarketAddress],
+      });
+
+      if (allowance < collateralIn) {
+        setNotice(`Approve ${siteConfig.collateralSymbol} in your wallet to continue.`);
+        const approvalHash = await walletClient.writeContract({
+          address: collateral,
+          abi: erc20TradeAbi,
+          functionName: "approve",
+          args: [selectedMarketAddress, collateralIn],
+        });
+        await robinhoodPublicClient.waitForTransactionReceipt({ hash: approvalHash });
+      }
+
+      setNotice(orderType === "market" ? "Confirm the market order." : "Confirm the onchain limit order.");
+      let transactionHash: Hex;
+
+      if (orderType === "market") {
+        const [quotedTokens] = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "quoteBuy",
+          args: [collateralIn, BigInt(selectedOutcome)],
+        });
+        const minOutcomeTokensOut = quotedTokens * 9_950n / 10_000n;
+        transactionHash = await walletClient.writeContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "buy",
+          args: [collateralIn, BigInt(selectedOutcome), minOutcomeTokensOut],
+        });
+      } else {
+        const minOutcomeTokensOut = (collateralIn * 10_000n + priceBps - 1n) / priceBps;
+        transactionHash = await walletClient.writeContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "placeBuyLimit",
+          args: [collateralIn, BigInt(selectedOutcome), minOutcomeTokensOut],
+        });
+      }
+
+      await robinhoodPublicClient.waitForTransactionReceipt({ hash: transactionHash });
+      setRefreshNonce((value) => value + 1);
+      setNotice(`${orderType === "market" ? "Market order filled" : "Limit order placed"}. Transaction ${truncateAddress(transactionHash)} confirmed.`);
+    } catch (error) {
+      const message = typeof error === "object" && error !== null && "shortMessage" in error
+        ? String((error as { shortMessage: unknown }).shortMessage)
+        : "The transaction was cancelled or reverted.";
+      setNotice(message);
+    } finally {
+      setTransactionPending(false);
+    }
   };
 
   const copyContractAddress = async () => {
@@ -286,7 +491,7 @@ export default function Home() {
         <nav className="desktop-nav" aria-label="Primary navigation">
           <a className="active" href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
-          <a href="#portfolio">Portfolio</a>
+          <a href="#flywheel">Flywheel</a>
         </nav>
         <div className="header-actions">
           {contractAddress && (
@@ -294,14 +499,14 @@ export default function Home() {
               CA <span>{truncateAddress(contractAddress)}</span>
             </button>
           )}
-          <span className="network-pill"><i /> Solana</span>
-          <a className="x-button" href={siteConfig.xUrl} target="_blank" rel="noreferrer">
-            X
+          <span className="network-pill"><i /> Robinhood Chain</span>
+          <a className="pons-button" href={siteConfig.ponsUrl} target="_blank" rel="noreferrer">
+            Pons ↗
           </a>
           <button
             className={`wallet-button ${walletConnected ? "connected" : ""}`}
             type="button"
-            onClick={() => walletConnected ? setNotice(`${walletName} connected: ${truncateAddress(walletAddress)}.`) : setWalletOpen(true)}
+            onClick={() => walletConnected ? setNotice(`Wallet connected on Robinhood Chain: ${truncateAddress(walletAddress)}.`) : setWalletOpen(true)}
           >
             {walletConnected ? truncateAddress(walletAddress) : "Connect wallet"}
           </button>
@@ -310,11 +515,11 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <div className="eyebrow"><span>{showSampleData ? "SAMPLE" : "BID"}</span> REAL ESTATE MARKETS, REBUILT</div>
+          <div className="eyebrow"><span>{showSampleData ? "SAMPLE" : "BID"}</span> RWA HOUSING MARKETS // ROBINHOOD CHAIN</div>
           <h1>BID THE<br /><em>BLOCK.</em></h1>
           <p>
-            Trade what happens next in housing. Pick a city, take a side, or
-            price the whole field—settled on Solana.
+            Trade where housing moves next against community-owned liquidity.
+            $BID on Pons keeps the pools thick and rewards real market volume.
           </p>
           <div className="hero-actions">
             <a className="primary-cta" href="#markets">Explore markets <span>↘</span></a>
@@ -332,12 +537,12 @@ export default function Home() {
               <span className="market-number">01</span>
               <h2>Which city posts the bigger home-price gain by EOY? <strong>Miami or Tampa?</strong></h2>
             </div>
-              {showSampleData ? (
+              {showHeroPricing ? (
                 <div className="odds-lockup">
-                  <SampleBadge compact />
+                  {showSampleData && <SampleBadge compact />}
                   <span className="odds-label">Miami leads</span>
-                  <strong>61<span>%</span></strong>
-                  <small>Tampa 39% · +7 pts this week</small>
+                  <strong>{Math.round((heroPrices?.[0] ?? markets[0].outcomes[0].price) * 100)}<span>%</span></strong>
+                  <small>Tampa {Math.round((heroPrices?.[1] ?? markets[0].outcomes[1].price) * 100)}% · pool-priced odds</small>
                 </div>
               ) : (
                 <div className="odds-lockup locked">
@@ -379,14 +584,13 @@ export default function Home() {
             <div><SampleBadge /><span>24H VOLUME</span><strong>$6.4M</strong><em>+18.2%</em></div>
             <div><SampleBadge /><span>OPEN INTEREST</span><strong>$12.8M</strong><em>+6.4%</em></div>
             <div><SampleBadge /><span>ACTIVE MARKETS</span><strong>24</strong><em>12 cities</em></div>
-            <div><SampleBadge /><span>SOLANA SETTLEMENT</span><strong>0.8s</strong><em>sample claim</em></div>
+            <div><SampleBadge /><span>PONS CREATOR TAX</span><strong>2.5%</strong><em>rewards + LP</em></div>
           </>
         ) : (
           <div className="launch-strip">
-            {/* TODO(live-data): replace with /api/platform/stats once real BID volume, open interest, and market telemetry exists. */}
-            <span>BID markets</span>
-            <strong>Funded real estate markets are being prepared.</strong>
-            <em>Built on Solana. Live stats appear with funded pools.</em>
+            <span>0% BID TRADING FEE</span>
+            <strong>USDG-backed finite-outcome pools.</strong>
+            <em>2.5% Pons flywheel → rewards + deeper LP</em>
           </div>
         )}
       </section>
@@ -425,20 +629,26 @@ export default function Home() {
                 aria-pressed={selectedId === market.id}
               >
                 <span className="card-index">{String(index + 1).padStart(2, "0")}</span>
-                <MarketVisual market={market} showPricing={showSampleData} />
+                <MarketVisual
+                  market={market}
+                  showPricing={Boolean(livePrices[market.id]) || showSampleData}
+                  prices={livePrices[market.id]?.map((price) => price / 10_000)}
+                />
                 <span className="market-copy">
                   <span className="market-meta">
                     <span>{market.mode.replaceAll("-", " ")}</span>
-                    {showSampleData ? <em><SampleBadge compact /> {market.signal}</em> : <em>Opening soon</em>}
+                    {livePrices[market.id]
+                      ? <em>Live AMM · {market.signal}</em>
+                      : showSampleData ? <em><SampleBadge compact /> {market.signal}</em> : <em>Opening soon</em>}
                   </span>
                   <strong>{market.short}</strong>
                   <small>Resolves {market.closes} · {showSampleData ? `Vol ${market.volume}` : "Opening soon"}</small>
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
-                  {showSampleData ? (
-                    market.outcomes.slice(0, market.mode === "field" ? 3 : 2).map((item) => (
+                  {livePrices[market.id] || showSampleData ? (
+                    market.outcomes.slice(0, market.mode === "field" ? 3 : 2).map((item, outcomeIndex) => (
                       <span className="outcome-quote" key={item.code}>
-                        <em>{item.code}</em><strong>{Math.round(item.price * 100)}¢</strong>
+                        <em>{item.code}</em><strong>{Math.round((livePrices[market.id]?.[outcomeIndex] ?? item.price * 10_000) / 100)}¢</strong>
                       </span>
                     ))
                   ) : (
@@ -454,10 +664,15 @@ export default function Home() {
           <aside className="trade-ticket" aria-label={`Trade ${selected.short}`}>
             <div className="ticket-top">
               <span>ORDER TICKET</span>
-              <span className="ticket-code">{selected.code} / {paymentRail}</span>
+              <span className="ticket-code">{selected.code} / {siteConfig.collateralSymbol}</span>
             </div>
             <div className={`selected-market ${selected.mode === "field" ? "field" : ""}`}>
-              <MarketVisual market={selected} compact showPricing={showSampleData} />
+              <MarketVisual
+                market={selected}
+                compact
+                showPricing={showSelectedPricing}
+                prices={selectedPrices?.map((price) => price / 10_000)}
+              />
               <div>
                 <span>{selected.mode.replaceAll("-", " ")} · resolves {selected.closes}</span>
                 <h3>{selected.question}</h3>
@@ -473,62 +688,80 @@ export default function Home() {
                   onClick={() => setSelectedOutcome(index)}
                 >
                   <span>{selected.mode === "yes-no" ? `Buy ${item.label}` : item.label}</span>
-                  {showSampleData ? <strong>{Math.round(item.price * 100)}¢</strong> : <LockedValue />}
+                  {showSelectedPricing
+                    ? <strong>{Math.round((selectedPrices?.[index] ?? item.price * 10_000) / 100)}¢</strong>
+                    : <LockedValue />}
                   {selected.mode === "field" && <small>{item.code}</small>}
                 </button>
               ))}
             </div>
 
-            <div className="rail-selector" role="group" aria-label="Payment rail">
-              {(["USDC", "SOL"] as const).map((rail) => (
+            <div className="rail-selector" role="group" aria-label="Order type">
+              {(["market", "limit"] as const).map((type) => (
                 <button
-                  className={paymentRail === rail ? "active" : ""}
-                  key={rail}
+                  className={orderType === type ? "active" : ""}
+                  key={type}
                   type="button"
-                  onClick={() => setPaymentRail(rail)}
+                  onClick={() => setOrderType(type)}
                 >
-                  <span>{rail}</span>
-                  <small>{rail === "USDC" ? "Stablecoin rail" : "Native SOL rail"}</small>
+                  <span>{type === "market" ? "Market" : "Limit"}</span>
+                  <small>{type === "market" ? "Fill from the pool" : "Set your max price"}</small>
                 </button>
               ))}
             </div>
 
             <p className="ticket-note ticket-note-top">
-              Wallet connect is live. Order signing stays disabled until BID market pools and the Solana program are configured.
+              0% BID protocol fee at launch. Orders use USDG collateral; Robinhood Chain gas still applies.
             </p>
+            {orderType === "limit" && (
+              <label className="limit-price-row" htmlFor="limit-price">
+                <span>Max price</span>
+                <span className="limit-price-input">
+                  <input
+                    id="limit-price"
+                    inputMode="decimal"
+                    min="0.01"
+                    max="99.99"
+                    step="0.01"
+                    value={limitPrice}
+                    onChange={(event) => setLimitPrice(event.target.value.replace(/[^\d.]/g, ""))}
+                    aria-label="Limit price in cents"
+                  />
+                  <em>¢</em>
+                </span>
+              </label>
+            )}
             <label className="amount-label" htmlFor="trade-amount">
               <span>Amount</span><small>{walletConnected ? `${truncateAddress(walletAddress)}` : "Connect wallet"}</small>
             </label>
             <div className="amount-input">
-              <span>{paymentRail === "USDC" ? "$" : "◎"}</span>
+              <span>$</span>
               <input
                 id="trade-amount"
                 inputMode="decimal"
                 min="0"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
-                aria-label={`Trade amount in ${paymentRail}`}
+                aria-label={`Trade amount in ${siteConfig.collateralSymbol}`}
               />
-              <em>{paymentRail}</em>
+              <em>{siteConfig.collateralSymbol}</em>
             </div>
-            {showSampleData && paymentRail === "USDC" && (
-              <div className="quick-amounts">
-                {[25, 100, 250, 500].map((value) => (
-                  <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
-                ))}
-              </div>
-            )}
+            <div className="quick-amounts">
+              {[25, 100, 250, 500].map((value) => (
+                <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
+              ))}
+            </div>
 
             <div className="quote-lines">
-              <p><span>{outcome.label} price</span>{showSampleData ? <strong>{Math.round(quote.price * 100)}¢</strong> : <LockedValue />}</p>
-              <p><span>Pay with</span><strong>{paymentRail}</strong></p>
-              <p><span>Est. contracts</span>{showSampleData && paymentRail === "USDC" ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
-              <p><span>Network</span><strong>{siteConfig.solanaCluster}</strong></p>
+              <p><span>{orderType === "market" ? `${outcome.label} pool price` : "Limit price"}</span>{showSelectedPricing || orderType === "limit" ? <strong>{Math.round(quote.price * 10000) / 100}¢</strong> : <LockedValue />}</p>
+              <p><span>Protocol fee</span><strong>0.00%</strong></p>
+              <p><span>Est. contracts</span>{showSelectedPricing || orderType === "limit" ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
+              <p><span>Network</span><strong>{siteConfig.networkName}</strong></p>
             </div>
 
             <div className="return-box">
               <span>YOU RECEIVE IF {outcome.label.toUpperCase()} WINS</span>
-              {showSampleData && paymentRail === "USDC" ? (
+              {showSelectedPricing || orderType === "limit" ? (
                 <>
                   <strong>${quote.contracts.toFixed(2)}</strong>
                   <small>+${quote.profit.toFixed(2)} potential profit</small>
@@ -541,12 +774,14 @@ export default function Home() {
               )}
             </div>
 
-            <button className="review-button" type="button" onClick={reviewOrder}>
-              {walletConnected ? `Review ${outcome.label} order` : "Connect wallet"}
+            <button className="review-button" type="button" onClick={reviewOrder} disabled={transactionPending}>
+              {transactionPending
+                ? "Waiting for confirmation"
+                : walletConnected ? `${orderType === "market" ? "Buy" : "Place limit"} ${outcome.label}` : "Connect wallet"}
               <span>→</span>
             </button>
-            {!marketProgramConfigured && (
-              <p className="integration-status">Needs BID market program + funded pool accounts before real order signing can turn on.</p>
+            {!marketContractConfigured && (
+              <p className="integration-status">This pool is in prelaunch. Add its deployed address to turn on real quotes and order signing.</p>
             )}
           </aside>
         </div>
@@ -561,12 +796,12 @@ export default function Home() {
           <article>
             <span>01 / PICK</span>
             <strong>Choose the market</strong>
-            <p>Trade a YES/NO question, a city matchup, or a five-city field, all powered by $BID.</p>
+            <p>Trade a YES/NO question, a city matchup, or a finite field backed one-for-one by USDG.</p>
           </article>
           <article>
-            <span>02 / PRICE</span>
-            <strong>Back an outcome</strong>
-            <p>Each funded market shows its live probability once trading opens.</p>
+            <span>02 / POOL</span>
+            <strong>Price against the LP</strong>
+            <p>A fixed-product market maker turns pooled outcome inventory into live odds and deeper fills.</p>
           </article>
           <article>
             <span>03 / SETTLE</span>
@@ -577,36 +812,49 @@ export default function Home() {
         <div className="settlement-strip">
           <div className="settle-badge"><BrandMark /></div>
           <p><span>VERIFIABLE BY DESIGN</span> Market terms, closing time, and settlement source are locked before trading opens.</p>
-          <div className="settle-flow"><span>Housing index</span><i>→</i><span>Oracle attestation</span><i>→</i><span>Solana settlement</span></div>
+          <div className="settle-flow"><span>Housing index</span><i>→</i><span>Oracle attestation</span><i>→</i><span>Robinhood Chain</span></div>
         </div>
-        <div className="revenue-panel">
+        <div className="revenue-panel" id="flywheel">
           <div className="revenue-copy">
-            <span className="section-kicker">POWERED BY $BID</span>
-            <h3>Two fee streams.</h3>
+            <span className="section-kicker">THE BID FLYWHEEL</span>
+            <h3>Volume feeds depth.<br />Depth feeds volume.</h3>
             <p>
-              Platform revenue fees are designed to flow 100% into BID buybacks and burns.
-              Creator fees use the launch split below to deepen markets and reward active users.
+              $BID launches on Pons with a creator tax fixed at 2.5%. Creator-tax
+              proceeds are routed evenly into prediction-market rewards and protocol-owned
+              liquidity, tightening fills as the market grows.
             </p>
+            <a
+              className="protocol-proof"
+              href={`${siteConfig.explorerUrl}/address/${siteConfig.ponsFactory}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Pons v2 factory · Chain {siteConfig.robinhoodChainId} ↗
+            </a>
           </div>
-          <div className="fee-grid" aria-label="Target fee allocation">
-            <article className="platform-fee"><strong>100%</strong><span>Platform revenue fees → BID buyback + burn</span></article>
-            <article><strong>10%</strong><span>Creator fees → treasury</span></article>
-            <article><strong>30%</strong><span>Creator fees → improve market liquidity</span></article>
-            <article><strong>30%</strong><span>Creator fees → SOL rewards for active users</span></article>
-            <article><strong>30%</strong><span>Creator fees → BID buybacks and burns</span></article>
+          <div className="fee-grid" aria-label="Pons creator-tax allocation">
+            <article className="platform-fee"><strong>{creatorTaxPercent}%</strong><span>Pons creator tax · fixed at token launch</span></article>
+            <article><strong>{rewardsPercent}%</strong><span>Trade value → prediction-market rewards</span></article>
+            <article><strong>{liquidityPercent}%</strong><span>Trade value → prediction-market LP</span></article>
           </div>
         </div>
       </section>
 
-      <section className="portfolio-tease" id="portfolio">
-        <span>ROADMAP / CREATE MARKETS</span>
-        <h2>Soon, anyone can<br />make the market.</h2>
-        <a href="#markets">Enter the market <span>↗</span></a>
+      <section className="portfolio-tease" id="creator-markets">
+        <span>ROADMAP / TOKEN-GATED CREATION</span>
+        <h2>Hold. Burn.<br />Own the market.</h2>
+        <p>Community launchers will hold a minimum $BID balance, burn a small launch amount, and earn a capped creator royalty from the markets they originate.</p>
+        <div className="creator-roadmap" aria-label="Future creator market mechanics">
+          <span><strong>01</strong> Hold $BID</span>
+          <span><strong>02</strong> Burn to launch</span>
+          <span><strong>03</strong> Earn royalties</span>
+        </div>
+        <button type="button" disabled>Creator markets · coming later</button>
       </section>
 
       <footer>
         <a className="brand footer-brand" href="#top"><BrandMark /><span>BID</span></a>
-        <p>Real estate prediction markets on Solana.</p>
+        <p>Real estate prediction markets on Robinhood Chain. $BID on Pons.</p>
         <div>
           <a href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
@@ -632,19 +880,13 @@ export default function Home() {
               <div><BrandMark /><span>BID</span></div>
               <button type="button" onClick={() => setWalletOpen(false)} aria-label="Close wallet dialog">×</button>
             </div>
-            <span className="modal-kicker">SOLANA WALLET</span>
-            <h2 id="wallet-title">Choose a wallet</h2>
-            <p>Connect read-only. BID will not request a signature until a real order transaction is ready for review.</p>
-            <button className="wallet-choice" type="button" onClick={() => connectWallet("Phantom")}>
-              <span className="wallet-icon violet-dot">P</span><strong>Phantom</strong><em>Connect</em>
+            <span className="modal-kicker">ROBINHOOD CHAIN WALLET</span>
+            <h2 id="wallet-title">Connect your wallet</h2>
+            <p>BID supports injected EVM wallets and will switch or add Robinhood Chain after you approve the connection.</p>
+            <button className="wallet-choice" type="button" onClick={connectWallet}>
+              <span className="wallet-icon robinhood-dot">RH</span><strong>Browser wallet</strong><em>Connect</em>
             </button>
-            <button className="wallet-choice" type="button" onClick={() => connectWallet("Solflare")}>
-              <span className="wallet-icon red-dot">S</span><strong>Solflare</strong><em>Connect</em>
-            </button>
-            <button className="wallet-choice" type="button" onClick={() => connectWallet("Backpack")}>
-              <span className="wallet-icon blue-dot">B</span><strong>Backpack</strong><em>Connect</em>
-            </button>
-            <small>No private keys. No seed phrases. No order signing until market routing is configured and simulated.</small>
+            <small>No private keys. No seed phrases. Orders only activate for deployed and funded BID pools.</small>
           </div>
         </div>
       )}

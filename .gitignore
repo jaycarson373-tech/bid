@@ -38,8 +38,9 @@ yarn-error.log*
 # typescript
 next-env.d.ts
 /dist/
-/services/fee-worker/dist/
-/services/fee-worker/node_modules/
 /.wrangler/
 /outputs/
 /work/
+/contracts/out/
+/contracts/cache/
+*.tsbuildinfo

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(productionHost),
   title: "BID — BID the Block",
   description:
-    "Trade real estate outcomes across the world’s fastest-moving cities. YES/NO, head-to-head, and five-city markets on Solana.",
+    "Trade real estate outcomes across the world’s fastest-moving cities on Robinhood Chain, powered by $BID on Pons.",
   icons: {
     icon: "/brand/bid-logo.png",
     apple: "/brand/bid-logo.png",
@@ -33,15 +33,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: "BID — BID the Block",
     description:
-      "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
+      "Real estate prediction markets on Robinhood Chain, powered by $BID on Pons.",
     url: "/",
     siteName: "BID",
     type: "website",
     images: [
       {
-        url: "/og.png",
-        width: 1500,
-        height: 500,
+        url: "/og-robinhood.png",
+        width: 2172,
+        height: 724,
         alt: "BID — BID the Block",
       },
     ],
@@ -50,8 +50,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "BID — BID the Block",
     description:
-      "Real estate prediction markets on Solana. Trade cities, price housing, bet the block.",
-    images: ["/og.png"],
+      "Real estate prediction markets on Robinhood Chain, powered by $BID on Pons.",
+    images: ["/og-robinhood.png"],
   },
 };
 

@@ -4,19 +4,20 @@
   --ink: #070807;
   --paper: #050607;
   --panel: rgba(255, 255, 255, 0.045);
-  --lime: #14f195;
-  --acid: #7cf7c6;
+  --lime: #20e86f;
+  --acid: #dfff00;
   --muted: #8c938a;
   --line: rgba(255, 255, 255, 0.13);
-  --coral: #00c2ff;
-  --mint: #14f195;
-  --violet: #9945ff;
-  --gold: #c08cff;
-  --solana-gradient: linear-gradient(110deg, #14f195 0%, #00d1ff 52%, #9945ff 100%);
+  --coral: #ff5f66;
+  --mint: #20e86f;
+  --violet: #dfff00;
+  --gold: #ffd84d;
+  --chain-gradient: linear-gradient(110deg, #20e86f 0%, #dfff00 100%);
 }
 
 * {
   box-sizing: border-box;
+  letter-spacing: 0 !important;
 }
 
 html {
@@ -25,10 +26,7 @@ html {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 14% 8%, rgba(153, 69, 255, 0.18), transparent 24%),
-    radial-gradient(circle at 86% 20%, rgba(20, 241, 149, 0.13), transparent 28%),
-    var(--paper);
+  background: var(--paper);
   color: #f5f8f3;
   font-family: var(--font-geist-sans), Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -114,7 +112,7 @@ a {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .brand-mark i {
@@ -161,7 +159,7 @@ a {
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   content: "";
 }
 
@@ -192,9 +190,9 @@ a {
   gap: 8px;
   height: 36px;
   padding: 0 12px;
-  border: 1px solid rgba(153, 69, 255, 0.55);
-  background: rgba(153, 69, 255, 0.12);
-  color: #d8c5ff;
+  border: 1px solid rgba(223, 255, 0, 0.5);
+  background: rgba(223, 255, 0, 0.08);
+  color: #ecff7b;
   cursor: pointer;
   font-family: var(--font-geist-mono);
   font-size: 9px;
@@ -210,10 +208,11 @@ a {
   border-color: var(--lime);
 }
 
-.x-button {
+.pons-button {
   display: inline-grid;
-  width: 38px;
+  min-width: 58px;
   height: 36px;
+  padding: 0 10px;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.045);
@@ -224,7 +223,7 @@ a {
   transition: border 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
-.x-button:hover {
+.pons-button:hover {
   border-color: var(--lime);
   color: var(--lime);
   transform: translateY(-2px);
@@ -243,7 +242,7 @@ a {
   height: 38px;
   padding: 0 17px;
   border: 1px solid var(--lime);
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   color: var(--ink);
   cursor: pointer;
   font-family: var(--font-geist-mono);
@@ -316,14 +315,14 @@ a {
 
 .eyebrow span {
   padding: 4px 6px;
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   color: var(--ink);
   font-weight: 700;
 }
 
 .hero h1 {
   margin: 0;
-  font-size: clamp(78px, 8.2vw, 138px);
+  font-size: 126px;
   font-weight: 760;
   letter-spacing: -0.09em;
   line-height: 0.76;
@@ -331,7 +330,7 @@ a {
 
 .hero h1 em {
   color: var(--lime);
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   background-clip: text;
   font-style: normal;
   -webkit-background-clip: text;
@@ -359,7 +358,7 @@ a {
   width: 184px;
   height: 50px;
   padding: 0 17px;
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   color: var(--ink);
   font-family: var(--font-geist-mono);
   font-size: 10px;
@@ -397,9 +396,9 @@ a {
   margin-left: 42px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background:
-    radial-gradient(circle at 77% 28%, rgba(153, 69, 255, 0.14), transparent 28%),
-    radial-gradient(circle at 42% 70%, rgba(20, 241, 149, 0.08), transparent 34%),
-    #151814;
+    repeating-linear-gradient(90deg, transparent 0 74px, rgba(223, 255, 0, 0.025) 74px 75px),
+    linear-gradient(145deg, rgba(32, 232, 111, 0.09), transparent 46%),
+    #11140f;
   box-shadow: 28px 28px 0 rgba(20, 241, 149, 0.04);
 }
 
@@ -483,7 +482,7 @@ a {
 .hero-question h2 {
   max-width: 520px;
   margin: 0;
-  font-size: clamp(25px, 2.3vw, 42px);
+  font-size: 38px;
   font-weight: 500;
   letter-spacing: -0.055em;
   line-height: 1.08;
@@ -572,7 +571,7 @@ a {
 .mini-chart i {
   flex: 1;
   min-width: 3px;
-  background: linear-gradient(to top, rgba(20, 241, 149, 0.05), #14f195 42%, #00d1ff 72%, #9945ff);
+  background: linear-gradient(to top, rgba(32, 232, 111, 0.08), #20e86f 48%, #dfff00);
   opacity: 0.8;
 }
 
@@ -658,7 +657,7 @@ a {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background:
-    linear-gradient(90deg, rgba(20, 241, 149, 0.12), rgba(0, 209, 255, 0.08), rgba(153, 69, 255, 0.12)),
+    linear-gradient(90deg, rgba(32, 232, 111, 0.13), rgba(223, 255, 0, 0.08), rgba(255, 216, 77, 0.1)),
     #060706;
   color: #f5f8f3;
 }
@@ -728,8 +727,7 @@ a {
 .market-section {
   padding: 110px 42px 120px;
   background:
-    radial-gradient(circle at 8% 20%, rgba(20, 241, 149, 0.08), transparent 26%),
-    radial-gradient(circle at 86% 68%, rgba(153, 69, 255, 0.1), transparent 30%),
+    repeating-linear-gradient(0deg, transparent 0 84px, rgba(255, 255, 255, 0.018) 84px 85px),
     var(--paper);
   color: #f5f8f3;
 }
@@ -751,7 +749,7 @@ a {
 .section-kicker::before {
   width: 18px;
   height: 5px;
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   content: "";
 }
 
@@ -759,7 +757,7 @@ a {
 .how-intro h2,
 .portfolio-tease h2 {
   margin: 0;
-  font-size: clamp(52px, 6vw, 94px);
+  font-size: 82px;
   font-weight: 720;
   letter-spacing: -0.08em;
   line-height: 0.86;
@@ -812,7 +810,7 @@ a {
   height: 17px;
   padding: 0 4px;
   place-items: center;
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   color: var(--lime);
   font-size: 7px;
 }
@@ -854,7 +852,7 @@ a {
 .market-card.selected {
   border-color: rgba(20, 241, 149, 0.55);
   background:
-    linear-gradient(135deg, rgba(20, 241, 149, 0.08), rgba(153, 69, 255, 0.07)),
+    linear-gradient(135deg, rgba(32, 232, 111, 0.1), rgba(223, 255, 0, 0.05)),
     rgba(12, 14, 13, 0.94);
   box-shadow: 0 0 34px rgba(20, 241, 149, 0.08);
   transform: translateX(4px);
@@ -866,7 +864,7 @@ a {
   bottom: -1px;
   left: -1px;
   width: 4px;
-  background: linear-gradient(180deg, #14f195, #00d1ff 55%, #9945ff);
+  background: linear-gradient(180deg, #dfff00, #20e86f);
   border-right: 1px solid rgba(255, 255, 255, 0.18);
   content: "";
 }
@@ -1168,11 +1166,10 @@ a {
   min-height: 620px;
   border: 1px solid rgba(20, 241, 149, 0.28);
   background:
-    radial-gradient(circle at 15% 0%, rgba(153, 69, 255, 0.12), transparent 34%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
-    rgba(8, 10, 9, 0.96);
+    linear-gradient(145deg, rgba(223, 255, 0, 0.045), rgba(32, 232, 111, 0.025)),
+    rgba(8, 10, 9, 0.98);
   color: #f5f8f3;
-  box-shadow: 12px 12px 0 rgba(20, 241, 149, 0.07), 0 0 42px rgba(153, 69, 255, 0.08);
+  box-shadow: 12px 12px 0 rgba(32, 232, 111, 0.07), 0 0 42px rgba(223, 255, 0, 0.04);
 }
 
 .ticket-top {
@@ -1315,18 +1312,18 @@ a {
 }
 
 .outcome-picker button.coral.active {
-  border-color: rgba(0, 194, 255, 0.68);
-  background: rgba(0, 194, 255, 0.1);
+  border-color: rgba(255, 95, 102, 0.68);
+  background: rgba(255, 95, 102, 0.1);
 }
 
 .outcome-picker button.violet.active {
-  border-color: rgba(153, 69, 255, 0.68);
-  background: rgba(153, 69, 255, 0.12);
+  border-color: rgba(223, 255, 0, 0.68);
+  background: rgba(223, 255, 0, 0.1);
 }
 
 .outcome-picker button.gold.active {
-  border-color: rgba(192, 140, 255, 0.68);
-  background: rgba(192, 140, 255, 0.12);
+  border-color: rgba(255, 216, 77, 0.68);
+  background: rgba(255, 216, 77, 0.1);
 }
 
 .field-picker {
@@ -1370,7 +1367,7 @@ a {
   border-color: rgba(20, 241, 149, 0.68);
   background:
     linear-gradient(rgba(12, 14, 13, 0.95), rgba(12, 14, 13, 0.95)) padding-box,
-    var(--solana-gradient) border-box;
+    var(--chain-gradient) border-box;
   box-shadow: inset 0 0 0 1px rgba(20, 241, 149, 0.16);
 }
 
@@ -1385,6 +1382,43 @@ a {
   font-family: var(--font-geist-mono);
   font-size: 7px;
   text-transform: uppercase;
+}
+
+.limit-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 18px 12px;
+  padding: 9px 10px;
+  border: 1px solid rgba(223, 255, 0, 0.22);
+  color: #aeb8ae;
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.limit-price-input {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.limit-price-input input {
+  width: 64px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font-family: var(--font-geist-mono);
+  font-size: 15px;
+  font-weight: 750;
+  text-align: right;
+}
+
+.limit-price-input em {
+  color: var(--acid);
+  font-size: 13px;
+  font-style: normal;
 }
 
 .amount-label {
@@ -1489,21 +1523,12 @@ a {
   margin: 0 18px 14px;
   padding: 14px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 92% 20%, rgba(20, 241, 149, 0.16), transparent 36%),
-    #050607;
+  background: linear-gradient(110deg, rgba(32, 232, 111, 0.1), rgba(223, 255, 0, 0.035)), #050607;
   color: #fff;
 }
 
 .return-box::after {
-  position: absolute;
-  top: -30px;
-  right: -22px;
-  width: 90px;
-  height: 90px;
-  border: 18px solid rgba(200, 255, 61, 0.1);
-  border-radius: 50%;
-  content: "";
+  display: none;
 }
 
 .return-box span {
@@ -1536,7 +1561,7 @@ a {
   margin: 0 18px;
   padding: 0 16px;
   border: 1px solid var(--ink);
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   cursor: pointer;
   font-family: var(--font-geist-mono);
   font-size: 10px;
@@ -1546,6 +1571,12 @@ a {
 
 .review-button:hover {
   filter: brightness(1.08);
+}
+
+.review-button:disabled {
+  cursor: wait;
+  filter: saturate(0.35);
+  opacity: 0.72;
 }
 
 .review-button span {
@@ -1603,8 +1634,8 @@ a {
 
 .how-intro h2 {
   max-width: 850px;
-  color: var(--paper);
-  font-size: clamp(52px, 6vw, 96px);
+  color: #f5f8f3;
+  font-size: 82px;
   text-align: right;
 }
 
@@ -1711,14 +1742,14 @@ a {
   padding: 36px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background:
-    radial-gradient(circle at 8% 0%, rgba(153, 69, 255, 0.18), transparent 34%),
-    radial-gradient(circle at 100% 85%, rgba(20, 241, 149, 0.12), transparent 38%),
+    repeating-linear-gradient(90deg, transparent 0 92px, rgba(223, 255, 0, 0.025) 92px 93px),
+    linear-gradient(125deg, rgba(32, 232, 111, 0.08), rgba(223, 255, 0, 0.035)),
     rgba(255, 255, 255, 0.035);
 }
 
 .revenue-copy h3 {
   margin: 18px 0 14px;
-  font-size: clamp(38px, 4.2vw, 70px);
+  font-size: 58px;
   font-weight: 650;
   letter-spacing: -0.075em;
   line-height: 0.9;
@@ -1730,6 +1761,20 @@ a {
   color: #8e9488;
   font-size: 14px;
   line-height: 1.55;
+}
+
+.protocol-proof {
+  display: inline-flex;
+  margin-top: 20px;
+  color: var(--lime);
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.protocol-proof:hover {
+  color: #fff;
 }
 
 .fee-grid {
@@ -1749,7 +1794,7 @@ a {
   grid-column: 1 / -1;
   min-height: 116px;
   background:
-    linear-gradient(112deg, rgba(20, 241, 149, 0.14), rgba(153, 69, 255, 0.16)),
+    linear-gradient(112deg, rgba(32, 232, 111, 0.14), rgba(223, 255, 0, 0.12)),
     rgba(7, 8, 7, 0.44);
 }
 
@@ -1779,8 +1824,7 @@ a {
   padding: 130px 42px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 16% 20%, rgba(20, 241, 149, 0.18), transparent 30%),
-    radial-gradient(circle at 82% 18%, rgba(153, 69, 255, 0.2), transparent 32%),
+    linear-gradient(115deg, rgba(32, 232, 111, 0.13), rgba(223, 255, 0, 0.045) 52%, transparent 52%),
     linear-gradient(90deg, transparent 0 50%, rgba(255, 255, 255, 0.06) 50% 50.1%, transparent 50.1%),
     repeating-linear-gradient(0deg, transparent 0 74px, rgba(255, 255, 255, 0.035) 74px 75px),
     #050607;
@@ -1788,14 +1832,7 @@ a {
 }
 
 .portfolio-tease::after {
-  position: absolute;
-  right: -40px;
-  bottom: -140px;
-  width: 420px;
-  height: 420px;
-  border: 80px solid rgba(20, 241, 149, 0.06);
-  border-radius: 50%;
-  content: "";
+  display: none;
 }
 
 .portfolio-tease > span {
@@ -1810,30 +1847,63 @@ a {
   position: relative;
   z-index: 1;
   max-width: 1000px;
-  font-size: clamp(58px, 7.5vw, 118px);
+  font-size: 96px;
 }
 
-.portfolio-tease a {
+.portfolio-tease > p {
+  position: relative;
+  z-index: 1;
+  max-width: 650px;
+  margin: 26px 0 36px;
+  color: #a7aea3;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.creator-roadmap {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 210px));
+  gap: 8px;
+  max-width: 650px;
+}
+
+.creator-roadmap > span {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 96px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(5, 6, 7, 0.72);
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.creator-roadmap strong {
+  color: var(--acid);
+  font-size: 13px;
+}
+
+.portfolio-tease > button {
   position: absolute;
   right: 60px;
   bottom: 55px;
   z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 210px;
+  justify-content: center;
+  width: 260px;
   height: 58px;
   padding: 0 18px;
-  background: var(--ink);
-  color: #fff;
+  border: 1px solid rgba(223, 255, 0, 0.38);
+  background: rgba(5, 6, 7, 0.82);
+  color: #b8c19e;
   font-family: var(--font-geist-mono);
   font-size: 10px;
   text-transform: uppercase;
-}
-
-.portfolio-tease a span {
-  color: var(--lime);
-  font-size: 20px;
 }
 
 footer {
@@ -1984,9 +2054,7 @@ footer > small {
   font-weight: 800;
 }
 
-.violet-dot { background: var(--violet); color: var(--ink); }
-.red-dot { background: var(--coral); color: var(--ink); }
-.blue-dot { background: #5aa5ff; color: var(--ink); }
+.robinhood-dot { background: var(--chain-gradient); color: var(--ink); }
 
 .wallet-choice strong {
   font-size: 13px;
@@ -2035,7 +2103,7 @@ footer > small {
   width: 20px;
   height: 20px;
   place-items: center;
-  background: var(--solana-gradient);
+  background: var(--chain-gradient);
   color: var(--ink);
   font-size: 10px;
 }
@@ -2062,7 +2130,7 @@ footer > small {
   }
 
   .hero h1 {
-    font-size: clamp(86px, 16vw, 140px);
+    font-size: 108px;
   }
 
   .hero-market {
@@ -2116,8 +2184,8 @@ footer > small {
     display: none;
   }
 
-  .x-button {
-    width: 34px;
+  .pons-button {
+    min-width: 52px;
     height: 34px;
   }
 
@@ -2140,7 +2208,7 @@ footer > small {
   }
 
   .hero h1 {
-    font-size: clamp(72px, 25vw, 116px);
+    font-size: 82px;
   }
 
   .hero-copy > p {
@@ -2426,7 +2494,11 @@ footer > small {
     font-size: 64px;
   }
 
-  .portfolio-tease a {
+  .creator-roadmap {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-tease > button {
     right: 18px;
     bottom: 40px;
     left: 18px;

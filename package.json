@@ -7,21 +7,23 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "dev:sites": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build:sites": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start:sites": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build:sites && node --test tests/rendered-html.test.mjs",
+    "test:contracts": "forge test --root contracts",
     "test:vercel": "npm run build",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern services/fee-worker/dist",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern contracts/lib --ignore-pattern contracts/out --ignore-pattern contracts/cache",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
     "next": "16.2.12",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "viem": "2.56.1"
   },
   "devDependencies": {
     "@emnapi/core": "1.11.3",
