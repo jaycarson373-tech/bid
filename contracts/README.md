@@ -62,5 +62,6 @@ forge script contracts/script/CreateGenesisMarkets.s.sol:CreateGenesisMarkets \
 Production deployment requires an independent contract review, a finalized
 resolution policy, verified treasury/oracle ownership, and enough USDG to seed
 each genesis market. The deployed `BidFlywheelTreasury` address should be set as
-the Pons creator-fee recipient when $BID launches; Pons fixes that recipient at
-token creation.
+the pons v2 creator-fee recipient when $BID launches. The 2.5% creator-tax rate
+is fixed at token creation; pons v2 can redirect future creator earnings to a
+new recipient, so production operations must monitor that setting.
