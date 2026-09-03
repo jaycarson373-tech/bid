@@ -36,11 +36,11 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /Austin turns positive by year-end/);
   assert.match(html, /Connect wallet/);
   assert.match(html, /0% BID protocol fee at launch/);
-  assert.match(html, /Orders use USDG collateral/);
+  assert.match(html, /Orders use tUSDG/);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
   assert.match(html, /Liquidity/);
-  assert.match(html, /Pons creator tax/i);
+  assert.match(html, /flywheel simulation/i);
   assert.match(html, /2\.5%/);
   assert.match(html, /prediction-market rewards/);
   assert.match(html, /prediction-market LP/);
@@ -59,8 +59,8 @@ test("server-renders professional protocol documentation with honest deployment 
   assert.match(html, /Fixed-product pricing/);
   assert.match(html, /Liquidity/);
   assert.match(html, /Keeper required/);
-  assert.match(html, /The 2\.5% Pons v2 creator tax applies to \$BID token trading/);
-  assert.match(html, /not audited or deployed to mainnet yet/i);
+  assert.match(html, /Testnet uses tBID to exercise the same 2\.5% flywheel economics/);
+  assert.match(html, /targets public testnet and remains unaudited/i);
   assert.match(html, /Production requirements/);
 });
 

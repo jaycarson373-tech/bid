@@ -28,6 +28,46 @@ forge test --root contracts
 
 ## Deploy
 
+### Robinhood Chain Testnet
+
+`DeployBidTestnet` creates disposable tUSDG and tBID tokens, separate rewards
+and liquidity vaults, the flywheel treasury, the market factory, and three
+genesis pools seeded with 100,000 tUSDG each. The tUSDG faucet allows wallets
+to claim up to 50,000 test tokens once per hour. These assets have no value and
+must never be presented as mainnet tokens.
+
+From `contracts/`, set the public deployer address and broadcast with an
+encrypted Foundry keystore:
+
+```bash
+export RH_TESTNET_RPC_URL=https://rpc.testnet.chain.robinhood.com
+export BID_TESTNET_DEPLOYER=0x...
+
+forge script script/DeployBidTestnet.s.sol:DeployBidTestnet \
+  --rpc-url "$RH_TESTNET_RPC_URL" \
+  --keystore /path/to/deployer-keystore \
+  --password-file /path/to/password-file \
+  --broadcast
+```
+
+Copy the emitted `NEXT_PUBLIC_*` addresses into `lib/testnetDeployment.ts`,
+then run the signed smoke test. It executes a buy, LP deposit and withdrawal,
+resting limit creation and cancellation, and a 50/50 tBID treasury split.
+
+```bash
+export NEXT_PUBLIC_BID_CONTRACT_ADDRESS=0x...
+export NEXT_PUBLIC_BID_MARKET_MIA_TPA=0x...
+export NEXT_PUBLIC_BID_FLYWHEEL_TREASURY=0x...
+
+forge script script/SmokeTestBidTestnet.s.sol:SmokeTestBidTestnet \
+  --rpc-url "$RH_TESTNET_RPC_URL" \
+  --keystore /path/to/deployer-keystore \
+  --password-file /path/to/password-file \
+  --broadcast
+```
+
+### Robinhood Chain Mainnet
+
 Set the six public deployment addresses and a local deployer key, then use the
 official Robinhood Chain RPC. Never commit the private key.
 

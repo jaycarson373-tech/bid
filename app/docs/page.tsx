@@ -55,7 +55,7 @@ export default function DocsPage() {
           </nav>
           <div className={styles.sidebarMeta}>
             <span>Network</span>
-            <strong><i /> Robinhood Chain</strong>
+            <strong><i /> {siteConfig.networkName}</strong>
             <small>Chain ID {siteConfig.robinhoodChainId}</small>
           </div>
         </aside>
@@ -66,13 +66,16 @@ export default function DocsPage() {
             <span className={styles.eyebrow}>Protocol documentation</span>
             <h1>Housing markets,<br />priced onchain.</h1>
             <p>
-              BID is a USDG-collateralized prediction-market protocol for finite real-estate outcomes.
+              BID is a {siteConfig.collateralSymbol}-collateralized prediction-market protocol for finite real-estate outcomes.
               It runs on Robinhood Chain and uses a fixed-product pool so every market can quote a price
               before a natural counterparty arrives.
             </p>
             <div className={styles.callout}>
               <strong>Current status</strong>
-              <p>The contracts and interface are functional prototypes with automated tests. They are not audited or deployed to mainnet yet.</p>
+              <p>
+                The contracts and interface are functional prototypes with automated tests.
+                {siteConfig.isTestnet ? " This build targets public testnet and remains unaudited." : " They are not audited or deployed to mainnet yet."}
+              </p>
             </div>
           </section>
 
@@ -81,7 +84,7 @@ export default function DocsPage() {
             <h2>Market model</h2>
             <p>
               Each market has between two and eight mutually exclusive outcomes. Depositing one unit of
-              USDG creates one complete set: one unit of every outcome. After resolution, a complete set
+              {siteConfig.collateralSymbol} creates one complete set: one unit of every outcome. After resolution, a complete set
               is always worth one unit of collateral because the payout vector must sum to 1.
             </p>
             <div className={styles.featureGrid}>
@@ -109,16 +112,16 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <span className={styles.sectionNumber}>03</span>
             <h2>Liquidity</h2>
             <p>
-              LPs supply USDG and receive BID-LP shares proportional to the pool. When the pool is
+              LPs supply {siteConfig.collateralSymbol} and receive BID-LP shares proportional to the pool. When the pool is
               imbalanced, the deposit also returns excess outcome inventory so existing odds do not move.
               Deposits include a minimum-share check.
             </p>
             <div className={styles.flow}>
-              <span>USDG</span><b>→</b><span>Complete sets</span><b>→</b><span>Outcome pool</span><b>→</b><span>BID-LP</span>
+              <span>{siteConfig.collateralSymbol}</span><b>→</b><span>Complete sets</span><b>→</b><span>Outcome pool</span><b>→</b><span>BID-LP</span>
             </div>
             <p>
               The standard withdrawal path burns BID-LP, merges the balanced portion of withdrawn
-              inventory directly back into USDG, and leaves only the imbalance as redeemable outcome
+              inventory directly back into {siteConfig.collateralSymbol}, and leaves only the imbalance as redeemable outcome
               positions. A minimum-collateral check protects the transaction from pool movement.
             </p>
           </section>
@@ -129,9 +132,9 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <table>
               <thead><tr><th>Order</th><th>Execution</th><th>Custody</th></tr></thead>
               <tbody>
-                <tr><td>Market buy</td><td>Immediate against pool</td><td>USDG moves only on execution</td></tr>
+                <tr><td>Market buy</td><td>Immediate against pool</td><td>{siteConfig.collateralSymbol} moves only on execution</td></tr>
                 <tr><td>Market sell</td><td>Immediate against pool</td><td>Outcome balance burns on execution</td></tr>
-                <tr><td>Limit buy</td><td>Immediate or keeper-fillable</td><td>USDG escrowed; owner can cancel</td></tr>
+                <tr><td>Limit buy</td><td>Immediate or keeper-fillable</td><td>{siteConfig.collateralSymbol} escrowed; owner can cancel</td></tr>
                 <tr><td>Limit sell</td><td>Immediate or keeper-fillable</td><td>Maximum outcome input escrowed</td></tr>
               </tbody>
             </table>
@@ -155,8 +158,10 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <span className={styles.sectionNumber}>06</span>
             <h2>The BID flywheel</h2>
             <p>
-              The 2.5% Pons v2 creator tax applies to $BID token trading, not to genesis prediction-market
-              orders. Claimed creator-tax proceeds route through the flywheel treasury and split evenly.
+              {siteConfig.isTestnet
+                ? "Testnet uses tBID to exercise the same 2.5% flywheel economics without representing a live Pons token."
+                : "The 2.5% Pons v2 creator tax applies to $BID token trading, not to genesis prediction-market orders."}
+              {" "}Claimed creator-tax proceeds route through the flywheel treasury and split evenly.
             </p>
             <div className={styles.split}>
               <div><strong>1.25%</strong><span>Trading rewards</span></div>
@@ -188,9 +193,10 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
 
             <h3>Addresses</h3>
             <dl className={styles.addresses}>
-              <div><dt>USDG</dt><dd><code>{siteConfig.collateralAddress}</code></dd></div>
-              <div><dt>Pons v2 factory</dt><dd><code>{siteConfig.ponsFactory}</code></dd></div>
+              <div><dt>{siteConfig.collateralSymbol}</dt><dd><code>{siteConfig.collateralAddress || "Not deployed"}</code></dd></div>
+              <div><dt>{siteConfig.isTestnet ? "Pons v2 mainnet reference" : "Pons v2 factory"}</dt><dd><code>{siteConfig.ponsFactory}</code></dd></div>
               <div><dt>BID market factory</dt><dd><code>{siteConfig.marketFactoryAddress || "Not deployed"}</code></dd></div>
+              <div><dt>Flywheel treasury</dt><dd><code>{siteConfig.flywheelTreasuryAddress || "Not deployed"}</code></dd></div>
               <div><dt>Genesis markets</dt><dd><code>{marketsConfigured ? "Configured" : "Not deployed"}</code></dd></div>
             </dl>
           </section>
@@ -204,7 +210,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <li>Documented housing index, edge-case policy, and production resolution oracle.</li>
               <li>Multisig ownership for the factory, oracle operations, and flywheel treasury.</li>
               <li>Funded keeper, indexer, production RPC, alerting, and transaction monitoring.</li>
-              <li>Sufficient USDG to seed every genesis pool and test real execution depth.</li>
+              <li>Sufficient {siteConfig.collateralSymbol} to seed every genesis pool and test real execution depth.</li>
               <li>Legal review for market availability, disclosures, and jurisdiction controls.</li>
             </ol>
           </section>

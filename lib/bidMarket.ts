@@ -161,6 +161,13 @@ export const erc20TradeAbi = [
     inputs: [],
     outputs: [{ name: "", type: "uint8" }],
   },
+  {
+    type: "function",
+    name: "faucet",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "amount", type: "uint256" }],
+    outputs: [],
+  },
 ] as const;
 
 export function configuredAddress(value: string): Address | null {

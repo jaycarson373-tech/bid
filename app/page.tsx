@@ -215,6 +215,7 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState("");
   const [notice, setNotice] = useState("");
   const [transactionPending, setTransactionPending] = useState(false);
+  const [faucetPending, setFaucetPending] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [livePrices, setLivePrices] = useState<Record<string, number[]>>({});
   const [liveQuote, setLiveQuote] = useState<{
@@ -529,7 +530,7 @@ export default function Home() {
     }
 
     if (!amount || Number(amount) <= 0) {
-      setNotice("Enter a USDG amount first.");
+      setNotice(`Enter a ${siteConfig.collateralSymbol} amount first.`);
       return;
     }
 
@@ -668,6 +669,50 @@ export default function Home() {
     }
   };
 
+  const requestTestCollateral = async () => {
+    if (!walletConnected) {
+      setWalletOpen(true);
+      return;
+    }
+
+    const account = configuredAddress(walletAddress);
+    const collateralAddress = configuredAddress(siteConfig.collateralAddress);
+    const provider = window.ethereum;
+    if (!siteConfig.isTestnet || !account || !collateralAddress || !provider) {
+      setNotice("The test-collateral faucet will activate after the testnet deployment is connected.");
+      return;
+    }
+
+    setFaucetPending(true);
+    try {
+      const decimals = await robinhoodPublicClient.readContract({
+        address: collateralAddress,
+        abi: erc20TradeAbi,
+        functionName: "decimals",
+      });
+      const walletClient = createWalletClient({
+        account,
+        chain: robinhoodChain,
+        transport: custom(provider),
+      });
+      const hash = await walletClient.writeContract({
+        address: collateralAddress,
+        abi: erc20TradeAbi,
+        functionName: "faucet",
+        args: [parseUnits("10000", decimals)],
+      });
+      await robinhoodPublicClient.waitForTransactionReceipt({ hash });
+      setNotice(`10,000 ${siteConfig.collateralSymbol} minted. Transaction ${truncateAddress(hash)} confirmed.`);
+    } catch (error) {
+      const message = typeof error === "object" && error !== null && "shortMessage" in error
+        ? String((error as { shortMessage: unknown }).shortMessage)
+        : "The test-collateral faucet transaction was cancelled or reverted.";
+      setNotice(message);
+    } finally {
+      setFaucetPending(false);
+    }
+  };
+
   const copyContractAddress = async () => {
     if (!contractAddress) return;
 
@@ -697,7 +742,7 @@ export default function Home() {
               CA <span>{truncateAddress(contractAddress)}</span>
             </button>
           )}
-          <span className="network-pill"><i /> Robinhood Chain</span>
+          <span className="network-pill"><i /> {siteConfig.networkName}</span>
           <a className="pons-button" href={siteConfig.ponsUrl} target="_blank" rel="noreferrer">
             Pons ↗
           </a>
@@ -723,11 +768,13 @@ export default function Home() {
         <div className="hero-shade" aria-hidden="true" />
         <div className="hero-content">
           <div className="hero-copy">
-            <div className="eyebrow"><span>BID</span> RWA HOUSING MARKETS // ROBINHOOD CHAIN</div>
+            <div className="eyebrow"><span>BID</span> RWA HOUSING MARKETS // {siteConfig.networkName.toUpperCase()}</div>
             <h1 id="hero-title">BID: real estate prediction markets.</h1>
             <p>
-              USDG-backed outcome pools turn housing data into tradable odds.
-              $BID activity on Pons funds trader rewards and deeper liquidity.
+              {siteConfig.collateralSymbol}-backed outcome pools turn housing data into tradable odds.
+              {siteConfig.isTestnet
+                ? "Test $BID activity simulates the rewards and liquidity flywheel before mainnet."
+                : "$BID activity on Pons funds trader rewards and deeper liquidity."}
             </p>
           </div>
           <div className="hero-actions">
@@ -736,9 +783,9 @@ export default function Home() {
           </div>
         </div>
         <div className="hero-status" aria-label="Protocol highlights">
-          <span><i /> {marketContractConfigured ? "AMM connected" : "Mainnet prelaunch"}</span>
+          <span><i /> {marketContractConfigured ? "AMM connected" : `${siteConfig.isTestnet ? "Testnet" : "Mainnet"} prelaunch`}</span>
           <span>0% genesis market fee</span>
-          <span>2.5% Pons creator tax → rewards + LP</span>
+          <span>{siteConfig.isTestnet ? "2.5% flywheel simulation" : "2.5% Pons creator tax"} → rewards + LP</span>
         </div>
       </section>
 
@@ -753,8 +800,8 @@ export default function Home() {
         ) : (
           <div className="launch-strip">
             <span>0% BID TRADING FEE</span>
-            <strong>USDG-backed finite-outcome pools.</strong>
-            <em>2.5% Pons flywheel → rewards + deeper LP</em>
+            <strong>{siteConfig.collateralSymbol}-backed finite-outcome pools.</strong>
+            <em>2.5% {siteConfig.isTestnet ? "testnet" : "Pons"} flywheel → rewards + deeper LP</em>
           </div>
         )}
       </section>
@@ -843,6 +890,18 @@ export default function Home() {
               </div>
             </div>
 
+            {siteConfig.isTestnet && (
+              <button
+                className="testnet-faucet"
+                type="button"
+                onClick={requestTestCollateral}
+                disabled={faucetPending || !siteConfig.collateralAddress}
+              >
+                <span>{faucetPending ? "Minting test collateral" : `Get 10,000 ${siteConfig.collateralSymbol}`}</span>
+                <small>Test tokens only · one claim per hour</small>
+              </button>
+            )}
+
             <div className="rail-selector" role="group" aria-label="Order type">
               {(["market", "limit", "liquidity"] as const).map((type) => (
                 <button
@@ -863,8 +922,8 @@ export default function Home() {
 
             <p className="ticket-note ticket-note-top">
               {orderType === "liquidity"
-                ? "Supply USDG to deepen every outcome. Withdrawals merge balanced inventory back into USDG."
-                : "0% BID protocol fee at launch. Orders use USDG collateral; Robinhood Chain gas still applies."}
+                ? `Supply ${siteConfig.collateralSymbol} to deepen every outcome. Withdrawals merge balanced inventory back into ${siteConfig.collateralSymbol}.`
+                : `0% BID protocol fee at launch. Orders use ${siteConfig.collateralSymbol}; network gas still applies.`}
             </p>
             {orderType !== "liquidity" && (
               <div className={`outcome-picker ${selected.mode === "field" ? "field-picker" : ""}`}>
@@ -1049,21 +1108,23 @@ export default function Home() {
             <span className="section-kicker">THE BID FLYWHEEL</span>
             <h3>Volume feeds depth.<br />Depth feeds volume.</h3>
             <p>
-              $BID launches on Pons with a creator tax fixed at 2.5%. Creator-tax
-              proceeds are routed evenly into prediction-market rewards and protocol-owned
-              liquidity, tightening fills as the market grows.
+              {siteConfig.isTestnet
+                ? "tBID mirrors the planned 2.5% Pons creator-tax flywheel for testing. Simulated proceeds route evenly into prediction-market rewards and protocol-owned liquidity so every flow can be validated before mainnet."
+                : "$BID launches on Pons with a creator tax fixed at 2.5%. Creator-tax proceeds are routed evenly into prediction-market rewards and protocol-owned liquidity, tightening fills as the market grows."}
             </p>
             <a
               className="protocol-proof"
-              href={`${siteConfig.explorerUrl}/address/${siteConfig.ponsFactory}`}
+              href={siteConfig.isTestnet && siteConfig.marketFactoryAddress
+                ? `${siteConfig.explorerUrl}/address/${siteConfig.marketFactoryAddress}`
+                : siteConfig.isTestnet ? siteConfig.explorerUrl : `${siteConfig.explorerUrl}/address/${siteConfig.ponsFactory}`}
               target="_blank"
               rel="noreferrer"
             >
-              Pons v2 factory · Chain {siteConfig.robinhoodChainId} ↗
+              {siteConfig.isTestnet ? "BID testnet explorer" : "Pons v2 factory"} · Chain {siteConfig.robinhoodChainId} ↗
             </a>
           </div>
-          <div className="fee-grid" aria-label="Pons creator-tax allocation">
-            <article className="platform-fee"><strong>{creatorTaxPercent}%</strong><span>Pons creator tax · fixed at token launch</span></article>
+          <div className="fee-grid" aria-label={siteConfig.isTestnet ? "Testnet flywheel allocation" : "Pons creator-tax allocation"}>
+            <article className="platform-fee"><strong>{creatorTaxPercent}%</strong><span>{siteConfig.isTestnet ? "Simulated creator tax · testnet only" : "Pons creator tax · fixed at token launch"}</span></article>
             <article><strong>{rewardsPercent}%</strong><span>Trade value → prediction-market rewards</span></article>
             <article><strong>{liquidityPercent}%</strong><span>Trade value → prediction-market LP</span></article>
           </div>
@@ -1084,7 +1145,7 @@ export default function Home() {
 
       <footer>
         <a className="brand footer-brand" href="#top"><BrandMark /><span>BID</span></a>
-        <p>Real estate prediction markets on Robinhood Chain. $BID on Pons.</p>
+        <p>Real estate prediction markets on Robinhood Chain. {siteConfig.isTestnet ? "tBID test environment." : "$BID on Pons."}</p>
         <div>
           <a href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
@@ -1113,7 +1174,7 @@ export default function Home() {
             </div>
             <span className="modal-kicker">ROBINHOOD CHAIN WALLET</span>
             <h2 id="wallet-title">Connect your wallet</h2>
-            <p>BID supports injected EVM wallets and will switch or add Robinhood Chain after you approve the connection.</p>
+            <p>BID supports injected EVM wallets and will switch or add {siteConfig.networkName} after you approve the connection.</p>
             <button className="wallet-choice" type="button" onClick={connectWallet}>
               <span className="wallet-icon robinhood-dot">RH</span><strong>Browser wallet</strong><em>Connect</em>
             </button>

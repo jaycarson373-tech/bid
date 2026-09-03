@@ -1608,6 +1608,39 @@ a {
   text-align: left;
 }
 
+.testnet-faucet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(100% - 36px);
+  min-height: 48px;
+  margin: 14px 18px 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(233, 255, 0, 0.38);
+  background: rgba(233, 255, 0, 0.075);
+  color: var(--lime);
+  cursor: pointer;
+  font-family: var(--font-geist-mono);
+  text-align: left;
+}
+
+.testnet-faucet span {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.testnet-faucet small {
+  color: #939b8e;
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.testnet-faucet:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .how-section {
   padding: 110px 42px 0;
   background: var(--ink);
