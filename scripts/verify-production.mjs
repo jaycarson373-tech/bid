@@ -86,6 +86,8 @@ const treasuryAbi = parseAbi([
   "function reserveVault() view returns (address)",
   "function ponsFeeEscrow() view returns (address)",
   "function ponsFeeHook() view returns (address)",
+  "function ponsFactory() view returns (address)",
+  "function ponsCurve() view returns (address)",
   "function REWARDS_SHARE_BPS() view returns (uint256)",
   "function LIQUIDITY_SHARE_BPS() view returns (uint256)",
   "function RESERVE_SHARE_BPS() view returns (uint256)",
@@ -109,6 +111,7 @@ const marketAbi = parseAbi([
   "function poolBalances() view returns (uint256[])",
   "function spotPricesBps() view returns (uint256[])",
   "function quoteBuy(uint256,uint256) view returns (uint256,uint256)",
+  "function balanceOf(address) view returns (uint256)",
 ]);
 const ponsFactoryAbi = [{
   type: "function",
@@ -237,7 +240,7 @@ async function run() {
   assert(allMarkets.length === marketDefinitions.length, "factory contains exactly the configured genesis markets");
 
   for (const [marketAddress, expectedQuestion, expectedOutcomes] of marketDefinitions) {
-    const [marketFactory, collateral, oracle, feeBps, closesAt, resolved, question, count, balances, prices, registered] = await Promise.all([
+    const [marketFactory, collateral, oracle, feeBps, closesAt, resolved, question, count, balances, prices, registered, vaultLpBalance] = await Promise.all([
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "factory" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "collateral" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "oracle" }),
@@ -249,6 +252,7 @@ async function run() {
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "poolBalances" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "spotPricesBps" }),
       client.readContract({ address: addresses.factory, abi: factoryAbi, functionName: "isBidMarket", args: [marketAddress] }),
+      client.readContract({ address: marketAddress, abi: marketAbi, functionName: "balanceOf", args: [addresses.liquidityVault] }),
     ]);
     assert(sameAddress(marketFactory, addresses.factory), `${question}: factory is correct`);
     assert(sameAddress(collateral, addresses.collateral), `${question}: collateral is correct`);
@@ -261,6 +265,7 @@ async function run() {
     assert(balances.every((balance) => balance > 0n), `${question}: liquidity is funded`);
     assert(prices.reduce((total, price) => total + price, 0n) === 10_000n, `${question}: prices normalize to 100%`);
     assert(registered, `${question}: factory registration is valid`);
+    assert(vaultLpBalance > 0n, `${question}: genesis LP shares are owned by the liquidity vault`);
     const labels = await Promise.all(expectedOutcomes.map((_, index) => client.readContract({
       address: marketAddress,
       abi: marketAbi,
@@ -280,6 +285,8 @@ async function run() {
     reserveVault,
     ponsEscrow,
     ponsFeeHook,
+    treasuryPonsFactory,
+    treasuryPonsCurve,
     rewardsShare,
     liquidityShare,
     reserveShare,
@@ -290,6 +297,8 @@ async function run() {
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "reserveVault" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ponsFeeEscrow" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ponsFeeHook" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ponsFactory" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ponsCurve" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "REWARDS_SHARE_BPS" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "LIQUIDITY_SHARE_BPS" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "RESERVE_SHARE_BPS" }),
@@ -300,6 +309,8 @@ async function run() {
   assert(sameAddress(reserveVault, addresses.reserveVault), "reserve vault destination matches configuration");
   assert(sameAddress(ponsEscrow, addresses.ponsEscrow), "treasury is bound to the verified Pons escrow");
   assert(sameAddress(ponsFeeHook, addresses.ponsFeeHook), "treasury is bound to the verified Pons fee hook");
+  assert(sameAddress(treasuryPonsFactory, addresses.ponsFactory), "treasury is bound to the verified Pons factory");
+  assert(sameAddress(treasuryPonsCurve, addresses.ponsCurve), "treasury is bound to the BID Pons curve");
   assert(
     rewardsShare === 7_000n && liquidityShare === 2_000n && reserveShare === 1_000n,
     "treasury split is 70% rewards / 20% liquidity / 10% reserve",
@@ -353,9 +364,6 @@ async function run() {
     const balance = await client.getBalance({ address: account.address });
     const minimum = BigInt(env("KEEPER_MIN_BALANCE_WEI") || "10000000000000000");
     assert(balance >= minimum, `keeper has at least ${formatEther(minimum)} ETH for gas`);
-    if (env("PONS_CURVE_SWEEP_ENABLED") === "true") {
-      assert(sameAddress(launch.deployer, account.address), "keeper is authorized as the Pons launch deployer for curve sweeps");
-    }
   }
 
   const siteUrl = required("NEXT_PUBLIC_SITE_URL");

@@ -71,7 +71,18 @@ contract BidMarketFactory is Ownable {
         uint64 closesAt,
         uint256 initialLiquidity
     ) external onlyOwner returns (address market) {
-        market = _createMarket(msg.sender, question, outcomes, closesAt, initialLiquidity, 0, false);
+        market = _createMarket(msg.sender, msg.sender, question, outcomes, closesAt, initialLiquidity, 0, false);
+    }
+
+    function createProtocolGenesisMarket(
+        string calldata question,
+        string[] calldata outcomes,
+        uint64 closesAt,
+        uint256 initialLiquidity,
+        address liquidityRecipient
+    ) external onlyOwner returns (address market) {
+        if (liquidityRecipient == address(0)) revert InvalidAddress();
+        market = _createMarket(msg.sender, liquidityRecipient, question, outcomes, closesAt, initialLiquidity, 0, false);
     }
 
     function createCommunityMarket(
@@ -86,7 +97,9 @@ contract BidMarketFactory is Ownable {
             bidToken.safeTransferFrom(msg.sender, BURN_ADDRESS, bidBurnAmount);
         }
 
-        market = _createMarket(msg.sender, question, outcomes, closesAt, initialLiquidity, creatorRoyaltyBps, true);
+        market = _createMarket(
+            msg.sender, msg.sender, question, outcomes, closesAt, initialLiquidity, creatorRoyaltyBps, true
+        );
     }
 
     function setCommunityCreationConfig(
@@ -107,6 +120,7 @@ contract BidMarketFactory is Ownable {
 
     function _createMarket(
         address creator,
+        address liquidityRecipient,
         string calldata question,
         string[] calldata outcomes,
         uint64 closesAt,
@@ -124,7 +138,7 @@ contract BidMarketFactory is Ownable {
         _markets.push(marketAddress);
 
         collateral.safeTransferFrom(msg.sender, marketAddress, initialLiquidity);
-        market.seed(msg.sender, initialLiquidity);
+        market.seed(liquidityRecipient, initialLiquidity);
         emit MarketCreated(marketAddress, creator, communityCreated, initialLiquidity, creatorFeeBps);
     }
 }

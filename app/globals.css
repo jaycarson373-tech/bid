@@ -12,6 +12,10 @@
   --mint: #20e86f;
   --violet: #adff47;
   --gold: #ffd84d;
+  --yellow-one: #e9ff00;
+  --yellow-two: #fff45c;
+  --yellow-three: #ffd21c;
+  --yellow-four: #fff8a6;
   --chain-gradient: linear-gradient(110deg, #f6ff00 0%, #cfff00 100%);
 }
 
@@ -731,7 +735,9 @@ a {
 .market-section {
   padding: 110px 42px 120px;
   background:
+    linear-gradient(180deg, rgba(5, 6, 7, 0.44) 0, rgba(5, 6, 7, 0.83) 310px, #050607 770px),
     repeating-linear-gradient(0deg, transparent 0 84px, rgba(255, 255, 255, 0.018) 84px 85px),
+    url("/brand/bid-market-skyline.jpg") top center / 100% auto no-repeat,
     var(--paper);
   color: #f5f8f3;
 }
@@ -843,12 +849,13 @@ a {
   padding: 13px 18px 13px 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025)),
-    rgba(10, 12, 11, 0.86);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(233, 255, 0, 0.018)),
+    rgba(7, 8, 7, 0.91);
   color: #f5f8f3;
   text-align: left;
   cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
   transition: border 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
@@ -925,7 +932,8 @@ a {
 .binary-visual span {
   display: grid;
   place-items: center;
-  background: var(--mint);
+  background: var(--yellow-one);
+  color: #070807;
   font-family: var(--font-geist-mono);
   font-size: 13px;
   font-weight: 800;
@@ -935,7 +943,7 @@ a {
 }
 
 .binary-visual span:last-child {
-  background: var(--coral);
+  background: var(--yellow-three);
 }
 
 .field-visual {
@@ -956,7 +964,8 @@ a {
   justify-content: space-between;
   min-width: 0;
   padding: 7px;
-  background: var(--coral);
+  background: var(--yellow-one);
+  color: #070807;
 }
 
 .field-visual > span:nth-child(4) {
@@ -967,9 +976,9 @@ a {
   grid-column: 2 / 4;
 }
 
-.field-visual > span.mint { background: var(--mint); }
-.field-visual > span.violet { background: var(--violet); }
-.field-visual > span.gold { background: var(--gold); }
+.field-visual > span.mint { background: var(--yellow-two); }
+.field-visual > span.violet { background: var(--yellow-three); }
+.field-visual > span.gold { background: var(--yellow-four); }
 
 .field-visual strong,
 .field-visual small {
@@ -987,13 +996,13 @@ a {
   width: 112px;
   height: 112px;
   overflow: hidden;
-  background: var(--coral);
+  background: var(--yellow-one);
   color: var(--ink);
 }
 
-.city-stamp.mint { background: var(--mint); }
-.city-stamp.violet { background: var(--violet); }
-.city-stamp.gold { background: var(--gold); }
+.city-stamp.mint { background: var(--yellow-two); }
+.city-stamp.violet { background: var(--yellow-three); }
+.city-stamp.gold { background: var(--yellow-four); }
 
 .city-code {
   position: absolute;
@@ -1310,24 +1319,10 @@ a {
   font-size: 7px;
 }
 
-.outcome-picker button.mint.active {
-  border-color: rgba(20, 241, 149, 0.68);
-  background: rgba(20, 241, 149, 0.12);
-}
-
-.outcome-picker button.coral.active {
-  border-color: rgba(255, 95, 102, 0.68);
-  background: rgba(255, 95, 102, 0.1);
-}
-
-.outcome-picker button.violet.active {
-  border-color: rgba(223, 255, 0, 0.68);
-  background: rgba(223, 255, 0, 0.1);
-}
-
-.outcome-picker button.gold.active {
-  border-color: rgba(255, 216, 77, 0.68);
-  background: rgba(255, 216, 77, 0.1);
+.outcome-picker button:is(.mint, .coral, .violet, .gold).active {
+  border-color: rgba(233, 255, 0, 0.72);
+  background: rgba(233, 255, 0, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(233, 255, 0, 0.1), 0 0 22px rgba(233, 255, 0, 0.055);
 }
 
 .field-picker {
@@ -2892,6 +2887,14 @@ footer > small {
   .brand-mark-image {
     width: 30px;
     height: 30px;
+  }
+
+  .market-section {
+    background:
+      linear-gradient(180deg, rgba(5, 6, 7, 0.38) 0, rgba(5, 6, 7, 0.86) 280px, #050607 620px),
+      repeating-linear-gradient(0deg, transparent 0 84px, rgba(255, 255, 255, 0.018) 84px 85px),
+      url("/brand/bid-market-skyline.jpg") top center / auto 420px no-repeat,
+      var(--paper);
   }
 
   .hero {

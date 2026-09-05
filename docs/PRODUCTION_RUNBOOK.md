@@ -16,6 +16,11 @@ no mainnet write during verification.
    Record both addresses.
 5. Keep the website in `prelaunch` and the Railway keeper in read-only mode.
 
+The treasury address printed by `DeployBidTreasury` is the exact address entered
+as the Pons `creatorFeeRecipient`. It is a contract, not the deployer wallet. The
+treasury owner can change its downstream rewards and reserve destinations without
+changing the Pons recipient.
+
 ## 2. Token launch requirements
 
 Launch `$BID` through the verified Pons v2 factory with:
@@ -24,10 +29,36 @@ Launch `$BID` through the verified Pons v2 factory with:
 - creator fee recipient: the deployed `BidFlywheelTreasury`;
 - buyback: disabled, so the creator bucket is available to the BID flywheel;
 - quote asset: the verified asset recorded in `PONS_QUOTE_ASSET`;
-- deployer: the expected keeper address when automated pre-graduation curve
-  sweeps are enabled.
+- deployer: any approved launch wallet. The curve is bound to the treasury after
+  launch so automated creator sweeps do not require the launch wallet.
 
 Do not publish the CA until the factory record is confirmed onchain.
+
+After launch, the treasury owner must call `setPonsCurve(PONS_CURVE_ADDRESS)`.
+The Railway keeper then calls the curve through the treasury, so Pons sees the
+registered creator recipient as the sweep caller. Claim already-credited escrow
+balances before using `transferPonsCreatorFeeRecipient` to replace the treasury;
+Pons moves future fees only.
+
+## Genesis USDG funding
+
+`BID_INITIAL_LIQUIDITY` is the amount per market in six-decimal USDG base units.
+The three genesis markets require three times that amount in the deployer wallet.
+The production script pays from the deployer but mints all initial BID-LP shares
+directly to `BID_LIQUIDITY_VAULT`.
+
+| Per market | Total for three | Positioning |
+| --- | --- | --- |
+| 5,000 USDG (`5000000000`) | 15,000 USDG | Thin beta |
+| 10,000 USDG (`10000000000`) | 30,000 USDG | Lean public launch |
+| 25,000 USDG (`25000000000`) | 75,000 USDG | Recommended launch target |
+
+At 25,000 USDG per pool, a 500 USDG opening trade moves a binary market from
+50% to roughly 51% spot and a five-outcome market from 20% to roughly 21.6% spot.
+These are curve-depth estimates, not guaranteed fills. The configured recurring
+threshold `LP_MIN_DEPLOY_AMOUNT=100000000` batches at least 100 USDG per eligible
+market before the keeper spends gas; the keeper divides the vault balance evenly
+across open approved markets.
 
 ## 3. Bind and verify
 

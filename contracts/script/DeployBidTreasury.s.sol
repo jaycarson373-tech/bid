@@ -42,11 +42,12 @@ contract DeployBidTreasury is Script {
         vm.startBroadcast(deployer);
         liquidityVault = new BidLiquidityVault(collateral, liquidityOperator, deployer);
         treasury = new BidFlywheelTreasury(
-            rewardsVault, address(liquidityVault), reserveVault, feeEscrow, feeHook, treasuryOwner
+            rewardsVault, address(liquidityVault), reserveVault, address(ponsFactory), feeEscrow, feeHook, treasuryOwner
         );
         vm.stopBroadcast();
 
         console2.log("NEXT_PUBLIC_BID_FLYWHEEL_TREASURY=%s", address(treasury));
         console2.log("NEXT_PUBLIC_BID_LIQUIDITY_VAULT=%s", address(liquidityVault));
+        console2.log("Set the Pons creator fee recipient to treasury=%s", address(treasury));
     }
 }

@@ -47,7 +47,13 @@ contract DeployBidTestnet is Script {
         liquidityVault = new BidTestVault(deployer);
         reserveVault = new BidTestVault(deployer);
         flywheelTreasury = new BidFlywheelTreasury(
-            address(rewardsVault), address(liquidityVault), address(reserveVault), address(0), address(0), deployer
+            address(rewardsVault),
+            address(liquidityVault),
+            address(reserveVault),
+            address(0),
+            address(0),
+            address(0),
+            deployer
         );
         factory = new BidMarketFactory(collateral, bidToken, deployer, deployer);
 

@@ -46,20 +46,26 @@ contract CreateGenesisMarkets is Script {
 
         vm.startBroadcast(deployer);
         factory.collateral().approve(address(factory), liquidityPerMarket * 3);
-        miamiTampa = factory.createGenesisMarket(
+        miamiTampa = factory.createProtocolGenesisMarket(
             "Which city will post the larger home-price increase by year-end?",
             floridaOutcomes,
             closesAt,
-            liquidityPerMarket
+            liquidityPerMarket,
+            address(liquidityVault)
         );
-        cityField = factory.createGenesisMarket(
+        cityField = factory.createProtocolGenesisMarket(
             "Which U.S. city will have the highest home-price increase by EOY?",
             cityOutcomes,
             closesAt,
-            liquidityPerMarket
+            liquidityPerMarket,
+            address(liquidityVault)
         );
-        austin = factory.createGenesisMarket(
-            "Will Austin home prices finish 2026 positive year over year?", austinOutcomes, closesAt, liquidityPerMarket
+        austin = factory.createProtocolGenesisMarket(
+            "Will Austin home prices finish 2026 positive year over year?",
+            austinOutcomes,
+            closesAt,
+            liquidityPerMarket,
+            address(liquidityVault)
         );
         liquidityVault.setMarketApproval(miamiTampa, true);
         liquidityVault.setMarketApproval(cityField, true);

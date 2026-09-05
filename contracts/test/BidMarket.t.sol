@@ -62,6 +62,28 @@ contract MockPonsFeeHook {
     }
 }
 
+contract MockPonsCurve {
+    address public lastCaller;
+    uint256 public lastMinimumOut;
+
+    function sweepFees(uint256 minBuybackTokensOut) external {
+        lastCaller = msg.sender;
+        lastMinimumOut = minBuybackTokensOut;
+    }
+}
+
+contract MockPonsCreatorControls {
+    address public lastCaller;
+    address public lastToken;
+    address public lastRecipient;
+
+    function transferCreatorFeeRecipient(address token, address newRecipient) external {
+        lastCaller = msg.sender;
+        lastToken = token;
+        lastRecipient = newRecipient;
+    }
+}
+
 contract BidMarketTest is Test {
     MockToken internal usdg;
     MockToken internal bid;
@@ -99,6 +121,23 @@ contract BidMarketTest is Test {
         assertEq(prices[1], 5_000);
         assertEq(market.balanceOf(address(this)), 100_000e6);
         assertEq(market.decimals(), usdg.decimals());
+    }
+
+    function testProtocolGenesisLiquiditySharesCanBeMintedToVault() public {
+        address protocolVault = makeAddr("protocolVault");
+        string[] memory outcomes = new string[](2);
+        outcomes[0] = "Yes";
+        outcomes[1] = "No";
+
+        BidMarket protocolMarket = BidMarket(
+            factory.createProtocolGenesisMarket(
+                "Will protocol LP be vault-owned?", outcomes, closesAt, 25_000e6, protocolVault
+            )
+        );
+
+        assertEq(protocolMarket.balanceOf(protocolVault), 25_000e6);
+        assertEq(protocolMarket.balanceOf(address(this)), 0);
+        assertEq(protocolMarket.marketCreator(), address(this));
     }
 
     function testMarketBuyMovesPriceAndChargesZeroLaunchFee() public {
@@ -294,6 +333,8 @@ contract BidFlywheelTreasuryTest is Test {
     MockToken internal token;
     MockPonsFeeEscrow internal feeEscrow;
     MockPonsFeeHook internal feeHook;
+    MockPonsCurve internal curve;
+    MockPonsCreatorControls internal ponsFactory;
     BidFlywheelTreasury internal treasury;
     address internal rewardsVault = makeAddr("rewardsVault");
     address internal liquidityVault = makeAddr("liquidityVault");
@@ -303,9 +344,18 @@ contract BidFlywheelTreasuryTest is Test {
         token = new MockToken("Fee Token", "FEE", 18);
         feeEscrow = new MockPonsFeeEscrow();
         feeHook = new MockPonsFeeHook();
+        curve = new MockPonsCurve();
+        ponsFactory = new MockPonsCreatorControls();
         treasury = new BidFlywheelTreasury(
-            rewardsVault, liquidityVault, reserveVault, address(feeEscrow), address(feeHook), address(this)
+            rewardsVault,
+            liquidityVault,
+            reserveVault,
+            address(ponsFactory),
+            address(feeEscrow),
+            address(feeHook),
+            address(this)
         );
+        treasury.setPonsCurve(address(curve));
     }
 
     function testSplitsErc20ProceedsSeventyTwentyTen() public {
@@ -363,6 +413,24 @@ contract BidFlywheelTreasuryTest is Test {
         assertEq(feeHook.lastCaller(), address(treasury));
         assertEq(feeHook.lastPoolId(), poolId);
     }
+
+    function testPermissionlessPonsCurveSweepCallsCurveAsTreasury() public {
+        vm.prank(makeAddr("keeper"));
+        treasury.sweepPonsCurveFees(123);
+
+        assertEq(curve.lastCaller(), address(treasury));
+        assertEq(curve.lastMinimumOut(), 123);
+    }
+
+    function testOwnerCanMoveFuturePonsFeesToReplacementTreasury() public {
+        address tokenAddress = makeAddr("bidToken");
+        address replacement = makeAddr("replacementTreasury");
+        treasury.transferPonsCreatorFeeRecipient(tokenAddress, replacement);
+
+        assertEq(ponsFactory.lastCaller(), address(treasury));
+        assertEq(ponsFactory.lastToken(), tokenAddress);
+        assertEq(ponsFactory.lastRecipient(), replacement);
+    }
 }
 
 contract BidLiquidityVaultTest is Test {
@@ -396,7 +464,7 @@ contract BidLiquidityVaultTest is Test {
         usdg.mint(address(vault), 5_000e6);
         feeEscrow = new MockPonsFeeEscrow();
         treasury = new BidFlywheelTreasury(
-            rewardsVault, address(vault), reserveVault, address(feeEscrow), address(0), address(this)
+            rewardsVault, address(vault), reserveVault, address(0), address(feeEscrow), address(0), address(this)
         );
     }
 

@@ -70,9 +70,9 @@ claimed proceeds allocated 70/20/10:
 - `0.25%` of tax-generating trade value to the protocol reserve.
 
 Pons creator fees first accrue on the launch curve or hook, then move to its fee
-escrow after a sweep. `BidFlywheelTreasury` can claim its escrow balance and
-permissionlessly split it. Curve sweeps require the Pons launch deployer or
-protocol sweep operator; post-graduation conversions may require the protocol
+escrow after a sweep. `BidFlywheelTreasury` calls both sweep paths as the
+registered creator recipient, claims its escrow balance, and permissionlessly
+splits it. Post-graduation conversions can still require the Pons protocol
 operator. Do not enable live mode until all addresses and ownership have been
 verified.
 

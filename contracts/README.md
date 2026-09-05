@@ -94,9 +94,10 @@ forge script script/DeployBidTreasury.s.sol:DeployBidTreasury \
   --broadcast
 ```
 
-After the token launches and its CA passes the Pons-record checks, deploy the
-factory. `BID_COLLATERAL_TOKEN` must be the verified collateral address and
-`BID_TOKEN_ADDRESS` is the final CA.
+After the token launches, the treasury owner first calls
+`setPonsCurve(PONS_CURVE_ADDRESS)`. Once the CA and binding pass the Pons-record
+checks, deploy the factory. `BID_COLLATERAL_TOKEN` must be the verified collateral
+address and `BID_TOKEN_ADDRESS` is the final CA.
 
 ```bash
 export BID_COLLATERAL_TOKEN=0x...
@@ -121,7 +122,7 @@ export BID_MARKET_FACTORY=0x...
 export BID_LIQUIDITY_VAULT=0x...
 export BID_LIQUIDITY_VAULT_OWNER=0x...
 export BID_MARKET_CLOSE_TIME=1798761599
-export BID_INITIAL_LIQUIDITY=100000000000
+export BID_INITIAL_LIQUIDITY=25000000000
 forge script script/CreateGenesisMarkets.s.sol:CreateGenesisMarkets \
   --rpc-url "$RH_RPC_URL" \
   --keystore /path/to/deployer-keystore \
@@ -135,3 +136,5 @@ each genesis market. The deployed `BidFlywheelTreasury` address must be set as
 the Pons v2 creator-fee recipient when $BID launches. The 2.5% creator-tax rate
 is fixed at token creation; Pons v2 can redirect future creator earnings to a
 new recipient, so production operations must monitor that setting.
+The example seeds 25,000 USDG per market, requiring 75,000 USDG total. Initial
+BID-LP shares are minted to the liquidity vault rather than the deployer.

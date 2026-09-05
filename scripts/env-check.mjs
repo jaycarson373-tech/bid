@@ -138,6 +138,19 @@ if (value("LP_DEPLOYMENT_ENABLED") === "true") {
   for (const key of ["NEXT_PUBLIC_BID_COLLATERAL_ADDRESS", "NEXT_PUBLIC_BID_LIQUIDITY_VAULT"]) {
     if (!value(key)) errors.push(`${key} is required when LP deployment is enabled`);
   }
+  try {
+    if (BigInt(value("LP_MIN_DEPLOY_AMOUNT") || "0") <= 0n) {
+      errors.push("LP_MIN_DEPLOY_AMOUNT must be a positive collateral base-unit amount");
+    }
+  } catch {
+    errors.push("LP_MIN_DEPLOY_AMOUNT must be an integer in collateral base units");
+  }
+}
+
+if (value("PONS_CURVE_SWEEP_ENABLED") === "true") {
+  for (const key of ["PONS_CURVE_ADDRESS", "NEXT_PUBLIC_BID_FLYWHEEL_TREASURY"]) {
+    if (!value(key)) errors.push(`${key} is required when Pons curve sweeping is enabled`);
+  }
 }
 
 if (value("PONS_HOOK_SWEEP_ENABLED") === "true") {

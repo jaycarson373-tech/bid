@@ -6,6 +6,7 @@ import {console2} from "forge-std/console2.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {BidMarketFactory} from "../src/BidMarketFactory.sol";
+import {BidFlywheelTreasury} from "../src/BidFlywheelTreasury.sol";
 
 interface IPonsLaunchFactory {
     struct LaunchedToken {
@@ -63,6 +64,14 @@ contract DeployBidMarkets is Script {
         require(launch.pairToken == collateral, "Pons quote asset mismatch");
         require(launch.creatorTaxBps == 250, "Pons creator tax must be 2.5%");
         require(!launch.buybackEnabled, "Pons buyback must be disabled");
+        require(
+            address(BidFlywheelTreasury(payable(treasury)).ponsFactory()) == address(ponsFactory),
+            "treasury Pons factory mismatch"
+        );
+        require(
+            address(BidFlywheelTreasury(payable(treasury)).ponsCurve()) == expectedCurve,
+            "treasury Pons curve is not bound"
+        );
 
         vm.startBroadcast(deployer);
         factory = new BidMarketFactory(IERC20(collateral), IERC20(bidToken), oracle, deployer);

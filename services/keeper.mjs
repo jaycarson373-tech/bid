@@ -23,7 +23,7 @@ const treasury = env("NEXT_PUBLIC_BID_FLYWHEEL_TREASURY");
 const liquidityVault = env("NEXT_PUBLIC_BID_LIQUIDITY_VAULT");
 const collateral = env("NEXT_PUBLIC_BID_COLLATERAL_ADDRESS") || env("BID_COLLATERAL_TOKEN");
 const liquidityDeploymentEnabled = env("LP_DEPLOYMENT_ENABLED") === "true";
-const minimumLiquidityDeployment = BigInt(env("LP_MIN_DEPLOY_AMOUNT") || "1000000");
+const minimumLiquidityDeployment = BigInt(env("LP_MIN_DEPLOY_AMOUNT") || "100000000");
 const feeEscrow = env("PONS_FEE_ESCROW");
 const feeHook = env("PONS_FEE_HOOK");
 const ponsPoolId = env("PONS_POOL_ID");
@@ -40,6 +40,12 @@ if (enabled && (!env("KEEPER_PRIVATE_KEY") || marketAddresses.length === 0)) {
 }
 if (liquidityDeploymentEnabled && (!enabled || !liquidityVault || !collateral)) {
   throw new Error("LP deployment requires execution, liquidity vault, and collateral addresses");
+}
+if (liquidityDeploymentEnabled && minimumLiquidityDeployment <= 0n) {
+  throw new Error("LP_MIN_DEPLOY_AMOUNT must be greater than zero");
+}
+if (env("PONS_CURVE_SWEEP_ENABLED") === "true" && (!enabled || !treasury || !ponsCurve)) {
+  throw new Error("Pons curve sweep requires execution, treasury, and curve configuration");
 }
 if (env("PONS_HOOK_SWEEP_ENABLED") === "true") {
   if (!enabled || !treasury || !feeHook || !launchToken || quoteAssets.length === 0) {
@@ -68,6 +74,7 @@ const treasuryAbi = parseAbi([
   "function claimPonsToken(address token) returns (uint256)",
   "function distributeNative()",
   "function distributeToken(address token)",
+  "function sweepPonsCurveFees(uint256 minBuybackTokensOut)",
   "function sweepPonsPoolFees(bytes32 poolId,uint256 minConversionQuoteOut,uint256 minBuybackTokensOut)",
 ]);
 const curveAbi = parseAbi([
@@ -78,6 +85,9 @@ const curveAbi = parseAbi([
 ]);
 const tokenAbi = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 const liquidityVaultAbi = parseAbi([
+  "function operator() view returns (address)",
+  "function collateral() view returns (address)",
+  "function approvedMarkets(address market) view returns (bool)",
   "function deployLiquidity(address market,uint256 collateralAmount,uint256 minSharesMinted) returns (uint256 sharesMinted)",
 ]);
 const feeHookAbi = parseAbi([
@@ -146,9 +156,9 @@ async function sweepCurveFees() {
   if (graduated || feeBalance + taxBalance === 0n) return;
   const { request } = await publicClient.simulateContract({
     account,
-    address: ponsCurve,
-    abi: curveAbi,
-    functionName: "sweepFees",
+    address: treasury,
+    abi: treasuryAbi,
+    functionName: "sweepPonsCurveFees",
     args: [0n],
   });
   await submit(request, "sweep_pons_curve_fees");
@@ -287,6 +297,21 @@ if (account) {
   const minimumBalance = BigInt(env("KEEPER_MIN_BALANCE_WEI") || "10000000000000000");
   const balance = await publicClient.getBalance({ address: account.address });
   if (balance < minimumBalance) throw new Error("keeper signer has insufficient gas balance");
+}
+if (liquidityDeploymentEnabled) {
+  const [operator, vaultCollateral, approvals] = await Promise.all([
+    publicClient.readContract({ address: liquidityVault, abi: liquidityVaultAbi, functionName: "operator" }),
+    publicClient.readContract({ address: liquidityVault, abi: liquidityVaultAbi, functionName: "collateral" }),
+    Promise.all(marketAddresses.map((market) => publicClient.readContract({
+      address: liquidityVault,
+      abi: liquidityVaultAbi,
+      functionName: "approvedMarkets",
+      args: [market],
+    }))),
+  ]);
+  if (!isAddressEqual(operator, account.address)) throw new Error("keeper is not the liquidity vault operator");
+  if (!isAddressEqual(vaultCollateral, collateral)) throw new Error("liquidity vault collateral mismatch");
+  if (approvals.some((approved) => !approved)) throw new Error("one or more keeper markets are not approved by the liquidity vault");
 }
 status.chainId = actualChainId;
 status.ready = true;

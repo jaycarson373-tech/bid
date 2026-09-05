@@ -128,6 +128,19 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               inventory directly back into {siteConfig.collateralSymbol}, and leaves only the imbalance as redeemable outcome
               positions. A minimum-collateral check protects the transaction from pool movement.
             </p>
+            <h3>Genesis funding</h3>
+            <table>
+              <thead><tr><th>Depth per market</th><th>Three-market total</th><th>Use</th></tr></thead>
+              <tbody>
+                <tr><td>5,000 USDG</td><td>15,000 USDG</td><td>Thin beta; $500 orders materially move five-way odds</td></tr>
+                <tr><td>10,000 USDG</td><td>30,000 USDG</td><td>Lean public launch</td></tr>
+                <tr><td>25,000 USDG</td><td>75,000 USDG</td><td>Recommended launch target</td></tr>
+              </tbody>
+            </table>
+            <p className={styles.note}>
+              USDG uses six decimals. For 25,000 USDG per pool, set <code>BID_INITIAL_LIQUIDITY=25000000000</code>.
+              The deployment wallet supplies 75,000 USDG, while every genesis BID-LP share is minted directly to the protocol liquidity vault.
+            </p>
           </section>
 
           <section id="orders">
@@ -209,6 +222,21 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><dt>Reserve vault</dt><dd><code>{siteConfig.reserveVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Genesis markets</dt><dd><code>{marketsConfigured ? "Configured" : "AWAITING PUBLICATION"}</code></dd></div>
             </dl>
+
+            <h3>Production operator map</h3>
+            <table>
+              <thead><tr><th>Role</th><th>Configuration</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td>Pons creator recipient</td><td><code>BID_FLYWHEEL_TREASURY</code></td><td>Claims Pons fees and enforces 70/20/10</td></tr>
+                <tr><td>LP operator</td><td><code>BID_LIQUIDITY_OPERATOR</code></td><td>Railway keeper that deploys the 20% allocation</td></tr>
+                <tr><td>LP owner</td><td><code>BID_LIQUIDITY_VAULT_OWNER</code></td><td>Multisig that approves markets and controls withdrawals</td></tr>
+                <tr><td>Deployment payer</td><td><code>BID_DEPLOYER</code></td><td>Supplies the initial USDG and pays deployment gas</td></tr>
+              </tbody>
+            </table>
+            <p className={styles.note}>
+              The Pons recipient is the treasury contract, not a personal wallet. Updating rewards or reserve wallets uses the treasury owner&apos;s
+              <code> setDestinations</code> call; replacing the treasury uses <code>transferPonsCreatorFeeRecipient</code> after existing escrow balances are claimed.
+            </p>
           </section>
 
           <section id="risks">

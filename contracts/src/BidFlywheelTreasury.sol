@@ -15,6 +15,14 @@ interface IPonsFeeHook {
     function sweepPoolFees(bytes32 poolId, uint256 minConversionQuoteOut, uint256 minBuybackTokensOut) external;
 }
 
+interface IPonsCurve {
+    function sweepFees(uint256 minBuybackTokensOut) external;
+}
+
+interface IPonsCreatorControls {
+    function transferCreatorFeeRecipient(address token, address newRecipient) external;
+}
+
 contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -26,6 +34,8 @@ contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
     error InvalidDestination();
     error InvalidFeeEscrow();
     error InvalidFeeHook();
+    error InvalidPonsFactory();
+    error InvalidPonsCurve();
     error NothingToDistribute();
     error NativeTransferFailed();
 
@@ -34,6 +44,9 @@ contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
     );
     event PonsFeeEscrowUpdated(address indexed feeEscrow);
     event PonsFeeHookUpdated(address indexed feeHook);
+    event PonsCurveUpdated(address indexed curve);
+    event PonsCreatorFeeRecipientTransferred(address indexed token, address indexed newRecipient);
+    event PonsCurveFeesSwept(address indexed curve);
     event PonsPoolFeesSwept(bytes32 indexed poolId);
     event PonsFeesClaimed(address indexed token, uint256 amount);
     event NativeDistributed(uint256 rewardsAmount, uint256 liquidityAmount, uint256 reserveAmount);
@@ -46,16 +59,21 @@ contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
     address public reserveVault;
     IPonsFeeEscrow public ponsFeeEscrow;
     IPonsFeeHook public ponsFeeHook;
+    IPonsCreatorControls public immutable ponsFactory;
+    IPonsCurve public ponsCurve;
 
     constructor(
         address rewardsVault_,
         address liquidityVault_,
         address reserveVault_,
+        address ponsFactory_,
         address ponsFeeEscrow_,
         address ponsFeeHook_,
         address initialOwner
     ) Ownable(initialOwner) {
         _setDestinations(rewardsVault_, liquidityVault_, reserveVault_);
+        if (ponsFactory_ != address(0) && ponsFactory_.code.length == 0) revert InvalidPonsFactory();
+        ponsFactory = IPonsCreatorControls(ponsFactory_);
         if (ponsFeeEscrow_ != address(0)) _setPonsFeeEscrow(ponsFeeEscrow_);
         if (ponsFeeHook_ != address(0)) _setPonsFeeHook(ponsFeeHook_);
     }
@@ -72,6 +90,28 @@ contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
 
     function setPonsFeeHook(address feeHook_) external onlyOwner {
         _setPonsFeeHook(feeHook_);
+    }
+
+    function setPonsCurve(address curve_) external onlyOwner {
+        if (curve_ == address(0) || curve_.code.length == 0) revert InvalidPonsCurve();
+        ponsCurve = IPonsCurve(curve_);
+        emit PonsCurveUpdated(curve_);
+    }
+
+    function transferPonsCreatorFeeRecipient(address token, address newRecipient) external onlyOwner nonReentrant {
+        IPonsCreatorControls factory = ponsFactory;
+        if (address(factory) == address(0) || token == address(0) || newRecipient == address(0)) {
+            revert InvalidPonsFactory();
+        }
+        factory.transferCreatorFeeRecipient(token, newRecipient);
+        emit PonsCreatorFeeRecipientTransferred(token, newRecipient);
+    }
+
+    function sweepPonsCurveFees(uint256 minBuybackTokensOut) external nonReentrant {
+        IPonsCurve curve = ponsCurve;
+        if (address(curve) == address(0)) revert InvalidPonsCurve();
+        curve.sweepFees(minBuybackTokensOut);
+        emit PonsCurveFeesSwept(address(curve));
     }
 
     function sweepPonsPoolFees(bytes32 poolId, uint256 minConversionQuoteOut, uint256 minBuybackTokensOut)
