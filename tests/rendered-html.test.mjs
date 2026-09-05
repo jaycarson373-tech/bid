@@ -64,7 +64,20 @@ test("server-renders professional protocol documentation with honest deployment 
   assert.match(html, /production launch targets a 2\.5% Pons v2 creator tax/i);
   assert.match(html, /final token CA and Pons launch record are awaiting verification/i);
   assert.match(html, /Production requirements/);
+  assert.match(html, /Funded Merkle reward epochs/);
   assert.match(html, /AWAITING PUBLICATION/);
+});
+
+test("server-renders the rewards claim surface in an honest prelaunch state", async () => {
+  const response = await render("/rewards");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /BID Rewards/);
+  assert.match(html, /Claim rewards/);
+  assert.match(html, /Rewards begin after launch/);
+  assert.match(html, /AWAITING PUBLICATION/);
+  assert.match(html, /Each wallet can claim once per epoch/);
 });
 
 test("keeps the finished product free of starter-preview code", async () => {

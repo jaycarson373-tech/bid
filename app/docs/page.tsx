@@ -41,6 +41,7 @@ export default function DocsPage() {
           <span>BID</span><small>Docs</small>
         </Link>
         <nav aria-label="Documentation utilities">
+          <Link href="/rewards" prefetch={false}>Rewards</Link>
           <a href={siteConfig.ponsUrl} target="_blank" rel="noreferrer">Pons docs ↗</a>
           <a href={siteConfig.explorerUrl} target="_blank" rel="noreferrer">Explorer ↗</a>
           <Link className={styles.appLink} href="/#markets" prefetch={false}>Open markets</Link>
@@ -210,6 +211,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><Status>TESTED</Status><span>Escrowed limits, cancellation, resolution and redemption</span></div>
               <div><Status>TESTED</Status><span>Token gate, burn, creator royalties and 70/20/10 treasury split</span></div>
               <div><Status>TESTED</Status><span>Operator-managed deployment into protocol-owned market LP</span></div>
+              <div><Status>TESTED</Status><span>Funded Merkle reward epochs with one-time wallet claims</span></div>
               <div><Status tone="pending">PENDING</Status><span>Independent audit and mainnet deployment</span></div>
               <div><Status tone="pending">PENDING</Status><span>Keeper deployment, oracle policy, indexer and monitoring</span></div>
             </div>
@@ -220,6 +222,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><dt>{siteConfig.isTestnet ? "Pons v2 mainnet reference" : "Pons v2 factory"}</dt><dd><code>{siteConfig.ponsFactory || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>BID market factory</dt><dd><code>{siteConfig.marketFactoryAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Flywheel treasury</dt><dd><code>{siteConfig.flywheelTreasuryAddress || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Rewards distributor</dt><dd><code>{siteConfig.rewardsVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Liquidity vault</dt><dd><code>{siteConfig.liquidityVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Reserve vault</dt><dd><code>{siteConfig.reserveVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Genesis markets</dt><dd><code>{marketsConfigured ? "Configured" : "AWAITING PUBLICATION"}</code></dd></div>
@@ -230,6 +233,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <thead><tr><th>Role</th><th>Configuration</th><th>Purpose</th></tr></thead>
               <tbody>
                 <tr><td>Pons creator recipient</td><td><code>BID_FLYWHEEL_TREASURY</code></td><td>Claims Pons fees and enforces 70/20/10</td></tr>
+                <tr><td>Rewards owner</td><td><code>BID_REWARDS_OWNER</code></td><td>Safe that publishes reviewed, funded reward epochs</td></tr>
                 <tr><td>LP operator</td><td><code>BID_LIQUIDITY_OPERATOR</code></td><td>Railway keeper that deploys the 20% allocation</td></tr>
                 <tr><td>LP owner</td><td><code>BID_LIQUIDITY_VAULT_OWNER</code></td><td>Multisig that approves markets and controls withdrawals</td></tr>
                 <tr><td>Deployment payer</td><td><code>BID_DEPLOYER</code></td><td>Supplies the initial USDG and pays deployment gas</td></tr>
@@ -269,9 +273,9 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <span className={styles.sectionNumber}>10</span>
             <h2>Production operator flow</h2>
             <ol>
-              <li>Deploy the treasury and liquidity vault with multisig owners and the Railway keeper&apos;s public operator address.</li>
-              <li>Launch $BID on Pons with a 250 bps creator tax, buyback disabled, USDG pair asset, and the treasury contract as creator recipient.</li>
-              <li>Bind the published token and curve, then run the read-only production verifier before enabling any worker transaction.</li>
+              <li>Deploy the rewards distributor, treasury and liquidity vault with multisig owners and the Railway keeper&apos;s public operator address.</li>
+              <li>Run <code>LaunchBidOnPons.s.sol</code> from an encrypted keystore with a 250 bps creator tax, buyback disabled, USDG pair asset, and the treasury contract as creator recipient.</li>
+              <li>Run <code>BindBidPonsCurve.s.sol</code> from the deployer; it binds the curve and hands treasury ownership to the final multisig before verification.</li>
               <li>Deploy the market factory and three genesis markets, supplying 10,000 to 25,000 USDG per market from the deployment wallet.</li>
               <li>Put the public addresses in Vercel and Railway; put the keeper signer only in Railway&apos;s secret manager.</li>
               <li>Enable one keeper replica. It fills executable limits, claims Pons fees, applies 70/20/10, and deploys eligible LP funds into approved open markets.</li>
@@ -286,8 +290,8 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <div className={`${styles.callout} ${styles.warning}`}>
               <strong>Rewards status</strong>
               <p>
-                Treasury claiming and the exact 70/20/10 split are implemented and tested. The 70% destination can safely custody rewards now,
-                but trader scoring, anti-wash rules, epochs and individual payout execution remain a separate production blocker.
+                Treasury claiming, the exact 70/20/10 split, immutable funded reward epochs and duplicate-safe wallet claims are implemented and tested.
+                Trader scoring and anti-wash eligibility remain an operating-policy blocker before the first real allocation is published.
               </p>
             </div>
           </section>
@@ -301,7 +305,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <li>Documented housing index, edge-case policy, and production resolution oracle.</li>
               <li>Multisig ownership for the factory, oracle operations, and flywheel treasury.</li>
               <li>Funded single-replica keeper, indexer, production RPC, alerting, and transaction monitoring.</li>
-              <li>Implemented reward-scoring and payout policy for the 70% rewards allocation.</li>
+              <li>Approved reward-scoring and anti-wash policy for the tested 70% Merkle claim system.</li>
               <li>Sufficient {siteConfig.collateralSymbol} to seed every genesis pool and test real execution depth.</li>
               <li>Legal review for market availability, disclosures, and jurisdiction controls.</li>
             </ol>

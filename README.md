@@ -9,6 +9,7 @@ connect a $BID token launched through Pons v2 with:
 - USDG-backed fixed-product liquidity pools
 - market buys in the interface and onchain market buys/sells plus escrowed limit orders
 - slippage-protected LP deposits and USDG-first liquidity withdrawals
+- funded Merkle reward epochs with duplicate-safe wallet claims
 - a future hold-and-burn gate for community market creators
 
 With deployed market addresses configured, the app reads live AMM prices,
@@ -17,7 +18,8 @@ Without those addresses it stays in an explicit prelaunch state and cannot
 build an order.
 
 Protocol mechanics, deployment status, and production requirements are
-documented at `/docs` in the running application.
+documented at `/docs` in the running application. `/rewards` verifies published
+reward manifests against the onchain epoch before preparing a wallet claim.
 
 ## Run locally
 
@@ -82,9 +84,10 @@ verified.
 The repository includes a single-replica Railway keeper for limit-order fills,
 pre-graduation curve sweeps, post-graduation hook sweeps, escrow claims, treasury distribution, and
 deployment of the 20% collateral allocation into approved protocol-owned LP.
-It does not yet implement reward scoring/payouts, automatic conversion into the
-market collateral, an indexer/history database, or the production housing oracle
-policy. See `docs/PRODUCTION_RUNBOOK.md`.
+It does not yet implement automated reward scoring and anti-wash eligibility,
+automatic conversion into the market collateral, an indexer/history database,
+or the production housing oracle policy. The funded reward epoch and wallet
+claim path is implemented. See `docs/PRODUCTION_RUNBOOK.md`.
 
 ## Contracts
 

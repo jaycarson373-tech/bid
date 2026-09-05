@@ -3,6 +3,40 @@
 This is the canonical launch path. It is deliberately fail-closed and performs
 no mainnet write during verification.
 
+## Mainnet input worksheet
+
+These public values are required before the first treasury deployment:
+
+| Value | Recommended owner or source |
+| --- | --- |
+| `BID_DEPLOYER` | Dedicated deployment EOA backed by an encrypted local keystore |
+| `BID_TREASURY_OWNER` | Final Safe or multisig |
+| `BID_REWARDS_OWNER` | Safe or multisig that publishes reviewed reward roots |
+| `BID_FACTORY_OWNER` | Final Safe or multisig |
+| `BID_LIQUIDITY_VAULT_OWNER` | Final Safe or multisig |
+| `BID_RESERVE_VAULT` | Reserve Safe or multisig |
+| `BID_LIQUIDITY_OPERATOR` | Public address derived from the Railway keeper signer |
+| `BID_RESOLUTION_ORACLE` | Dedicated production oracle address |
+| `BID_MARKET_CLOSE_TIME` | Approved future Unix timestamp |
+| `BID_INITIAL_LIQUIDITY` | USDG base units per market |
+
+The final BID CA and Pons curve are outputs of `LaunchBidOnPons`, not inputs to
+the first deployment. `BID_REWARDS_VAULT` is the distributor address printed by
+`DeployBidTreasury`; `PONS_POOL_ID` is needed only after graduation.
+
+Secret placement is intentionally small:
+
+- Railway: `RH_RPC_URL` and `KEEPER_PRIVATE_KEY`;
+- local deployment machine only: encrypted Foundry keystore and password file;
+- Vercel or Sites: no secrets;
+- Supabase: no variables because it is not used by this version.
+
+There is no separate "Pons private key" in Railway. The one-time Pons launch is
+signed by the local encrypted `BID_DEPLOYER` keystore. Railway uses a different,
+limited keeper key; its public address must be both `BID_LIQUIDITY_OPERATOR` and
+`KEEPER_EXPECTED_ADDRESS`. The treasury contract, not either wallet, is the Pons
+creator-fee recipient.
+
 ## 1. Before the token launch
 
 1. Complete an independent audit of `contracts/src` and remediate findings.
@@ -11,15 +45,21 @@ no mainnet write during verification.
 3. Reconfirm Pons v2 access and that USDG remains an approved pair asset. The
    verifier requires the Pons quote asset to equal BID market collateral so no
    unreviewed swap executor sits in the money path.
-4. Deploy `BidFlywheelTreasury` and `BidLiquidityVault` with the verified Pons
-   escrow, rewards and reserve destinations, keeper operator, and multisig owners.
-   Record both addresses.
+4. Deploy `BidRewardsDistributor`, `BidFlywheelTreasury` and `BidLiquidityVault`
+   with the verified Pons escrow, reserve destination, keeper operator, and final
+   multisig addresses. The deployer temporarily owns the treasury and liquidity
+   vault until the scripted curve binding and genesis setup hand them to their
+   final owners. Record all three addresses.
 5. Keep the website in `prelaunch` and the Railway keeper in read-only mode.
 
 The treasury address printed by `DeployBidTreasury` is the exact address entered
 as the Pons `creatorFeeRecipient`. It is a contract, not the deployer wallet. The
 treasury owner can change its downstream rewards and reserve destinations without
 changing the Pons recipient.
+
+Before any write, `npm run costs:production` also verifies the configured Pons
+factory, USDG approval, escrow, hook, tax cap, and current launch economics. When
+`BID_DEPLOYER` is present, it fails if Pons currently rejects that launcher.
 
 ## 2. Token launch requirements
 
@@ -34,11 +74,19 @@ Launch `$BID` through the verified Pons v2 factory with:
 
 Do not publish the CA until the factory record is confirmed onchain.
 
-After launch, the treasury owner must call `setPonsCurve(PONS_CURVE_ADDRESS)`.
-The Railway keeper then calls the curve through the treasury, so Pons sees the
-registered creator recipient as the sweep caller. Claim already-credited escrow
-balances before using `transferPonsCreatorFeeRecipient` to replace the treasury;
-Pons moves future fees only.
+Use `LaunchBidOnPons.s.sol` with an encrypted Foundry keystore. It reads the
+metadata and salt from the local launch variables, pins `previewLaunchEconomics`,
+and enforces the recipient, tax, pair token and buyback settings before broadcast.
+Use `BindBidPonsCurve.s.sol` from the deployer keystore immediately after; it
+binds the curve and transfers treasury ownership to `BID_TREASURY_OWNER`.
+Run every Foundry script once without `--broadcast` first and review the complete
+simulation before signing the mainnet transaction.
+
+After `BindBidPonsCurve` succeeds, the Railway keeper calls the curve through the
+treasury, so Pons sees the registered creator recipient as the sweep caller.
+Claim already-credited escrow balances before using
+`transferPonsCreatorFeeRecipient` to replace the treasury; Pons moves future
+fees only.
 
 ## Genesis USDG funding
 
@@ -118,6 +166,7 @@ NEXT_PUBLIC_BID_COLLATERAL_ADDRESS
 NEXT_PUBLIC_BID_MARKET_FACTORY
 NEXT_PUBLIC_BID_FLYWHEEL_TREASURY
 NEXT_PUBLIC_BID_REWARDS_VAULT
+NEXT_PUBLIC_BID_REWARDS_MANIFEST_URL
 NEXT_PUBLIC_BID_LIQUIDITY_VAULT
 NEXT_PUBLIC_BID_RESERVE_VAULT
 NEXT_PUBLIC_BID_MARKET_MIA_TPA
@@ -177,9 +226,44 @@ LP_MIN_DEPLOY_AMOUNT
 Add `RH_RPC_URL` and `KEEPER_PRIVATE_KEY` as Railway secrets. The raw key must
 never be placed in Vercel, a `NEXT_PUBLIC_*` variable, Git, logs, or shell history.
 
-## 6. Required systems not implemented
+## 6. Supabase
 
-- reward scoring, epoch snapshots, payout calculation, and reward receipts;
+Supabase is not used by the current application or keeper, so it needs no BID
+environment variables and must not receive a signer. The repository does not yet
+contain the production event indexer, reward ledger, history database, or payout
+records. Choosing Supabase later requires a schema, RLS, unique transaction and
+epoch constraints, and server-only service-role writes before any credentials are
+added.
+
+## 7. Reward airdrops
+
+The rewards distributor is deployed as `NEXT_PUBLIC_BID_REWARDS_VAULT`, so every
+70% treasury distribution funds claimable inventory. An epoch is a one-time
+Merkle root over `(epochId, asset, account, amount)` allocations.
+
+1. Produce an approved allocation JSON from the finalized reward policy.
+2. Run `npm run rewards:build -- input.json output.json`.
+3. Reconcile `totalAllocation` against the distributor's uncommitted balance.
+4. Have `BID_REWARDS_OWNER` publish the epoch through its Safe.
+5. Confirm the transaction, publish the unchanged proof JSON, and set its HTTPS
+   URL as `NEXT_PUBLIC_BID_REWARDS_MANIFEST_URL` in Vercel or Sites.
+
+`publishEpoch` cannot replace an existing epoch or overcommit funds. `claim`
+marks the account before transfer and always pays the account encoded in the
+proof, making duplicate calls and relayer redirection fail. The owner can recover
+only balances not committed to a published epoch.
+
+The `/rewards` interface verifies the manifest asset, root and total allocation
+against the contract before enabling a wallet claim. Leave the manifest URL empty
+until the first epoch is published; the page then renders an honest awaiting state.
+
+Automated trading-volume scoring is intentionally not invented by the contract.
+The anti-wash rules, eligibility window, exclusions and score calculation must be
+approved before producing the first real allocation file.
+
+## 8. Required systems not implemented
+
+- automated reward scoring, anti-wash eligibility and epoch allocation approval;
 - swap/conversion when Pons fees are not paid in market collateral;
 - indexer, history/leaderboard persistence, and operational alerting;
 - production oracle methodology, signer process, dispute policy, and monitoring.

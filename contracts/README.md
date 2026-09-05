@@ -12,6 +12,8 @@ This package contains the Robinhood Chain prediction-market MVP:
 - `BidFlywheelTreasury`: claims its configured Pons escrow balance and splits
   native or ERC-20 balances 70/20/10 between rewards, protocol-owned liquidity,
   and the protocol reserve.
+- `BidRewardsDistributor`: holds the 70% allocation in funded immutable Merkle
+  epochs, prevents duplicate claims, and pays each proof to its entitled wallet.
 - `BidLiquidityVault`: holds the liquidity allocation and lets a dedicated
   operator add it only to owner-approved BID markets while the owner retains
   removal and recovery control.
@@ -81,12 +83,13 @@ export RH_RPC_URL=https://rpc.mainnet.chain.robinhood.com
 export BID_EXPECTED_CHAIN_ID=4663
 export BID_DEPLOYER=0x...
 export BID_TREASURY_OWNER=0x...
+export BID_REWARDS_OWNER=0x...
 export BID_COLLATERAL_TOKEN=0x...
 export PONS_FACTORY=0x...
-export BID_REWARDS_VAULT=0x...
 export BID_RESERVE_VAULT=0x...
 export BID_LIQUIDITY_OPERATOR=0x...
 export PONS_FEE_ESCROW=0x...
+export PONS_FEE_HOOK=0x...
 forge script script/DeployBidTreasury.s.sol:DeployBidTreasury \
   --rpc-url "$RH_RPC_URL" \
   --keystore /path/to/deployer-keystore \
@@ -94,10 +97,52 @@ forge script script/DeployBidTreasury.s.sol:DeployBidTreasury \
   --broadcast
 ```
 
-After the token launches, the treasury owner first calls
-`setPonsCurve(PONS_CURVE_ADDRESS)`. Once the CA and binding pass the Pons-record
-checks, deploy the factory. `BID_COLLATERAL_TOKEN` must be the verified collateral
-address and `BID_TOKEN_ADDRESS` is the final CA.
+This deployment prints `NEXT_PUBLIC_BID_REWARDS_VAULT` for the new rewards
+distributor. Use that output everywhere the frontend or verifier asks for the
+rewards vault; do not substitute a personal wallet.
+
+Launch BID through Pons only after recording the deployed treasury. The script
+pins the current economics, requires an approved USDG pair, checks launcher
+eligibility and tax limits, forces the treasury to be the fee recipient, fixes
+the creator tax at 2.5%, and keeps Pons buyback disabled.
+
+```bash
+export BID_FLYWHEEL_TREASURY=0x...
+export PONS_QUOTE_ASSET=0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168
+export PONS_LAUNCH_CONFIG_ID=0
+export BID_TOKEN_LOGO_URI=https://bid-ten-zeta.vercel.app/brand/bid-logo.jpg
+export BID_TOKEN_DESCRIPTION='RWA housing prediction markets on Robinhood Chain, powered by BID and Pons.'
+export BID_SOCIAL_WEBSITE=https://bid-ten-zeta.vercel.app
+export BID_PONS_SALT="0x$(openssl rand -hex 32)"
+forge script script/LaunchBidOnPons.s.sol:LaunchBidOnPons \
+  --rpc-url "$RH_RPC_URL"
+
+# Only after the dry run succeeds and every printed value is reviewed:
+forge script script/LaunchBidOnPons.s.sol:LaunchBidOnPons \
+  --rpc-url "$RH_RPC_URL" \
+  --keystore /path/to/deployer-keystore \
+  --password-file /path/to/password-file \
+  --broadcast
+```
+
+The launch output is the final BID CA and Pons curve address. The deployment
+wallet temporarily owns the treasury so it can bind that curve, then the same
+script transfers treasury ownership to `BID_TREASURY_OWNER` before the market
+factory is deployed:
+
+```bash
+export BID_TOKEN_ADDRESS=0x...
+export PONS_CURVE_ADDRESS=0x...
+forge script script/BindBidPonsCurve.s.sol:BindBidPonsCurve \
+  --rpc-url "$RH_RPC_URL" \
+  --keystore /path/to/deployer-keystore \
+  --password-file /path/to/password-file \
+  --broadcast
+```
+
+Once `BindBidPonsCurve` confirms the CA, binds the curve, and hands the treasury
+to its final owner, deploy the factory. `BID_COLLATERAL_TOKEN` must be the
+verified collateral address and `BID_TOKEN_ADDRESS` is the final CA.
 
 ```bash
 export BID_COLLATERAL_TOKEN=0x...
@@ -138,3 +183,23 @@ is fixed at token creation; Pons v2 can redirect future creator earnings to a
 new recipient, so production operations must monitor that setting.
 The example seeds 25,000 USDG per market, requiring 75,000 USDG total. Initial
 BID-LP shares are minted to the liquidity vault rather than the deployer.
+
+## Reward epochs
+
+Pons fees claimed by the treasury are split immediately. The 70% share funds
+`BidRewardsDistributor`; funding alone does not assign rewards. Generate a
+reviewable Merkle epoch from an approved JSON allocation. The input contains
+`epochId`, `asset`, `decimals`, and a `rewards` array of EVM `account` and
+decimal `amount` records.
+
+```bash
+npm run rewards:build -- rewards-epoch-1.json rewards-epoch-1-proof.json
+```
+
+The owner Safe then calls
+`publishEpoch(epochId, asset, merkleRoot, totalAllocation)` using the generated
+values. The contract refuses duplicate epochs and allocations larger than its
+uncommitted balance. A user or relayer calls
+`claim(epochId, account, amount, proof)`; payment always goes to `account`, so a
+relayer cannot redirect it. Publish the unchanged proof JSON at the rewards
+manifest URL after the onchain root is confirmed.

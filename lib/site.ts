@@ -55,6 +55,7 @@ export const siteConfig = {
     "NEXT_PUBLIC_BID_REWARDS_VAULT",
     isTestnet ? testnetDeployment.rewardsVaultAddress : "",
   ),
+  rewardsManifestUrl: publicValue("NEXT_PUBLIC_BID_REWARDS_MANIFEST_URL"),
   liquidityVaultAddress: publicValue(
     "NEXT_PUBLIC_BID_LIQUIDITY_VAULT",
     isTestnet ? testnetDeployment.liquidityVaultAddress : "",

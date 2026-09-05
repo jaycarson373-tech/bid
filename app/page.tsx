@@ -813,6 +813,7 @@ export default function Home() {
           <a className="active" href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
           <a href="#flywheel">Flywheel</a>
+          <a href="/rewards">Rewards</a>
           <a href="/docs">Docs</a>
         </nav>
         <div className="header-actions">
@@ -1263,6 +1264,7 @@ export default function Home() {
         <div>
           <a href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
+          <a href="/rewards">Rewards</a>
           <a href="/docs">Docs</a>
           {contractAddress ? (
             <button className="footer-ca" type="button" onClick={copyContractAddress}>

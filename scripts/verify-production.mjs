@@ -44,6 +44,7 @@ const requiredEnvironment = [
   "BID_MARKET_FACTORY",
   "BID_FACTORY_OWNER",
   "BID_TREASURY_OWNER",
+  "BID_REWARDS_OWNER",
   "BID_LIQUIDITY_OPERATOR",
   "BID_LIQUIDITY_VAULT_OWNER",
   "PONS_FEE_ESCROW",
@@ -97,6 +98,10 @@ const liquidityVaultAbi = parseAbi([
   "function operator() view returns (address)",
   "function collateral() view returns (address)",
   "function approvedMarkets(address) view returns (bool)",
+]);
+const rewardsDistributorAbi = parseAbi([
+  "function owner() view returns (address)",
+  "function totalOutstanding(address) view returns (uint256)",
 ]);
 const marketAbi = parseAbi([
   "function factory() view returns (address)",
@@ -170,6 +175,7 @@ const addresses = {
   oracle: required("BID_RESOLUTION_ORACLE"),
   factoryOwner: required("BID_FACTORY_OWNER"),
   treasuryOwner: required("BID_TREASURY_OWNER"),
+  rewardsOwner: required("BID_REWARDS_OWNER"),
   liquidityOperator: required("BID_LIQUIDITY_OPERATOR"),
   liquidityVaultOwner: required("BID_LIQUIDITY_VAULT_OWNER"),
   ponsFactory: required("NEXT_PUBLIC_PONS_FACTORY"),
@@ -206,6 +212,7 @@ async function run() {
     hasCode(addresses.collateral, "collateral"),
     hasCode(addresses.factory, "market factory"),
     hasCode(addresses.treasury, "flywheel treasury"),
+    hasCode(addresses.rewardsVault, "rewards distributor"),
     hasCode(addresses.liquidityVault, "liquidity vault"),
     hasCode(addresses.ponsFactory, "Pons factory"),
     hasCode(addresses.ponsEscrow, "Pons fee escrow"),
@@ -315,6 +322,18 @@ async function run() {
     rewardsShare === 7_000n && liquidityShare === 2_000n && reserveShare === 1_000n,
     "treasury split is 70% rewards / 20% liquidity / 10% reserve",
   );
+
+  const [rewardsOwner, rewardsOutstanding] = await Promise.all([
+    client.readContract({ address: addresses.rewardsVault, abi: rewardsDistributorAbi, functionName: "owner" }),
+    client.readContract({
+      address: addresses.rewardsVault,
+      abi: rewardsDistributorAbi,
+      functionName: "totalOutstanding",
+      args: [addresses.collateral],
+    }),
+  ]);
+  assert(sameAddress(rewardsOwner, addresses.rewardsOwner), "rewards distributor owner matches production owner");
+  pass(`rewards distributor reports ${rewardsOutstanding} collateral units committed to published epochs`);
 
   const [liquidityOwner, liquidityOperator, liquidityCollateral] = await Promise.all([
     client.readContract({ address: addresses.liquidityVault, abi: liquidityVaultAbi, functionName: "owner" }),
