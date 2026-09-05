@@ -1,13 +1,13 @@
 # BID
 
-BID is a Robinhood Chain real-estate prediction market prototype powered by a
-$BID token launched through Pons v2. It supports:
+BID is a Robinhood Chain real-estate prediction market prototype designed to
+connect a $BID token launched through Pons v2 with:
 
 - binary YES/NO housing questions
 - city-vs-city matchups
 - finite multi-city winner markets
 - USDG-backed fixed-product liquidity pools
-- market buys and escrowed onchain limit orders
+- market buys in the interface and onchain market buys/sells plus escrowed limit orders
 - slippage-protected LP deposits and USDG-first liquidity withdrawals
 - a future hold-and-burn gate for community market creators
 
@@ -46,11 +46,12 @@ npm test
 npm run lint
 npm run test:contracts
 npm run test:vercel
+npm run env:check
 ```
 
-The first command verifies the rendered BID market board through the
-Cloudflare-compatible build. The second runs the same Next.js production build
-used by Vercel.
+`npm run setup:production` runs environment validation, lint, contract tests,
+and the Vercel production build. `npm run verify:production` is the read-only
+post-CA onchain and frontend verification gate.
 
 ## Robinhood Chain + Pons
 
@@ -58,18 +59,29 @@ The interface connects an injected EVM wallet and switches it to Robinhood Chain
 (chain ID `4663`). Add the factory and three genesis market addresses from the
 deployment output to the matching `NEXT_PUBLIC_BID_MARKET_*` variables.
 
-$BID is configured for the current Pons v2 factory at
-`0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e`. Its creator tax is fixed at
-`250` basis points (`2.5%`) at launch. The creator-fee recipient must be the BID
-fee treasury, with proceeds allocated 50/50:
+The target Pons v2 launch fixes the creator tax at `250` basis points (`2.5%`).
+The exact factory, escrow, token, curve, quote asset, and recipient are
+configuration values and must pass `npm run verify:production`; none is
+silently assumed. The creator-fee recipient must be the BID fee treasury, with
+claimed proceeds allocated 70/20/10:
 
-- `1.25%` of tax-generating trade value to prediction-market rewards;
-- `1.25%` of tax-generating trade value to prediction-market liquidity.
+- `1.75%` of tax-generating trade value to prediction-market rewards;
+- `0.50%` of tax-generating trade value to protocol-owned market liquidity;
+- `0.25%` of tax-generating trade value to the protocol reserve.
 
-Pons creator fees accrue in its fee escrow and must be swept and claimed into
-`BidFlywheelTreasury` before anyone calls its permissionless distribution
-function. Do not enable live allocation until the BID token, market contracts,
-rewards vault, liquidity vault, and treasury ownership have been verified.
+Pons creator fees first accrue on the launch curve or hook, then move to its fee
+escrow after a sweep. `BidFlywheelTreasury` can claim its escrow balance and
+permissionlessly split it. Curve sweeps require the Pons launch deployer or
+protocol sweep operator; post-graduation conversions may require the protocol
+operator. Do not enable live mode until all addresses and ownership have been
+verified.
+
+The repository includes a single-replica Railway keeper for limit-order fills,
+pre-graduation curve sweeps, post-graduation hook sweeps, escrow claims, treasury distribution, and
+deployment of the 20% collateral allocation into approved protocol-owned LP.
+It does not yet implement reward scoring/payouts, automatic conversion into the
+market collateral, an indexer/history database, or the production housing oracle
+policy. See `docs/PRODUCTION_RUNBOOK.md`.
 
 ## Contracts
 

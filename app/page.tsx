@@ -17,12 +17,13 @@ import {
   robinhoodChain,
   robinhoodPublicClient,
 } from "@/lib/bidMarket";
-import { isDemo } from "@/lib/launchState";
+import { isDemo, isLive } from "@/lib/launchState";
 import { siteConfig } from "@/lib/site";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
 type OrderType = "market" | "limit" | "liquidity";
 type LiquidityAction = "add" | "remove";
+type MarketReadStatus = "awaiting" | "loading" | "ready" | "error";
 
 declare global {
   interface Window {
@@ -121,10 +122,45 @@ function displayTokenAmount(value: bigint, decimals: number, maximumFractionDigi
   });
 }
 
+function displayCloseDate(timestamp: bigint) {
+  return new Date(Number(timestamp) * 1_000).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function providerErrorCode(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error
     ? Number((error as { code?: unknown }).code)
     : undefined;
+}
+
+type EventProvider = EIP1193Provider & {
+  on?: (event: string, listener: (...args: unknown[]) => void) => void;
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+};
+
+async function selectRobinhoodChain(provider: EIP1193Provider) {
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: siteConfig.robinhoodChainHex }],
+    });
+  } catch (error) {
+    if (providerErrorCode(error) !== 4902) throw error;
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [{
+        chainId: siteConfig.robinhoodChainHex,
+        chainName: siteConfig.networkName,
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        rpcUrls: [siteConfig.rpcUrl],
+        blockExplorerUrls: [siteConfig.explorerUrl],
+      }],
+    });
+  }
 }
 
 function BrandMark() {
@@ -218,6 +254,8 @@ export default function Home() {
   const [faucetPending, setFaucetPending] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [livePrices, setLivePrices] = useState<Record<string, number[]>>({});
+  const [liveCloseDates, setLiveCloseDates] = useState<Record<string, string>>({});
+  const [marketReadStatus, setMarketReadStatus] = useState<MarketReadStatus>("awaiting");
   const [liveQuote, setLiveQuote] = useState<{
     key: string;
     outcomeTokensOut: bigint;
@@ -239,6 +277,8 @@ export default function Home() {
   const creatorTaxPercent = siteConfig.creatorTaxBps / 100;
   const rewardsPercent = creatorTaxPercent * siteConfig.predictionRewardsShareBps / 10_000;
   const liquidityPercent = creatorTaxPercent * siteConfig.liquidityShareBps / 10_000;
+  const reservePercent = creatorTaxPercent * siteConfig.reserveShareBps / 10_000;
+  const verifiedPonsLive = isLive && !siteConfig.isTestnet && siteConfig.isPonsVerified;
 
   const selected = markets.find((market) => market.id === selectedId) ?? markets[0];
   const selectedMarketAddress = configuredAddress(selected.contractAddress);
@@ -272,27 +312,81 @@ export default function Home() {
     : "—";
 
   useEffect(() => {
+    const provider = window.ethereum as EventProvider | undefined;
+    if (!provider) return;
+
+    const applyWalletState = (accounts: string[], chainHex: string) => {
+      const address = accounts[0] ?? "";
+      const onExpectedChain = chainHex.toLowerCase() === siteConfig.robinhoodChainHex;
+      setWalletAddress(address);
+      setWalletConnected(Boolean(address) && onExpectedChain);
+      if (address && !onExpectedChain) {
+        setNotice(`Wallet network changed. Switch back to ${siteConfig.networkName} before signing.`);
+      }
+    };
+    const handleAccountsChanged = (...args: unknown[]) => {
+      const accounts = Array.isArray(args[0]) ? args[0] as string[] : [];
+      void provider.request({ method: "eth_chainId" }).then((chain) => {
+        applyWalletState(accounts, String(chain));
+      });
+    };
+    const handleChainChanged = (...args: unknown[]) => {
+      const chainHex = String(args[0] ?? "");
+      void provider.request({ method: "eth_accounts" }).then((accounts) => {
+        applyWalletState(accounts as string[], chainHex);
+      });
+    };
+
+    void Promise.all([
+      provider.request({ method: "eth_accounts" }),
+      provider.request({ method: "eth_chainId" }),
+    ]).then(([accounts, chain]) => applyWalletState(accounts as string[], String(chain))).catch(() => undefined);
+    provider.on?.("accountsChanged", handleAccountsChanged);
+    provider.on?.("chainChanged", handleChainChanged);
+    return () => {
+      provider.removeListener?.("accountsChanged", handleAccountsChanged);
+      provider.removeListener?.("chainChanged", handleChainChanged);
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadMarketPrices() {
+      const configuredMarkets = markets.filter((market) => configuredAddress(market.contractAddress));
+      if (configuredMarkets.length === 0) {
+        setMarketReadStatus("awaiting");
+        return;
+      }
+      setMarketReadStatus("loading");
       const loaded = await Promise.all(markets.map(async (market) => {
         const address = configuredAddress(market.contractAddress);
         if (!address) return null;
 
         try {
-          const prices = await robinhoodPublicClient.readContract({
-            address,
-            abi: bidMarketAbi,
-            functionName: "spotPricesBps",
-          });
-          return [market.id, prices.map(Number)] as const;
+          const [prices, closesAt] = await Promise.all([
+            robinhoodPublicClient.readContract({
+              address,
+              abi: bidMarketAbi,
+              functionName: "spotPricesBps",
+            }),
+            robinhoodPublicClient.readContract({
+              address,
+              abi: bidMarketAbi,
+              functionName: "closesAt",
+            }),
+          ]);
+          return { id: market.id, prices: prices.map(Number), closes: displayCloseDate(closesAt) };
         } catch {
           return null;
         }
       }));
 
       if (cancelled) return;
-      setLivePrices(Object.fromEntries(loaded.filter((entry) => entry !== null)));
+      const available = loaded.filter((entry) => entry !== null);
+      setLivePrices(Object.fromEntries(available.map((entry) => [entry.id, entry.prices])));
+      setLiveCloseDates(Object.fromEntries(available.map((entry) => [entry.id, entry.closes])));
+      setMarketReadStatus(available.length === configuredMarkets.length ? "ready" : "error");
     }
 
     void loadMarketPrices();
@@ -488,24 +582,7 @@ export default function Home() {
         return;
       }
 
-      try {
-        await provider.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: siteConfig.robinhoodChainHex }],
-        });
-      } catch (error) {
-        if (providerErrorCode(error) !== 4902) throw error;
-        await provider.request({
-          method: "wallet_addEthereumChain",
-          params: [{
-            chainId: siteConfig.robinhoodChainHex,
-            chainName: siteConfig.networkName,
-            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-            rpcUrls: [siteConfig.rpcUrl],
-            blockExplorerUrls: [siteConfig.explorerUrl],
-          }],
-        });
-      }
+      await selectRobinhoodChain(provider);
 
       setWalletConnected(true);
       setWalletAddress(address);
@@ -542,6 +619,7 @@ export default function Home() {
 
     setTransactionPending(true);
     try {
+      await selectRobinhoodChain(provider);
       const walletClient = createWalletClient({
         account,
         chain: robinhoodChain,
@@ -685,6 +763,7 @@ export default function Home() {
 
     setFaucetPending(true);
     try {
+      await selectRobinhoodChain(provider);
       const decimals = await robinhoodPublicClient.readContract({
         address: collateralAddress,
         abi: erc20TradeAbi,
@@ -737,10 +816,12 @@ export default function Home() {
           <a href="/docs">Docs</a>
         </nav>
         <div className="header-actions">
-          {contractAddress && (
+          {contractAddress ? (
             <button className="ca-pill" type="button" onClick={copyContractAddress}>
               CA <span>{truncateAddress(contractAddress)}</span>
             </button>
+          ) : (
+            <span className="ca-pill awaiting">CA <span>AWAITING LAUNCH</span></span>
           )}
           <span className="network-pill"><i /> {siteConfig.networkName}</span>
           <a className="pons-button" href={siteConfig.ponsUrl} target="_blank" rel="noreferrer">
@@ -774,7 +855,9 @@ export default function Home() {
               {siteConfig.collateralSymbol}-backed outcome pools turn housing data into tradable odds.
               {siteConfig.isTestnet
                 ? "Test $BID activity simulates the rewards and liquidity flywheel before mainnet."
-                : "$BID activity on Pons funds trader rewards and deeper liquidity."}
+                : verifiedPonsLive
+                  ? "$BID activity on Pons funds trader rewards and deeper liquidity."
+                  : "The $BID launch targets a verified rewards and liquidity flywheel on Pons."}
             </p>
           </div>
           <div className="hero-actions">
@@ -783,9 +866,15 @@ export default function Home() {
           </div>
         </div>
         <div className="hero-status" aria-label="Protocol highlights">
-          <span><i /> {marketContractConfigured ? "AMM connected" : `${siteConfig.isTestnet ? "Testnet" : "Mainnet"} prelaunch`}</span>
+          <span><i /> {selectedPrices
+            ? "AMM connected"
+            : marketContractConfigured && marketReadStatus === "error"
+              ? "Onchain read unavailable"
+              : `${siteConfig.isTestnet ? "Testnet" : "Mainnet"} prelaunch`}</span>
           <span>0% genesis market fee</span>
-          <span>{siteConfig.isTestnet ? "2.5% flywheel simulation" : "2.5% Pons creator tax"} → rewards + LP</span>
+          <span>{siteConfig.isTestnet
+            ? "2.5% flywheel simulation"
+            : verifiedPonsLive ? "Verified 2.5% Pons creator tax" : "2.5% target creator tax"} → rewards + LP</span>
         </div>
       </section>
 
@@ -801,7 +890,7 @@ export default function Home() {
           <div className="launch-strip">
             <span>0% BID TRADING FEE</span>
             <strong>{siteConfig.collateralSymbol}-backed finite-outcome pools.</strong>
-            <em>2.5% {siteConfig.isTestnet ? "testnet" : "Pons"} flywheel → rewards + deeper LP</em>
+            <em>2.5% {siteConfig.isTestnet ? "testnet" : verifiedPonsLive ? "verified Pons" : "target"} flywheel → rewards + deeper LP</em>
           </div>
         )}
       </section>
@@ -849,11 +938,17 @@ export default function Home() {
                   <span className="market-meta">
                     <span>{market.mode.replaceAll("-", " ")}</span>
                     {livePrices[market.id]
-                      ? <em>Live AMM · {market.signal}</em>
-                      : showSampleData ? <em><SampleBadge compact /> {market.signal}</em> : <em>Opening soon</em>}
+                      ? <em>Live AMM</em>
+                      : showSampleData
+                        ? <em><SampleBadge compact /> {market.signal}</em>
+                        : configuredAddress(market.contractAddress) && marketReadStatus === "error"
+                          ? <em>Onchain read unavailable</em>
+                          : <em>Opening soon</em>}
                   </span>
                   <strong>{market.short}</strong>
-                  <small>Resolves {market.closes} · {showSampleData ? `Vol ${market.volume}` : "Opening soon"}</small>
+                  <small>Resolves {liveCloseDates[market.id] ?? market.closes} · {livePrices[market.id]
+                    ? "Onchain pool"
+                    : showSampleData ? `Vol ${market.volume}` : "Opening soon"}</small>
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
                   {livePrices[market.id] || showSampleData ? (
@@ -885,7 +980,7 @@ export default function Home() {
                 prices={selectedPrices?.map((price) => price / 10_000)}
               />
               <div>
-                <span>{selected.mode.replaceAll("-", " ")} · resolves {selected.closes}</span>
+                <span>{selected.mode.replaceAll("-", " ")} · resolves {liveCloseDates[selected.id] ?? selected.closes}</span>
                 <h3>{selected.question}</h3>
               </div>
             </div>
@@ -953,7 +1048,7 @@ export default function Home() {
                     onClick={() => setLiquidityAction(action)}
                   >
                     <span>{action === "add" ? "Add liquidity" : "Withdraw"}</span>
-                    <small>{action === "add" ? "USDG → BID-LP" : "BID-LP → USDG"}</small>
+                    <small>{action === "add" ? `${siteConfig.collateralSymbol} → BID-LP` : `BID-LP → ${siteConfig.collateralSymbol}`}</small>
                   </button>
                 ))}
               </div>
@@ -979,7 +1074,7 @@ export default function Home() {
             <label className="amount-label" htmlFor="trade-amount">
               <span>
                 {orderType === "liquidity"
-                  ? liquidityAction === "add" ? "USDG to supply" : "LP shares to withdraw"
+                  ? liquidityAction === "add" ? `${siteConfig.collateralSymbol} to supply` : "LP shares to withdraw"
                   : "Trade amount"}
               </span>
               <small>
@@ -1024,7 +1119,7 @@ export default function Home() {
                   <p><span>Network</span><strong>{siteConfig.networkName}</strong></p>
                 </div>
                 <div className="return-box liquidity-return">
-                  <span>{liquidityAction === "add" ? "ESTIMATED LP SHARES" : "ESTIMATED USDG WITHDRAWAL"}</span>
+                  <span>{liquidityAction === "add" ? "ESTIMATED LP SHARES" : `ESTIMATED ${siteConfig.collateralSymbol} WITHDRAWAL`}</span>
                   <strong>{liquidityPrimaryDisplay}</strong>
                   <small>
                     {liquidityAction === "add"
@@ -1059,7 +1154,12 @@ export default function Home() {
               </>
             )}
 
-            <button className="review-button" type="button" onClick={reviewOrder} disabled={transactionPending}>
+            <button
+              className="review-button"
+              type="button"
+              onClick={reviewOrder}
+              disabled={transactionPending || (marketContractConfigured && marketReadStatus === "error" && !selectedPrices)}
+            >
               {transactionPending
                 ? "Waiting for confirmation"
                 : walletConnected
@@ -1071,6 +1171,9 @@ export default function Home() {
             </button>
             {!marketContractConfigured && (
               <p className="integration-status">This pool is in prelaunch. Add its deployed address to turn on real quotes and order signing.</p>
+            )}
+            {marketContractConfigured && marketReadStatus === "error" && !selectedPrices && (
+              <p className="integration-status">This pool is configured, but its onchain state is unavailable. Transactions stay disabled until the read succeeds.</p>
             )}
           </aside>
         </div>
@@ -1085,7 +1188,7 @@ export default function Home() {
           <article>
             <span>01 / PICK</span>
             <strong>Choose the market</strong>
-            <p>Trade a YES/NO question, a city matchup, or a finite field backed one-for-one by USDG.</p>
+            <p>Trade a YES/NO question, a city matchup, or a finite field backed one-for-one by {siteConfig.collateralSymbol}.</p>
           </article>
           <article>
             <span>02 / POOL</span>
@@ -1109,24 +1212,33 @@ export default function Home() {
             <h3>Volume feeds depth.<br />Depth feeds volume.</h3>
             <p>
               {siteConfig.isTestnet
-                ? "tBID mirrors the planned 2.5% Pons creator-tax flywheel for testing. Simulated proceeds route evenly into prediction-market rewards and protocol-owned liquidity so every flow can be validated before mainnet."
-                : "$BID launches on Pons with a creator tax fixed at 2.5%. Creator-tax proceeds are routed evenly into prediction-market rewards and protocol-owned liquidity, tightening fills as the market grows."}
+                ? "tBID mirrors the planned 2.5% Pons creator-tax flywheel for testing. Simulated proceeds follow the same 70/20/10 allocation used by the production contracts."
+                : verifiedPonsLive
+                  ? "$BID is verified on Pons with a creator tax fixed at 2.5%. Creator-tax proceeds route 70% to prediction rewards, 20% to protocol-owned market liquidity, and 10% to protocol reserves."
+                  : "$BID targets a 2.5% Pons creator tax at launch with a 70/20/10 rewards, liquidity, and reserve split. The final CA, tax, fee recipient, and quote asset must pass onchain verification before activation."}
             </p>
             <a
               className="protocol-proof"
               href={siteConfig.isTestnet && siteConfig.marketFactoryAddress
                 ? `${siteConfig.explorerUrl}/address/${siteConfig.marketFactoryAddress}`
-                : siteConfig.isTestnet ? siteConfig.explorerUrl : `${siteConfig.explorerUrl}/address/${siteConfig.ponsFactory}`}
+                : !siteConfig.isTestnet && siteConfig.ponsFactory
+                  ? `${siteConfig.explorerUrl}/address/${siteConfig.ponsFactory}`
+                  : siteConfig.explorerUrl}
               target="_blank"
               rel="noreferrer"
             >
-              {siteConfig.isTestnet ? "BID testnet explorer" : "Pons v2 factory"} · Chain {siteConfig.robinhoodChainId} ↗
+              {siteConfig.isTestnet
+                ? "BID testnet explorer"
+                : siteConfig.ponsFactory ? "Pons v2 factory" : "Factory awaiting publication"} · Chain {siteConfig.robinhoodChainId} ↗
             </a>
           </div>
           <div className="fee-grid" aria-label={siteConfig.isTestnet ? "Testnet flywheel allocation" : "Pons creator-tax allocation"}>
-            <article className="platform-fee"><strong>{creatorTaxPercent}%</strong><span>{siteConfig.isTestnet ? "Simulated creator tax · testnet only" : "Pons creator tax · fixed at token launch"}</span></article>
+            <article className="platform-fee"><strong>{creatorTaxPercent}%</strong><span>{siteConfig.isTestnet
+              ? "Simulated creator tax · testnet only"
+              : verifiedPonsLive ? "Verified Pons creator tax" : "Target creator tax · awaiting launch"}</span></article>
             <article><strong>{rewardsPercent}%</strong><span>Trade value → prediction-market rewards</span></article>
             <article><strong>{liquidityPercent}%</strong><span>Trade value → prediction-market LP</span></article>
+            <article><strong>{reservePercent}%</strong><span>Trade value → protocol reserve</span></article>
           </div>
         </div>
       </section>
@@ -1145,15 +1257,19 @@ export default function Home() {
 
       <footer>
         <a className="brand footer-brand" href="#top"><BrandMark /><span>BID</span></a>
-        <p>Real estate prediction markets on Robinhood Chain. {siteConfig.isTestnet ? "tBID test environment." : "$BID on Pons."}</p>
+        <p>Real estate prediction markets on Robinhood Chain. {siteConfig.isTestnet
+          ? "tBID test environment."
+          : verifiedPonsLive ? "$BID verified on Pons." : "$BID awaiting launch verification."}</p>
         <div>
           <a href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
           <a href="/docs">Docs</a>
-          {contractAddress && (
+          {contractAddress ? (
             <button className="footer-ca" type="button" onClick={copyContractAddress}>
               CA {truncateAddress(contractAddress)}
             </button>
+          ) : (
+            <span className="footer-ca">CA AWAITING LAUNCH</span>
           )}
         </div>
         <small>© 2026 BID · NOT INVESTMENT ADVICE</small>

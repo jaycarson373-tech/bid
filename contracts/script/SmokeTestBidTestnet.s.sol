@@ -46,14 +46,19 @@ contract SmokeTestBidTestnet is Script {
     function _testFlywheel(BidFlywheelTreasury flywheel, IERC20 bidToken) private {
         address rewardsVault = flywheel.rewardsVault();
         address liquidityVault = flywheel.liquidityVault();
+        address reserveVault = flywheel.reserveVault();
         uint256 rewardsBefore = bidToken.balanceOf(rewardsVault);
         uint256 liquidityBefore = bidToken.balanceOf(liquidityVault);
+        uint256 reserveBefore = bidToken.balanceOf(reserveVault);
 
         bidToken.transfer(address(flywheel), 10_000e18);
         flywheel.distributeToken(bidToken);
 
-        require(bidToken.balanceOf(rewardsVault) - rewardsBefore == 5_000e18, "BAD_REWARDS_SPLIT");
-        require(bidToken.balanceOf(liquidityVault) - liquidityBefore == 5_000e18, "BAD_LIQUIDITY_SPLIT");
-        console2.log("SMOKE_FLYWHEEL_SPLIT_TBID=%s", uint256(5_000e18));
+        require(bidToken.balanceOf(rewardsVault) - rewardsBefore == 7_000e18, "BAD_REWARDS_SPLIT");
+        require(bidToken.balanceOf(liquidityVault) - liquidityBefore == 2_000e18, "BAD_LIQUIDITY_SPLIT");
+        require(bidToken.balanceOf(reserveVault) - reserveBefore == 1_000e18, "BAD_RESERVE_SPLIT");
+        console2.log("SMOKE_FLYWHEEL_REWARDS_TBID=%s", uint256(7_000e18));
+        console2.log("SMOKE_FLYWHEEL_LIQUIDITY_TBID=%s", uint256(2_000e18));
+        console2.log("SMOKE_FLYWHEEL_RESERVE_TBID=%s", uint256(1_000e18));
     }
 }

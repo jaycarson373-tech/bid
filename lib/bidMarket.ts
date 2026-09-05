@@ -41,6 +41,13 @@ export const bidMarketAbi = [
   },
   {
     type: "function",
+    name: "closesAt",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint64" }],
+  },
+  {
+    type: "function",
     name: "balanceOf",
     stateMutability: "view",
     inputs: [{ name: "account", type: "address" }],

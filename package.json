@@ -16,6 +16,10 @@
     "test:contracts": "forge test --root contracts",
     "test:vercel": "npm run build",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern contracts/lib --ignore-pattern contracts/out --ignore-pattern contracts/cache",
+    "env:check": "node --env-file-if-exists=.env.production.local scripts/env-check.mjs",
+    "setup:production": "npm run env:check && npm run lint && npm run test:contracts && npm run test:vercel",
+    "verify:production": "node --env-file-if-exists=.env.production.local scripts/verify-production.mjs",
+    "start:keeper": "node services/keeper.mjs",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
@@ -46,8 +50,10 @@
     "wrangler": "4.92.0"
   },
   "overrides": {
+    "nanoid": "3.3.18",
     "postcss": "8.5.23",
-    "sharp": "0.35.3"
+    "sharp": "0.35.3",
+    "ws": "8.21.0"
   },
   "type": "module"
 }

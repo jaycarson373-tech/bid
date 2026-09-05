@@ -34,14 +34,14 @@ export default function DocsPage() {
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
-        <Link className={styles.brand} href="/" aria-label="BID markets home">
+        <Link className={styles.brand} href="/" aria-label="BID markets home" prefetch={false}>
           <Image src="/brand/bid-logo.jpg" alt="" width={34} height={34} priority />
           <span>BID</span><small>Docs</small>
         </Link>
         <nav aria-label="Documentation utilities">
-          <a href={siteConfig.ponsUrl} target="_blank" rel="noreferrer">Pons v2 ↗</a>
+          <a href={siteConfig.ponsUrl} target="_blank" rel="noreferrer">Pons docs ↗</a>
           <a href={siteConfig.explorerUrl} target="_blank" rel="noreferrer">Explorer ↗</a>
-          <Link className={styles.appLink} href="/#markets">Open markets</Link>
+          <Link className={styles.appLink} href="/#markets" prefetch={false}>Open markets</Link>
         </nav>
       </header>
 
@@ -74,7 +74,11 @@ export default function DocsPage() {
               <strong>Current status</strong>
               <p>
                 The contracts and interface are functional prototypes with automated tests.
-                {siteConfig.isTestnet ? " This build targets public testnet and remains unaudited." : " They are not audited or deployed to mainnet yet."}
+                {siteConfig.isTestnet
+                  ? " This build targets public testnet and remains unaudited."
+                  : siteConfig.isPonsVerified
+                    ? " The published Pons launch record is configured for onchain verification."
+                    : " The final token CA and Pons launch record are awaiting verification."}
               </p>
             </div>
           </section>
@@ -160,12 +164,15 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <p>
               {siteConfig.isTestnet
                 ? "Testnet uses tBID to exercise the same 2.5% flywheel economics without representing a live Pons token."
-                : "The 2.5% Pons v2 creator tax applies to $BID token trading, not to genesis prediction-market orders."}
-              {" "}Claimed creator-tax proceeds route through the flywheel treasury and split evenly.
+                : siteConfig.isPonsVerified
+                  ? "The verified 2.5% Pons v2 creator tax applies to $BID token trading, not to genesis prediction-market orders."
+                  : "The production launch targets a 2.5% Pons v2 creator tax, subject to final onchain verification."}
+              {" "}Claimed creator-tax proceeds route through the flywheel treasury with an immutable 70/20/10 allocation.
             </p>
             <div className={styles.split}>
-              <div><strong>1.25%</strong><span>Trading rewards</span></div>
-              <div><strong>1.25%</strong><span>Protocol-owned LP</span></div>
+              <div><strong>1.75%</strong><span>Trading rewards</span></div>
+              <div><strong>0.50%</strong><span>Protocol-owned LP</span></div>
+              <div><strong>0.25%</strong><span>Protocol reserve</span></div>
             </div>
             <p className={styles.note}>Genesis BID markets charge a 0% protocol fee. Network gas still applies.</p>
           </section>
@@ -176,7 +183,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <p>
               Community creation is implemented but disabled by default. When governance enables it,
               a creator must hold a configured $BID balance, burn a configured amount, and seed the new
-              market with USDG. The creator royalty is capped at 3%.
+              market with {siteConfig.collateralSymbol}. The creator royalty is capped at 3%.
             </p>
           </section>
 
@@ -186,18 +193,21 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <div className={styles.statusList}>
               <div><Status>TESTED</Status><span>AMM buys, sells, LP deposits and withdrawals</span></div>
               <div><Status>TESTED</Status><span>Escrowed limits, cancellation, resolution and redemption</span></div>
-              <div><Status>TESTED</Status><span>Token gate, burn, creator royalties and treasury split</span></div>
+              <div><Status>TESTED</Status><span>Token gate, burn, creator royalties and 70/20/10 treasury split</span></div>
+              <div><Status>TESTED</Status><span>Operator-managed deployment into protocol-owned market LP</span></div>
               <div><Status tone="pending">PENDING</Status><span>Independent audit and mainnet deployment</span></div>
-              <div><Status tone="pending">PENDING</Status><span>Oracle, keeper, indexer and monitoring</span></div>
+              <div><Status tone="pending">PENDING</Status><span>Keeper deployment, oracle policy, indexer and monitoring</span></div>
             </div>
 
             <h3>Addresses</h3>
             <dl className={styles.addresses}>
-              <div><dt>{siteConfig.collateralSymbol}</dt><dd><code>{siteConfig.collateralAddress || "Not deployed"}</code></dd></div>
-              <div><dt>{siteConfig.isTestnet ? "Pons v2 mainnet reference" : "Pons v2 factory"}</dt><dd><code>{siteConfig.ponsFactory}</code></dd></div>
-              <div><dt>BID market factory</dt><dd><code>{siteConfig.marketFactoryAddress || "Not deployed"}</code></dd></div>
-              <div><dt>Flywheel treasury</dt><dd><code>{siteConfig.flywheelTreasuryAddress || "Not deployed"}</code></dd></div>
-              <div><dt>Genesis markets</dt><dd><code>{marketsConfigured ? "Configured" : "Not deployed"}</code></dd></div>
+              <div><dt>{siteConfig.collateralSymbol}</dt><dd><code>{siteConfig.collateralAddress || "AWAITING LAUNCH"}</code></dd></div>
+              <div><dt>{siteConfig.isTestnet ? "Pons v2 mainnet reference" : "Pons v2 factory"}</dt><dd><code>{siteConfig.ponsFactory || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>BID market factory</dt><dd><code>{siteConfig.marketFactoryAddress || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Flywheel treasury</dt><dd><code>{siteConfig.flywheelTreasuryAddress || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Liquidity vault</dt><dd><code>{siteConfig.liquidityVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Reserve vault</dt><dd><code>{siteConfig.reserveVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Genesis markets</dt><dd><code>{marketsConfigured ? "Configured" : "AWAITING PUBLICATION"}</code></dd></div>
             </dl>
           </section>
 
@@ -206,10 +216,11 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <h2>Production requirements</h2>
             <ol>
               <li>Independent smart-contract audit and remediation.</li>
-              <li>Final $BID token address and verified 2.5% Pons v2 tax configuration.</li>
+              <li>Final $BID token address and verified 2.5% Pons v2 tax, recipient, quote asset, and escrow configuration.</li>
               <li>Documented housing index, edge-case policy, and production resolution oracle.</li>
               <li>Multisig ownership for the factory, oracle operations, and flywheel treasury.</li>
-              <li>Funded keeper, indexer, production RPC, alerting, and transaction monitoring.</li>
+              <li>Funded single-replica keeper, indexer, production RPC, alerting, and transaction monitoring.</li>
+              <li>Implemented reward-scoring and payout policy for the 70% rewards allocation.</li>
               <li>Sufficient {siteConfig.collateralSymbol} to seed every genesis pool and test real execution depth.</li>
               <li>Legal review for market availability, disclosures, and jurisdiction controls.</li>
             </ol>
@@ -217,7 +228,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
 
           <footer className={styles.footer}>
             <span>BID protocol docs · September 2026</span>
-            <Link href="/#markets">Return to markets →</Link>
+            <Link href="/#markets" prefetch={false}>Return to markets →</Link>
           </footer>
         </article>
 

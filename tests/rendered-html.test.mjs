@@ -35,15 +35,17 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /Florida home-price growth showdown/);
   assert.match(html, /Austin turns positive by year-end/);
   assert.match(html, /Connect wallet/);
+  assert.match(html, /AWAITING LAUNCH/);
   assert.match(html, /0% BID protocol fee at launch/);
-  assert.match(html, /Orders use tUSDG/);
+  assert.match(html, /Orders use USDG/);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
   assert.match(html, /Liquidity/);
-  assert.match(html, /flywheel simulation/i);
+  assert.match(html, /Mainnet prelaunch/i);
   assert.match(html, /2\.5%/);
   assert.match(html, /prediction-market rewards/);
   assert.match(html, /prediction-market LP/);
+  assert.match(html, /protocol reserve/);
   assert.doesNotMatch(html, /Solana|pump\.fun/i);
   assert.match(html, /RWA HOUSING MARKETS/);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
@@ -59,9 +61,10 @@ test("server-renders professional protocol documentation with honest deployment 
   assert.match(html, /Fixed-product pricing/);
   assert.match(html, /Liquidity/);
   assert.match(html, /Keeper required/);
-  assert.match(html, /Testnet uses tBID to exercise the same 2\.5% flywheel economics/);
-  assert.match(html, /targets public testnet and remains unaudited/i);
+  assert.match(html, /production launch targets a 2\.5% Pons v2 creator tax/i);
+  assert.match(html, /final token CA and Pons launch record are awaiting verification/i);
   assert.match(html, /Production requirements/);
+  assert.match(html, /AWAITING PUBLICATION/);
 });
 
 test("keeps the finished product free of starter-preview code", async () => {
@@ -93,9 +96,11 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /\/docs/);
   assert.match(layout, /title: "BID — BID the Block"/);
   assert.match(launchState, /"prelaunch"/);
-  assert.match(siteConfig, /creatorTaxBps: 250/);
-  assert.match(siteConfig, /liquidityShareBps: 5_000/);
-  assert.match(siteConfig, /predictionRewardsShareBps: 5_000/);
+  assert.match(siteConfig, /NEXT_PUBLIC_CREATOR_TAX_BPS", "250"/);
+  assert.match(siteConfig, /PLACEHOLDER/);
+  assert.match(siteConfig, /predictionRewardsShareBps: 7_000/);
+  assert.match(siteConfig, /liquidityShareBps: 2_000/);
+  assert.match(siteConfig, /reserveShareBps: 1_000/);
   assert.match(packageJson, /"name": "bid-real-estate-markets"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 

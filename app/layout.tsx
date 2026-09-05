@@ -13,18 +13,26 @@ const geistMono = Geist_Mono({
 });
 
 const productionHost =
-  process.env.NEXT_PUBLIC_SITE_URL ??
+  process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000");
+    : process.env.NODE_ENV === "production"
+      ? "https://bid-markets.sufficientlev.chatgpt.site"
+      : "http://localhost:3000");
+const isVerifiedLive =
+  process.env.NEXT_PUBLIC_LAUNCH_STATE === "live" &&
+  process.env.NEXT_PUBLIC_BID_NETWORK === "mainnet" &&
+  process.env.NEXT_PUBLIC_PONS_VERIFIED === "true";
+const description = isVerifiedLive
+  ? "Trade collateral-backed real estate outcomes on Robinhood Chain, with the verified BID flywheel on Pons."
+  : "Collateral-backed real estate prediction markets preparing for launch on Robinhood Chain.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(productionHost),
   title: "BID — BID the Block",
-  description:
-    "Trade real estate outcomes across the world’s fastest-moving cities on Robinhood Chain, powered by $BID on Pons.",
+  description,
   icons: {
-    icon: "/brand/bid-logo.jpg",
+    icon: "/favicon.svg",
     apple: "/brand/bid-logo.jpg",
   },
   alternates: {
@@ -32,8 +40,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "BID — BID the Block",
-    description:
-      "Real estate prediction markets on Robinhood Chain, powered by $BID on Pons.",
+    description,
     url: "/",
     siteName: "BID",
     type: "website",
@@ -49,8 +56,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "BID — BID the Block",
-    description:
-      "Real estate prediction markets on Robinhood Chain, powered by $BID on Pons.",
+    description,
     images: ["/og-robinhood.jpg"],
   },
 };

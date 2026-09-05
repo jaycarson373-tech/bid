@@ -208,6 +208,10 @@ a {
   border-color: var(--lime);
 }
 
+.ca-pill.awaiting {
+  cursor: default;
+}
+
 .pons-button {
   display: inline-grid;
   min-width: 58px;
@@ -1812,7 +1816,7 @@ a {
 
 .fee-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 
@@ -1979,6 +1983,10 @@ footer > div {
   cursor: pointer;
   font: inherit;
   text-transform: uppercase;
+}
+
+span.footer-ca {
+  cursor: default;
 }
 
 footer > small {

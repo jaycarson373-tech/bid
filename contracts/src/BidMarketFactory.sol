@@ -16,6 +16,7 @@ contract BidMarketFactory is Ownable {
     error CommunityCreationDisabled();
     error TokenGateNotMet();
     error InvalidCommunityFee();
+    error InvalidAddress();
     error ZeroInitialLiquidity();
 
     event MarketCreated(
@@ -26,10 +27,7 @@ contract BidMarketFactory is Ownable {
         uint16 creatorFeeBps
     );
     event CommunityCreationConfigured(
-        bool enabled,
-        uint256 minimumBidBalance,
-        uint256 bidBurnAmount,
-        uint16 creatorRoyaltyBps
+        bool enabled, uint256 minimumBidBalance, uint256 bidBurnAmount, uint16 creatorRoyaltyBps
     );
 
     IERC20 public immutable collateral;
@@ -44,12 +42,12 @@ contract BidMarketFactory is Ownable {
     address[] private _markets;
     mapping(address => bool) public isBidMarket;
 
-    constructor(
-        IERC20 collateral_,
-        IERC20 bidToken_,
-        address resolutionOracle_,
-        address initialOwner
-    ) Ownable(initialOwner) {
+    constructor(IERC20 collateral_, IERC20 bidToken_, address resolutionOracle_, address initialOwner)
+        Ownable(initialOwner)
+    {
+        if (address(collateral_) == address(0) || address(bidToken_) == address(0) || resolutionOracle_ == address(0)) {
+            revert InvalidAddress();
+        }
         collateral = collateral_;
         bidToken = bidToken_;
         resolutionOracle = resolutionOracle_;
@@ -73,15 +71,7 @@ contract BidMarketFactory is Ownable {
         uint64 closesAt,
         uint256 initialLiquidity
     ) external onlyOwner returns (address market) {
-        market = _createMarket(
-            msg.sender,
-            question,
-            outcomes,
-            closesAt,
-            initialLiquidity,
-            0,
-            false
-        );
+        market = _createMarket(msg.sender, question, outcomes, closesAt, initialLiquidity, 0, false);
     }
 
     function createCommunityMarket(
@@ -96,15 +86,7 @@ contract BidMarketFactory is Ownable {
             bidToken.safeTransferFrom(msg.sender, BURN_ADDRESS, bidBurnAmount);
         }
 
-        market = _createMarket(
-            msg.sender,
-            question,
-            outcomes,
-            closesAt,
-            initialLiquidity,
-            creatorRoyaltyBps,
-            true
-        );
+        market = _createMarket(msg.sender, question, outcomes, closesAt, initialLiquidity, creatorRoyaltyBps, true);
     }
 
     function setCommunityCreationConfig(
@@ -120,12 +102,7 @@ contract BidMarketFactory is Ownable {
         minimumBidBalance = minimumBidBalance_;
         bidBurnAmount = bidBurnAmount_;
         creatorRoyaltyBps = creatorRoyaltyBps_;
-        emit CommunityCreationConfigured(
-            enabled,
-            minimumBidBalance_,
-            bidBurnAmount_,
-            creatorRoyaltyBps_
-        );
+        emit CommunityCreationConfigured(enabled, minimumBidBalance_, bidBurnAmount_, creatorRoyaltyBps_);
     }
 
     function _createMarket(
@@ -140,14 +117,7 @@ contract BidMarketFactory is Ownable {
         if (initialLiquidity == 0) revert ZeroInitialLiquidity();
 
         BidMarket market = new BidMarket(
-            collateral,
-            address(this),
-            resolutionOracle,
-            creator,
-            closesAt,
-            creatorFeeBps,
-            question,
-            outcomes
+            collateral, address(this), resolutionOracle, creator, closesAt, creatorFeeBps, question, outcomes
         );
         marketAddress = address(market);
         isBidMarket[marketAddress] = true;
@@ -155,12 +125,6 @@ contract BidMarketFactory is Ownable {
 
         collateral.safeTransferFrom(msg.sender, marketAddress, initialLiquidity);
         market.seed(msg.sender, initialLiquidity);
-        emit MarketCreated(
-            marketAddress,
-            creator,
-            communityCreated,
-            initialLiquidity,
-            creatorFeeBps
-        );
+        emit MarketCreated(marketAddress, creator, communityCreated, initialLiquidity, creatorFeeBps);
     }
 }
