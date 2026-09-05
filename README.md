@@ -47,11 +47,14 @@ npm run lint
 npm run test:contracts
 npm run test:vercel
 npm run env:check
+npm run costs:production
 ```
 
 `npm run setup:production` runs environment validation, lint, contract tests,
 and the Vercel production build. `npm run verify:production` is the read-only
-post-CA onchain and frontend verification gate.
+post-CA onchain and frontend verification gate. `npm run costs:production`
+reads the current Pons launch fee and Robinhood Chain gas price without sending
+a transaction, then shows the lean and recommended genesis-liquidity capital.
 
 ## Robinhood Chain + Pons
 

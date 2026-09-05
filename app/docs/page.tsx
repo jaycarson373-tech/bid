@@ -20,6 +20,8 @@ const navigation = [
   ["flywheel", "BID flywheel"],
   ["community", "Creator markets"],
   ["deployment", "Deployment"],
+  ["costs", "Launch costs"],
+  ["operations", "Operator flow"],
   ["risks", "Risks"],
 ] as const;
 
@@ -239,8 +241,59 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             </p>
           </section>
 
-          <section id="risks">
+          <section id="costs">
             <span className={styles.sectionNumber}>09</span>
+            <h2>Launch costs</h2>
+            <p>
+              There are three separate cost buckets: the Pons token-launch fee, Robinhood Chain gas, and USDG supplied to the prediction-market pools.
+              Pool funding is protocol-owned capital represented by BID-LP shares; it is not paid away as a launch fee.
+            </p>
+            <table>
+              <thead><tr><th>Cost</th><th>Amount</th><th>Where it goes</th></tr></thead>
+              <tbody>
+                <tr><td>Pons launch</td><td>Read live from the factory</td><td>Pons v2 launch transaction</td></tr>
+                <tr><td>Deployment + keeper gas</td><td>Variable ETH</td><td>Robinhood Chain validators</td></tr>
+                <tr><td>Lean market depth</td><td>30,000 USDG</td><td>Three protocol-owned pools</td></tr>
+                <tr><td>Recommended market depth</td><td>75,000 USDG</td><td>Three protocol-owned pools</td></tr>
+                <tr><td>Keeper reserve</td><td>0.01 ETH minimum configured</td><td>Keeper wallet; spent only on transactions</td></tr>
+              </tbody>
+            </table>
+            <pre><code>npm run costs:production</code></pre>
+            <p className={styles.note}>
+              This read-only command verifies Robinhood Chain ID 4663, checks Pons factory bytecode, reads its current launch fee and the current gas price,
+              and submits no transaction. Hosting, independent audit, legal review, RPC and monitoring plans are vendor costs outside the contracts.
+            </p>
+          </section>
+
+          <section id="operations">
+            <span className={styles.sectionNumber}>10</span>
+            <h2>Production operator flow</h2>
+            <ol>
+              <li>Deploy the treasury and liquidity vault with multisig owners and the Railway keeper&apos;s public operator address.</li>
+              <li>Launch $BID on Pons with a 250 bps creator tax, buyback disabled, USDG pair asset, and the treasury contract as creator recipient.</li>
+              <li>Bind the published token and curve, then run the read-only production verifier before enabling any worker transaction.</li>
+              <li>Deploy the market factory and three genesis markets, supplying 10,000 to 25,000 USDG per market from the deployment wallet.</li>
+              <li>Put the public addresses in Vercel and Railway; put the keeper signer only in Railway&apos;s secret manager.</li>
+              <li>Enable one keeper replica. It fills executable limits, claims Pons fees, applies 70/20/10, and deploys eligible LP funds into approved open markets.</li>
+            </ol>
+            <h3>How the market maker works</h3>
+            <p>
+              The deployment wallet pays the initial USDG, but the factory mints every genesis LP share directly to the protocol liquidity vault.
+              The keeper can allocate the vault&apos;s 20% fee share only to owner-approved, open BID markets. It waits until at least 100 USDG is available per
+              eligible market, divides the available collateral evenly, and uses each market&apos;s minimum-share protection. The multisig owner controls approvals
+              and withdrawals; the keeper never owns the LP shares.
+            </p>
+            <div className={`${styles.callout} ${styles.warning}`}>
+              <strong>Rewards status</strong>
+              <p>
+                Treasury claiming and the exact 70/20/10 split are implemented and tested. The 70% destination can safely custody rewards now,
+                but trader scoring, anti-wash rules, epochs and individual payout execution remain a separate production blocker.
+              </p>
+            </div>
+          </section>
+
+          <section id="risks">
+            <span className={styles.sectionNumber}>11</span>
             <h2>Production requirements</h2>
             <ol>
               <li>Independent smart-contract audit and remediation.</li>

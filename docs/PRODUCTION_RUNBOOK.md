@@ -60,6 +60,28 @@ threshold `LP_MIN_DEPLOY_AMOUNT=100000000` batches at least 100 USDG per eligibl
 market before the keeper spends gas; the keeper divides the vault balance evenly
 across open approved markets.
 
+## Launch cost check
+
+Run the read-only cost snapshot immediately before launch:
+
+```bash
+npm run costs:production
+```
+
+It verifies Robinhood Chain ID `4663`, confirms bytecode at the configured Pons
+factory, reads the live Pons `launchFee()` and gas price, and shows sample gas
+costs without submitting a transaction. It also reports the configured keeper
+reserve and, when `BID_INITIAL_LIQUIDITY` is set, the exact three-market USDG
+capital requirement.
+
+Treat these separately:
+
+- Pons launch fee: a protocol cost read from the factory at launch time;
+- deployment and keeper gas: variable ETH spent on successful transactions;
+- genesis USDG: protocol-owned LP capital, not a fee;
+- hosting, RPC, monitoring, legal review and independent audit: external vendor
+  costs that this repository cannot price.
+
 ## 3. Bind and verify
 
 Create `.env.production.local` from `.env.production.example`, then fill only
