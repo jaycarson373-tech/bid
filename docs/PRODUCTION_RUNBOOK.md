@@ -12,21 +12,19 @@ the rules in `docs/markets/BID-FIELD-2027-03-V1.md`. Its SHA-256 is embedded in
 the onchain question. The oracle is a trusted signer, not an implemented
 automatic housing-data feed.
 
-1. Fund one deployment wallet with **25 USDG plus ETH for deployment gas on chain 4663**.
-   Keep its key in an encrypted local Foundry keystore. Import interactively with
-   `cast wallet import bid-deployer --interactive`; never paste it into chat.
-2. Run `npm run deploy:beta -- --account bid-deployer`. The command derives the
-   public address from the encrypted keystore and temporarily uses it for every
-   required beta role. It automatically creates separate buyback, protocol and
-   creator-reward reserve vaults, then simulates the existing treasury, rewards
-   vault, liquidity vault, factory and ONE five-city market. No final BID CA is
-   required. The simulation must pass and its ETH gas estimate must be reviewed.
-   Printed addresses from a dry run are NOT deployed addresses.
-3. The explicit spending step is
-   `npm run deploy:beta -- --account bid-deployer --broadcast`.
-   This signs locally and seeds the market with 25 USDG. If interrupted, inspect
-   `contracts/broadcast/DeployBidBeta.s.sol/4663/` before any retry; do not blindly
-   run a fresh broadcast. Save the confirmed receipts and resulting public addresses.
+1. Use a fresh LP deployer wallet with nonce zero. Fund it with **25 USDG plus ETH
+   for deployment gas on chain 4663**.
+2. In a dedicated Railway service connected to this GitHub repository, set the
+   Config File Path to `/railway.beta.json`. Add exactly two secret variables:
+   `LP_DEPLOYER_PRIVATE_KEY` for the fresh funded LP deployer wallet, and
+   `PONS_CREATOR_PRIVATE_KEY` for the separate Pons creator wallet. The second key
+   is stored for the later Pons launch and is not used by the beta pool deployment.
+3. Review and deploy that Railway service. Its one-shot container compiles the
+   pinned contracts, derives the LP deployer address, validates chain 4663, verifies
+   current Pons v2 and USDG contracts, deploys separate reserve vaults, and seeds
+   exactly one five-city market with 25 USDG. The fresh-wallet nonce check prevents
+   a later automatic deployment from repeating the spend. Save the Railway logs
+   containing transaction hashes and resulting public addresses.
 4. In Vercel, set `NEXT_PUBLIC_BID_NETWORK=mainnet`, the public RPC and USDG values
    from `.env.production.example`, `NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT=1`, and the
    printed `NEXT_PUBLIC_BID_MARKET_CITY_FIELD`, factory and vault values. Leave
@@ -56,10 +54,11 @@ another caller to fill them later. A read-only keeper will not fill resting orde
 Until those values are supplied, read-only mode uses Robinhood Chain's public
 mainnet RPC and exposes health only; it cannot sign or move funds.
 
-**Railway later:** add `KEEPER_PRIVATE_KEY` directly under service Variables,
-plus matching `KEEPER_EXPECTED_ADDRESS`. This is the limited operator key, not
-the deployer/treasury/oracle key. No signer key goes in Vercel. Supabase is not
-used. Repository deployment configuration does not provision service secrets.
+**Railway later:** reuse `LP_DEPLOYER_PRIVATE_KEY` for the beta LP operator and
+set its public address as `KEEPER_EXPECTED_ADDRESS`. The separate
+`PONS_CREATOR_PRIVATE_KEY` is never used by the keeper. No signer key goes in
+Vercel. Supabase is not used. Repository deployment configuration does not
+provision service secrets.
 
 The 45/30/10/10/5 allocation is tested, but does not mean live claiming, rewards,
 buybacks or LP deployment are activated. Preserve reserves until approved.
@@ -91,15 +90,13 @@ the first deployment. `BID_REWARDS_VAULT` is the distributor address printed by
 
 Secret placement is intentionally small:
 
-- Railway: `RH_RPC_URL` and `KEEPER_PRIVATE_KEY`;
-- local deployment machine only: encrypted Foundry keystore and password file;
+- Railway: `LP_DEPLOYER_PRIVATE_KEY` and the separate `PONS_CREATOR_PRIVATE_KEY`;
 - Vercel or Sites: no secrets;
 - Supabase: no variables because it is not used by this version.
 
-There is no separate "Pons private key" in Railway. The one-time Pons launch is
-signed by the local encrypted `BID_DEPLOYER` keystore. Railway uses a different,
-limited keeper key; its public address must be both `BID_LIQUIDITY_OPERATOR` and
-`KEEPER_EXPECTED_ADDRESS`. The treasury contract, not either wallet, is the Pons
+The two Railway keys stay separate. `LP_DEPLOYER_PRIVATE_KEY` deploys the market
+stack and may operate LP automation. `PONS_CREATOR_PRIVATE_KEY` signs the later
+Pons coin launch. The treasury contract, not either wallet, is the Pons
 creator-fee recipient.
 
 ## 1. Before the token launch
@@ -251,9 +248,10 @@ origin. Keep `NEXT_PUBLIC_LAUNCH_STATE=prelaunch` until the final verification.
 
 ## 5. Railway keeper
 
-Create one Railway service from this repository. Railway auto-detects the root `Dockerfile`; use one
-replica, and `/` as the health path. Add all keeper/server variables from
-`.env.production.example`; add `KEEPER_PRIVATE_KEY` directly in Railway. Set
+Create one Railway worker service from this repository. Railway auto-detects the
+root `Dockerfile`; use one replica, and `/` as the health path. Add all
+keeper/server variables from `.env.production.example`; reuse
+`LP_DEPLOYER_PRIVATE_KEY` directly in Railway. Set
 `KEEPER_EXECUTION_ENABLED=false` for the first deployment. The process listens
 on Railway's `PORT`, validates the RPC chain before becoming healthy, and never
 returns or logs the private key.
@@ -295,8 +293,8 @@ LP_MIN_DEPLOY_AMOUNT
 LP_TARGET_DEPTH
 ```
 
-Add `RH_RPC_URL` and `KEEPER_PRIVATE_KEY` as Railway secrets. The raw key must
-never be placed in Vercel, a `NEXT_PUBLIC_*` variable, Git, logs, or shell history.
+Add `RH_RPC_URL` and `LP_DEPLOYER_PRIVATE_KEY` as Railway secrets. The raw key
+must never be placed in Vercel, a `NEXT_PUBLIC_*` variable, Git or logs.
 
 ## 6. Supabase
 

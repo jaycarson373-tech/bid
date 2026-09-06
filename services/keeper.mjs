@@ -12,6 +12,7 @@ import { bidFeePolicy } from "../config/bid-fee-policy.mjs";
 import { buildLiquidityAllocationPlan } from "./liquidity-allocation.mjs";
 
 const env = (key) => process.env[key]?.trim() ?? "";
+const operatorPrivateKey = env("LP_DEPLOYER_PRIVATE_KEY") || env("KEEPER_PRIVATE_KEY");
 const enabled = env("KEEPER_EXECUTION_ENABLED") === "true";
 const chainId = Number(env("BID_EXPECTED_CHAIN_ID") || (env("NEXT_PUBLIC_BID_NETWORK") === "testnet" ? "46630" : "4663"));
 const rpcUrl = env("RH_RPC_URL") || (!enabled && chainId === 4663 ? "https://rpc.mainnet.chain.robinhood.com" : "");
@@ -39,8 +40,8 @@ const ponsCurve = env("PONS_CURVE_ADDRESS");
 if (!rpcUrl) throw new Error("RH_RPC_URL is required for execution or non-mainnet operation");
 if (!Number.isInteger(chainId) || chainId <= 0) throw new Error("BID_EXPECTED_CHAIN_ID is invalid");
 if (!Number.isFinite(pollInterval) || pollInterval < 5_000) throw new Error("KEEPER_POLL_INTERVAL_MS must be at least 5000");
-if (enabled && (!env("KEEPER_PRIVATE_KEY") || !env("KEEPER_EXPECTED_ADDRESS") || marketAddresses.length === 0)) {
-  throw new Error("execution requires KEEPER_PRIVATE_KEY, KEEPER_EXPECTED_ADDRESS and at least one market");
+if (enabled && (!operatorPrivateKey || !env("KEEPER_EXPECTED_ADDRESS") || marketAddresses.length === 0)) {
+  throw new Error("execution requires LP_DEPLOYER_PRIVATE_KEY (or legacy KEEPER_PRIVATE_KEY), KEEPER_EXPECTED_ADDRESS and at least one market");
 }
 if (liquidityDeploymentEnabled && (!enabled || !liquidityVault || !collateral)) {
   throw new Error("LP deployment requires execution, liquidity vault, and collateral addresses");
@@ -62,7 +63,7 @@ if (env("PONS_HOOK_SWEEP_ENABLED") === "true") {
 }
 
 const publicClient = createPublicClient({ transport: http(rpcUrl) });
-const account = enabled ? privateKeyToAccount(env("KEEPER_PRIVATE_KEY")) : null;
+const account = enabled ? privateKeyToAccount(operatorPrivateKey) : null;
 const walletClient = account ? createWalletClient({ account, transport: http(rpcUrl) }) : null;
 const marketAbi = parseAbi([
   "function nextLimitOrderId() view returns (uint256)",
@@ -337,7 +338,7 @@ log("keeper_ready", { mode: status.mode, chainId: actualChainId, markets: market
 const server = createServer((request, response) => {
   const healthy = status.ready && !status.lastError;
   response.writeHead(healthy ? 200 : 503, { "content-type": "application/json" });
-  response.end(JSON.stringify({ ...status, privateKeyConfigured: Boolean(env("KEEPER_PRIVATE_KEY")) }));
+  response.end(JSON.stringify({ ...status, privateKeyConfigured: Boolean(operatorPrivateKey) }));
 });
 server.listen(Number(env("PORT") || "8080"), "0.0.0.0");
 

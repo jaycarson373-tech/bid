@@ -53,7 +53,10 @@ contract BidBetaDeploymentTest is Test {
     }
 
     function testExactBetaDeploymentTradeCloseResolveRedeem() public {
-        (address marketAddress,, address vaultAddress) = new DeployBidBeta().run();
+        DeployBidBeta script = new DeployBidBeta();
+        script.run();
+        address marketAddress = script.deployedMarket();
+        address vaultAddress = script.deployedLiquidityVault();
         BidMarket market = BidMarket(marketAddress);
         assertEq(market.balanceOf(vaultAddress), 25e6);
         assertEq(MockToken(USDG).balanceOf(deployer), 0);

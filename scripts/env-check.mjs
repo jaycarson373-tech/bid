@@ -160,11 +160,12 @@ if (launchState === "live") {
 }
 
 if (value("KEEPER_EXECUTION_ENABLED") === "true") {
-  for (const key of ["KEEPER_PRIVATE_KEY", "KEEPER_EXPECTED_ADDRESS", "KEEPER_MARKETS"]) {
+  for (const key of ["KEEPER_EXPECTED_ADDRESS", "KEEPER_MARKETS"]) {
     if (!value(key)) errors.push(`${key} is required when keeper execution is enabled`);
   }
-  if (!/^0x[0-9a-f]{64}$/i.test(value("KEEPER_PRIVATE_KEY"))) {
-    errors.push("KEEPER_PRIVATE_KEY must be a 32-byte hex key");
+  const operatorKey = value("LP_DEPLOYER_PRIVATE_KEY") || value("KEEPER_PRIVATE_KEY");
+  if (!/^0x[0-9a-f]{64}$/i.test(operatorKey)) {
+    errors.push("LP_DEPLOYER_PRIVATE_KEY (or legacy KEEPER_PRIVATE_KEY) must be a 32-byte hex key");
   }
 } else {
   warnings.push("keeper execution is disabled (read-only health mode)");

@@ -443,7 +443,8 @@ async function run() {
   assert(quoteAssetApproved, "Pons factory currently approves the configured USDG quote asset");
 
   if (env("KEEPER_EXECUTION_ENABLED") === "true") {
-    const account = privateKeyToAccount(required("KEEPER_PRIVATE_KEY"));
+    const operatorKey = env("LP_DEPLOYER_PRIVATE_KEY") || required("KEEPER_PRIVATE_KEY");
+    const account = privateKeyToAccount(operatorKey);
     assert(sameAddress(account.address, required("KEEPER_EXPECTED_ADDRESS")), "keeper key matches expected public address");
     assert(sameAddress(account.address, addresses.liquidityOperator), "keeper is the liquidity vault operator");
     const balance = await client.getBalance({ address: account.address });

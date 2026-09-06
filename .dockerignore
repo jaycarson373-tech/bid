@@ -9,6 +9,8 @@ dist
 build
 outputs
 work
-contracts
+contracts/out
+contracts/cache
+contracts/broadcast
 *.pem
 *.key

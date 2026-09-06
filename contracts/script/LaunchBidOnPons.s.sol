@@ -49,7 +49,10 @@ contract LaunchBidOnPons is Script {
 
     function run() external returns (address token, address curve) {
         uint256 expectedChainId = vm.envUint("BID_EXPECTED_CHAIN_ID");
-        address deployer = vm.envAddress("BID_DEPLOYER");
+        uint256 creatorKey = vm.envUint("PONS_CREATOR_PRIVATE_KEY");
+        address deployer = vm.addr(creatorKey);
+        address expectedCreator = vm.envOr("PONS_CREATOR_ADDRESS", address(0));
+        if (expectedCreator != address(0)) require(expectedCreator == deployer, "Pons creator key mismatch");
         address treasury = vm.envAddress("BID_FLYWHEEL_TREASURY");
         address pairToken = vm.envAddress("PONS_QUOTE_ASSET");
         IPonsV2LaunchFactory factory = IPonsV2LaunchFactory(vm.envAddress("PONS_FACTORY"));
@@ -59,7 +62,7 @@ contract LaunchBidOnPons is Script {
         uint256 fee = factory.launchFee();
         IPonsV2LaunchFactory.TokenParams memory params = _tokenParams(factory, launchConfigId, pairToken, treasury);
 
-        vm.startBroadcast(deployer);
+        vm.startBroadcast(creatorKey);
         (token, curve) = factory.launchToken{value: fee}(params, launchConfigId, pairToken);
         vm.stopBroadcast();
 
@@ -80,7 +83,6 @@ contract LaunchBidOnPons is Script {
         require(block.chainid == expectedChainId && expectedChainId == 4663, "unexpected chain");
         require(deployer != address(0) && treasury.code.length > 0, "invalid deployer or treasury");
         require(address(factory).code.length > 0, "Pons factory has no code");
-        require(IBidTreasuryFactoryBinding(treasury).owner() == deployer, "deployer is not temporary treasury owner");
         require(
             IBidTreasuryFactoryBinding(treasury).ponsFactory() == address(factory), "treasury Pons factory mismatch"
         );

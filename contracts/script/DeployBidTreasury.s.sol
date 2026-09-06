@@ -39,6 +39,7 @@ contract DeployBidTreasury is Script {
         )
     {
         uint256 expectedChainId = vm.envUint("BID_EXPECTED_CHAIN_ID");
+        uint256 deployerKey = vm.envOr("LP_DEPLOYER_PRIVATE_KEY", uint256(0));
         DeploymentConfig memory config = DeploymentConfig({
             deployer: vm.envAddress("BID_DEPLOYER"),
             treasuryOwner: vm.envAddress("BID_TREASURY_OWNER"),
@@ -54,6 +55,7 @@ contract DeployBidTreasury is Script {
         });
 
         require(block.chainid == expectedChainId, "unexpected chain");
+        if (deployerKey != 0) require(vm.addr(deployerKey) == config.deployer, "LP deployer key mismatch");
         require(
             config.deployer != address(0) && config.treasuryOwner != address(0) && config.rewardsOwner != address(0),
             "zero owner"
@@ -74,7 +76,8 @@ contract DeployBidTreasury is Script {
             config.ponsFactory.approvedPairTokens(address(config.collateral)), "collateral is not an approved Pons pair"
         );
 
-        vm.startBroadcast(config.deployer);
+        if (deployerKey == 0) vm.startBroadcast(config.deployer);
+        else vm.startBroadcast(deployerKey);
         rewardsDistributor = new BidRewardsDistributor(config.rewardsOwner);
         liquidityVault = new BidLiquidityVault(config.collateral, config.liquidityOperator, config.deployer);
         treasury = new BidFlywheelTreasury(
