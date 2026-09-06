@@ -35,10 +35,9 @@ function publicValue(name: keyof typeof publicEnvironment, fallback = "") {
 
 const isTestnet = publicValue("NEXT_PUBLIC_BID_NETWORK", "mainnet") === "testnet";
 const isPonsVerified = publicValue("NEXT_PUBLIC_PONS_VERIFIED") === "true";
-const maxTradeAmount = Number(publicValue("NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT", "1"));
-if (!Number.isFinite(maxTradeAmount) || maxTradeAmount <= 0) {
-  throw new Error("NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT must be a positive finite number");
-}
+// The first beta market has a fixed public order range; the contract independently
+// enforces the same 5 USDG ceiling.
+const maxTradeAmount = 5;
 const allocationTotal = Object.values(feePolicy.allocations).reduce((total, bps) => total + bps, 0);
 
 if (allocationTotal !== feePolicy.basisPoints) {
@@ -72,6 +71,7 @@ export const siteConfig = {
   buybackBurnShareBps: feePolicy.allocations.buybackBurn,
   treasuryShareBps: feePolicy.allocations.treasury,
   creatorRewardsShareBps: feePolicy.allocations.creatorRewards,
+  minTradeAmount: 1,
   maxTradeAmount,
   contractAddress: publicValue(
     "NEXT_PUBLIC_BID_CONTRACT_ADDRESS",

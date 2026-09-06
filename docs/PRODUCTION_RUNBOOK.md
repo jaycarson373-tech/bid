@@ -26,7 +26,7 @@ automatic housing-data feed.
    a later automatic deployment from repeating the spend. Save the Railway logs
    containing transaction hashes and resulting public addresses.
 4. In Vercel, set `NEXT_PUBLIC_BID_NETWORK=mainnet`, the public RPC and USDG values
-   from `.env.production.example`, `NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT=1`, and the
+   from `.env.production.example`, `NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT=5`, and the
    printed `NEXT_PUBLIC_BID_MARKET_CITY_FIELD`, factory and vault values. Leave
    `NEXT_PUBLIC_BID_MARKET_MIA_TPA`, `NEXT_PUBLIC_BID_MARKET_AUSTIN` and the final
    token CA empty. Keep `NEXT_PUBLIC_LAUNCH_STATE=prelaunch` until the token flow
@@ -82,7 +82,7 @@ These public values are required before the first treasury deployment:
 | `BID_MARKET_CLOSE_TIME` | Approved future Unix timestamp |
 | `BID_GENESIS_MARKET_COUNT` | `1` for the capped beta |
 | `BID_INITIAL_LIQUIDITY` | `25000000` for the 25 USDG seed |
-| `BID_MAX_TRADE_AMOUNT` | `1000000` for the immutable 1 USDG order cap |
+| `BID_MAX_TRADE_AMOUNT` | `5000000` for the immutable 5 USDG order cap; UI minimum is 1 USDG |
 
 The final BID CA and Pons curve are outputs of `LaunchBidOnPons`, not inputs to
 the first deployment. `BID_REWARDS_VAULT` is the distributor address printed by
@@ -163,10 +163,11 @@ directly to `BID_LIQUIDITY_VAULT`.
 
 | Initial seed | Order cap | Positioning |
 | --- | --- | --- |
-| 25 USDG (`25000000`) | 1 USDG (`1000000`) | Capped one-market beta |
+| 25 USDG (`25000000`) | 1–5 USDG | Capped one-market beta |
 
 Zero initial liquidity cannot quote or execute a trade. The 25 USDG seed is protocol-owned
-capital, not a fee, and the immutable 1 USDG order cap limits early price impact.
+capital, not a fee. The interface enforces a 1 USDG minimum and the contract enforces
+an immutable 5 USDG maximum to limit early price impact.
 The configured recurring threshold `LP_MIN_DEPLOY_AMOUNT=1000000` batches at least 1 USDG before the
 keeper spends gas. `LP_TARGET_DEPTH=100000000` sets a 100 USDG beta target; the
 keeper deterministically allocates to approved open markets in proportion to

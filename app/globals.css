@@ -735,11 +735,63 @@ a {
 .market-section {
   padding: 110px 42px 120px;
   background:
-    linear-gradient(180deg, rgba(5, 6, 7, 0.44) 0, rgba(5, 6, 7, 0.83) 310px, #050607 770px),
+    linear-gradient(180deg, rgba(5, 6, 7, 0.2) 0, rgba(5, 6, 7, 0.72) 340px, #050607 820px),
     repeating-linear-gradient(0deg, transparent 0 84px, rgba(255, 255, 255, 0.018) 84px 85px),
-    url("/brand/bid-market-skyline.jpg") top center / 100% auto no-repeat,
+    url("/brand/bid-market-skyline.jpg") top center / max(1440px, 100%) auto no-repeat,
     var(--paper);
   color: #f5f8f3;
+}
+
+.beta-market-banner {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto auto;
+  align-items: center;
+  gap: 22px;
+  max-width: 1480px;
+  min-height: 58px;
+  margin: 0 auto 18px;
+  padding: 0 18px;
+  border: 1px solid rgba(233, 255, 0, 0.42);
+  background: rgba(5, 7, 6, 0.84);
+  box-shadow: 0 0 32px rgba(233, 255, 0, 0.08);
+  backdrop-filter: blur(12px);
+  font-family: var(--font-geist-mono);
+  text-transform: uppercase;
+}
+
+.beta-market-banner span,
+.beta-market-banner small,
+.beta-market-banner em {
+  font-size: 8px;
+  font-style: normal;
+}
+
+.beta-market-banner span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lime);
+}
+
+.beta-market-banner span i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 12px rgba(233, 255, 0, 0.75);
+}
+
+.beta-market-banner strong {
+  color: #f5f8f3;
+  font-size: 11px;
+}
+
+.beta-market-banner small {
+  color: #d9e0d6;
+}
+
+.beta-market-banner em {
+  color: #7f887e;
 }
 
 .section-heading {
@@ -878,6 +930,21 @@ a {
   background: linear-gradient(180deg, #dfff00, #20e86f);
   border-right: 1px solid rgba(255, 255, 255, 0.18);
   content: "";
+}
+
+.market-card.beta-market {
+  border-color: rgba(233, 255, 0, 0.32);
+}
+
+.market-card.coming-soon {
+  opacity: 0.66;
+}
+
+.market-card.coming-soon:hover {
+  border-color: rgba(233, 255, 0, 0.24);
+  background: rgba(7, 8, 7, 0.94);
+  box-shadow: none;
+  transform: none;
 }
 
 .card-index {
@@ -3044,10 +3111,22 @@ footer > small {
 
   .market-section {
     background:
-      linear-gradient(180deg, rgba(5, 6, 7, 0.38) 0, rgba(5, 6, 7, 0.86) 280px, #050607 620px),
+      linear-gradient(180deg, rgba(5, 6, 7, 0.2) 0, rgba(5, 6, 7, 0.78) 300px, #050607 650px),
       repeating-linear-gradient(0deg, transparent 0 84px, rgba(255, 255, 255, 0.018) 84px 85px),
       url("/brand/bid-market-skyline.jpg") top center / auto 420px no-repeat,
       var(--paper);
+  }
+
+  .beta-market-banner {
+    grid-template-columns: 1fr auto;
+    gap: 7px 12px;
+    min-height: 78px;
+    padding: 12px;
+  }
+
+  .beta-market-banner strong,
+  .beta-market-banner em {
+    text-align: right;
   }
 
   .hero {

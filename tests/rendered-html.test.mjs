@@ -53,6 +53,9 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /CREATOR REWARDS/);
   assert.doesNotMatch(html, /Solana|pump\.fun/i);
   assert.match(html, /HOUSING MARKETS/);
+  assert.match(html, /1 MARKET AT LAUNCH/);
+  assert.match(html, /\$1 MINIMUM · \$5 MAXIMUM PER ORDER/);
+  assert.match(html, /OTHER POOLS COMING SOON/);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });

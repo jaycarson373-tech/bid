@@ -122,6 +122,7 @@ const markets: Market[] = [
 ];
 
 const filters = ["All markets", "Head to head", "5-city fields", "Yes / No"] as const;
+const betaMarketId = "city-field-eoy";
 const feeAllocatedEvent = parseAbiItem(
   "event FeeAllocated(bytes32 indexed allocationVersion,address indexed asset,uint256 grossAmount,uint256 lpRewardsAmount,uint256 marketLiquidityAmount,uint256 buybackBurnAmount,uint256 treasuryAmount,uint256 creatorRewardsAmount)",
 );
@@ -296,7 +297,10 @@ export default function Home() {
   const selectedMarketAddress = configuredAddress(selected.contractAddress);
   const marketContractConfigured = selectedMarketAddress !== null;
   const outcome = selected.outcomes[selectedOutcome] ?? selected.outcomes[0];
-  const displayedMarkets = markets.filter((market) => matchesFilter(market, filter));
+  const displayedMarkets = markets
+    .filter((market) => matchesFilter(market, filter))
+    .sort((left, right) => Number(right.id === betaMarketId) - Number(left.id === betaMarketId));
+  const betaMarketOpen = Boolean(livePrices[betaMarketId]);
   const showSampleData = isDemo;
   const selectedPrices = livePrices[selected.id];
   const showSelectedPricing = Boolean(selectedPrices) || showSampleData;
@@ -439,7 +443,7 @@ export default function Home() {
       orderType === "liquidity" ||
       !selectedMarketAddress ||
       !Number.isFinite(collateralAmount) ||
-      collateralAmount <= 0 ||
+      collateralAmount < siteConfig.minTradeAmount ||
       collateralAmount > siteConfig.maxTradeAmount
     ) {
       return;
@@ -600,6 +604,10 @@ export default function Home() {
   })();
 
   const chooseMarket = (market: Market) => {
+    if (market.id !== betaMarketId) {
+      setNotice(`${market.short} is coming soon. The five-city housing outlook is the only beta market.`);
+      return;
+    }
     setSelectedId(market.id);
     setSelectedOutcome(0);
   };
@@ -645,8 +653,8 @@ export default function Home() {
       return;
     }
 
-    if (!amount || Number(amount) <= 0) {
-      setNotice(`Enter a ${siteConfig.collateralSymbol} amount first.`);
+    if (!amount || Number(amount) < siteConfig.minTradeAmount) {
+      setNotice(`Beta orders start at ${siteConfig.minTradeAmount} ${siteConfig.collateralSymbol}.`);
       return;
     }
     if (orderType !== "liquidity" && Number(amount) > siteConfig.maxTradeAmount) {
@@ -939,7 +947,14 @@ export default function Home() {
             <span className="section-kicker">THE BOARD</span>
             <h2>Price the city.</h2>
           </div>
-          <p>YES/NO, head-to-head, or the full field. Every outcome settles against the same public index.</p>
+          <p>One five-city market opens first. Head-to-head and YES/NO pools are coming soon.</p>
+        </div>
+
+        <div className="beta-market-banner" aria-label="Beta market availability">
+          <span><i />{betaMarketOpen ? "1 MARKET OPEN" : "1 MARKET AT LAUNCH"}</span>
+          <strong>FIVE-CITY HOUSING OUTLOOK</strong>
+          <small>$1 MINIMUM · $5 MAXIMUM PER ORDER</small>
+          <em>OTHER POOLS COMING SOON</em>
         </div>
 
         <div className="filter-row" role="group" aria-label="Filter markets">
@@ -958,13 +973,16 @@ export default function Home() {
 
         <div className="trading-layout">
           <div className="market-list">
-            {displayedMarkets.map((market, index) => (
+            {displayedMarkets.map((market, index) => {
+              const isBetaMarket = market.id === betaMarketId;
+              return (
               <button
-                className={`market-card ${selectedId === market.id ? "selected" : ""}`}
+                className={`market-card ${isBetaMarket ? "beta-market" : "coming-soon"} ${selectedId === market.id ? "selected" : ""}`}
                 key={market.id}
                 type="button"
                 onClick={() => chooseMarket(market)}
                 aria-pressed={selectedId === market.id}
+                aria-disabled={!isBetaMarket}
               >
                 <span className="card-index">{String(index + 1).padStart(2, "0")}</span>
                 <MarketVisual
@@ -976,17 +994,17 @@ export default function Home() {
                   <span className="market-meta">
                     <span>{market.mode.replaceAll("-", " ")}</span>
                     {livePrices[market.id]
-                      ? <em>Beta · Live AMM</em>
+                      ? <em>Open · Beta</em>
                       : showSampleData
                         ? <em><SampleBadge compact /> {market.signal}</em>
                         : configuredAddress(market.contractAddress) && marketReadStatus === "error"
                           ? <em>Onchain read unavailable</em>
-                          : <em>{market.mode === "field" ? "Beta · Prelaunch" : "Coming soon"}</em>}
+                          : <em>{isBetaMarket ? "Beta · Awaiting liquidity" : "Coming soon"}</em>}
                   </span>
                   <strong>{market.question}</strong>
-                  <small>Closes {liveCloseDates[market.id] ?? market.closes} · {livePrices[market.id]
-                    ? "Onchain pool"
-                    : showSampleData ? `Vol ${market.volume}` : "Awaiting liquidity"}</small>
+                  <small>{isBetaMarket
+                    ? `Resolves ${liveCloseDates[market.id] ?? market.closes} · $1–$5 per order`
+                    : `Resolves ${market.closes} · Pool coming soon`}</small>
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
                   {livePrices[market.id] || showSampleData ? (
@@ -996,13 +1014,14 @@ export default function Home() {
                       </span>
                     ))
                   ) : (
-                    <span className="outcome-quote locked-quote"><LockedValue /></span>
+                    <span className="outcome-quote locked-quote"><LockedValue>{isBetaMarket ? "Awaiting liquidity" : "Coming soon"}</LockedValue></span>
                   )}
                   {market.mode === "field" && <small>+2 more cities</small>}
                 </span>
                 <span className="select-arrow">↗</span>
               </button>
-            ))}
+              );
+            })}
           </div>
 
           <aside className="trade-ticket" aria-label={`Trade ${selected.short}`}>
@@ -1124,7 +1143,7 @@ export default function Home() {
               <input
                 id="trade-amount"
                 inputMode="decimal"
-                min="0"
+                min={orderType === "liquidity" ? "0" : String(siteConfig.minTradeAmount)}
                 max={orderType === "liquidity" ? undefined : siteConfig.maxTradeAmount}
                 value={amount}
                 onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
@@ -1135,7 +1154,7 @@ export default function Home() {
               <em>{orderType === "liquidity" && liquidityAction === "remove" ? "BID-LP" : siteConfig.collateralSymbol}</em>
             </div>
             <div className="quick-amounts">
-              {(orderType === "liquidity" ? [1, 5, 10, 25] : [0.1, 0.25, 0.5, 1]).map((value) => (
+              {(orderType === "liquidity" ? [1, 5, 10, 25] : [1, 2, 3, 5]).map((value) => (
                 <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
               ))}
               {orderType === "liquidity" && liquidityAction === "remove" && currentLpPosition && (
@@ -1148,7 +1167,7 @@ export default function Home() {
                 </button>
               )}
             </div>
-            {orderType !== "liquidity" && <p className="integration-status">CAPPED BETA · MAX {siteConfig.maxTradeAmount} USDG PER ORDER</p>}
+            {orderType !== "liquidity" && <p className="integration-status">ONE OPEN BETA MARKET · {siteConfig.minTradeAmount}–{siteConfig.maxTradeAmount} USDG PER ORDER</p>}
 
             {orderType === "liquidity" ? (
               <>

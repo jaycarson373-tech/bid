@@ -53,7 +53,7 @@ contract DeployBidBeta is Script {
         vm.setEnv("BID_EXPECTED_CHAIN_ID", "4663");
         vm.setEnv("BID_GENESIS_MARKET_COUNT", "1");
         vm.setEnv("BID_INITIAL_LIQUIDITY", "25000000");
-        vm.setEnv("BID_MAX_TRADE_AMOUNT", "1000000");
+        vm.setEnv("BID_MAX_TRADE_AMOUNT", "5000000");
         vm.setEnv("BID_MARKET_CLOSE_TIME", "1804291199");
         _defaultAddress("BID_COLLATERAL_TOKEN", 0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168);
         _defaultAddress("PONS_FACTORY", 0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e);
@@ -74,7 +74,7 @@ contract DeployBidBeta is Script {
         require(vm.getNonce(deployer) == 0, "LP deployer must be a fresh wallet");
         require(vm.envUint("BID_GENESIS_MARKET_COUNT") == 1, "beta creates exactly one market");
         require(vm.envUint("BID_INITIAL_LIQUIDITY") == 25e6, "beta seed must be 25 USDG");
-        require(vm.envUint("BID_MAX_TRADE_AMOUNT") == 1e6, "beta order cap must be 1 USDG");
+        require(vm.envUint("BID_MAX_TRADE_AMOUNT") == 5e6, "beta order cap must be 5 USDG");
         uint256 closeTime = vm.envUint("BID_MARKET_CLOSE_TIME");
         require(closeTime > block.timestamp && closeTime <= type(uint64).max, "invalid close time");
     }

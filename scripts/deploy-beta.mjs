@@ -59,7 +59,7 @@ const errors = required.filter(key => !isAddress(env[key] || "") || env[key].toL
 if (!/^\d+$/.test(env.BID_MARKET_CLOSE_TIME || "") || BigInt(env.BID_MARKET_CLOSE_TIME) <= BigInt(Math.floor(Date.now() / 1000))) {
   errors.push("BID_MARKET_CLOSE_TIME: set a future Unix timestamp consistent with published market rules");
 }
-for (const [key, value] of Object.entries({ BID_EXPECTED_CHAIN_ID: "4663", BID_GENESIS_MARKET_COUNT: "1", BID_INITIAL_LIQUIDITY: "25000000", BID_MAX_TRADE_AMOUNT: "1000000" })) {
+for (const [key, value] of Object.entries({ BID_EXPECTED_CHAIN_ID: "4663", BID_GENESIS_MARKET_COUNT: "1", BID_INITIAL_LIQUIDITY: "25000000", BID_MAX_TRADE_AMOUNT: "5000000" })) {
   if (env[key] !== value) errors.push(`${key}: this beta command requires ${value}`);
 }
 if (errors.length) {

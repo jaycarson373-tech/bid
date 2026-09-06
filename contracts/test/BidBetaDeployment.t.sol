@@ -35,7 +35,7 @@ contract BidBetaDeploymentTest is Test {
         vm.setEnv("BID_EXPECTED_CHAIN_ID", "4663");
         vm.setEnv("BID_GENESIS_MARKET_COUNT", "1");
         vm.setEnv("BID_INITIAL_LIQUIDITY", "25000000");
-        vm.setEnv("BID_MAX_TRADE_AMOUNT", "1000000");
+        vm.setEnv("BID_MAX_TRADE_AMOUNT", "5000000");
         vm.setEnv("BID_MARKET_CLOSE_TIME", vm.toString(CLOSE));
         vm.setEnv("BID_DEPLOYER", vm.toString(deployer));
         vm.setEnv("BID_TREASURY_OWNER", vm.toString(owner));
@@ -65,11 +65,11 @@ contract BidBetaDeploymentTest is Test {
         for (uint256 i; i < 5; ++i) assertEq(market.spotPricesBps()[i], 2000);
         assertEq(BidLiquidityVault(payable(vaultAddress)).owner(), owner);
         assertEq(BidLiquidityVault(payable(vaultAddress)).operator(), operator);
-        MockToken(USDG).mint(trader, 3e6);
+        MockToken(USDG).mint(trader, 7e6);
         vm.startPrank(trader);
-        MockToken(USDG).approve(marketAddress, 3e6);
+        MockToken(USDG).approve(marketAddress, 7e6);
         vm.expectRevert(BidMarket.TradeAmountExceeded.selector);
-        market.buy(1e6 + 1, 0, 0);
+        market.buy(5e6 + 1, 0, 0);
         uint256 purchased = market.buy(1e6, 0, 0);
         assertGt(purchased, 1e6);
         uint256 requiredTokens;

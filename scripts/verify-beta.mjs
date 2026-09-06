@@ -45,7 +45,7 @@ try {
   check(isAddressEqual(await read(vault, "owner"), vaultOwner), "final liquidity vault owner");
   check(await read(vault, "approvedMarkets", [market]), "vault approves this market");
   check(await read(market, "balanceOf", [vault]) >= 25_000_000n, "protocol-owned seed LP shares present");
-  check(await read(market, "maxTradeAmount") === 1_000_000n, "immutable 1 USDG order cap");
+  check(await read(market, "maxTradeAmount") === 5_000_000n, "immutable 5 USDG order cap");
   check(Number(await read(market, "creatorFeeBps")) === 0, "zero prediction-market fee");
   const closesAt = await read(market, "closesAt");
   check(closesAt === 1804291199n && closesAt > BigInt(Math.floor(Date.now() / 1000)), "closes March 5, 2027 at 23:59:59 UTC");

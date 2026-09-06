@@ -111,7 +111,7 @@ the deployer so the final token can be bound once after launch.
 
 ```bash
 export BID_RESOLUTION_ORACLE=0x...
-export BID_MAX_TRADE_AMOUNT=1000000
+export BID_MAX_TRADE_AMOUNT=5000000
 forge script script/DeployBidMarkets.s.sol:DeployBidMarkets \
   --rpc-url "$RH_RPC_URL" \
   --keystore /path/to/deployer-keystore \

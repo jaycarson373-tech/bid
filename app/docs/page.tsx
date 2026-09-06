@@ -151,7 +151,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               </tbody>
             </table>
             <p className={styles.note}>
-              USDG uses six decimals. Set <code>BID_INITIAL_LIQUIDITY=25000000</code>, <code>BID_MAX_TRADE_AMOUNT=1000000</code>, and <code>BID_GENESIS_MARKET_COUNT=1</code>.
+              USDG uses six decimals. Set <code>BID_INITIAL_LIQUIDITY=25000000</code>, <code>BID_MAX_TRADE_AMOUNT=5000000</code>, and <code>BID_GENESIS_MARKET_COUNT=1</code>. The beta interface accepts orders from 1 to 5 USDG.
               Zero liquidity cannot produce a quote. The 25 USDG seed remains protocol-owned and every genesis BID-LP share is minted directly to the liquidity vault.
             </p>
           </section>
