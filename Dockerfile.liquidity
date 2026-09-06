@@ -11,4 +11,4 @@ RUN forge build
 
 # One-shot, exact-amount liquidity top-up. The script exits without a
 # transaction once the verified market reaches its 50 USDG target.
-CMD ["script", "script/AddPublicBetaLiquidity.s.sol:AddPublicBetaLiquidity", "--root", ".", "--rpc-url", "https://rpc.mainnet.chain.robinhood.com", "--broadcast", "--slow", "-vv"]
+CMD ["forge script script/AddPublicBetaLiquidity.s.sol:AddPublicBetaLiquidity --root . --rpc-url https://rpc.mainnet.chain.robinhood.com --broadcast --slow -vv"]

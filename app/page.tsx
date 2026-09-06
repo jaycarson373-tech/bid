@@ -100,7 +100,7 @@ const markets: Market[] = [
       { label: "No", code: "NO", price: 0.5, tone: "coral" },
     ],
     volume: "—",
-    liquidity: "25 USDG",
+    liquidity: "50 USDG",
     closes: "Sep 30, 2026",
     signal: "Parcl ID 5352987",
     chart: [28, 31, 29, 35, 38, 36, 43, 41, 47, 52, 49, 55, 59, 57, 63, 68, 65, 71, 74, 72, 78, 82, 79, 86],

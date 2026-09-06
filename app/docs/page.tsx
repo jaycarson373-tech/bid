@@ -152,7 +152,8 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             </table>
             <p className={styles.note}>
               USDG uses six decimals. The retired field beta&apos;s 25 USDG was recovered in full before this replacement was deployed.
-              The replacement&apos;s 25 USDG seed is protocol-owned, with every BID-LP share held by the liquidity vault.
+              The replacement&apos;s original 25 USDG seed is protocol-owned, with those BID-LP shares held by the liquidity vault.
+              A second 25 USDG operator top-up brought live backing to 50 USDG. Public liquidity controls are disabled for the beta.
             </p>
             <h3>Depth policy</h3>
             <p>
@@ -161,8 +162,8 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               Supporting 50 USDG orders at the same depth ratio requires approximately 1,000 USDG of initial funding.
             </p>
             <p className={styles.note}>
-              The live 25 USDG beta is intentionally shallow: a 5 USDG buy moves the ending spot price to approximately 59.0%. Add USDG liquidity before
-              raising the order cap. The active market does not accept USDT collateral.
+              The live 50 USDG-backed beta remains intentionally conservative: a 5 USDG buy moves the ending spot price to approximately 54.75%.
+              Add protocol-controlled USDG liquidity before raising the order cap. The active market does not accept USDT collateral.
             </p>
           </section>
 
@@ -256,7 +257,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><Status>TESTED</Status><span>Versioned 45/30/10/10/5 fee allocation with deterministic rounding</span></div>
               <div><Status>TESTED</Status><span>Operator-managed deployment into protocol-owned market LP</span></div>
               <div><Status>TESTED</Status><span>Funded Merkle reward epochs with one-time wallet claims</span></div>
-              <div><Status>LIVE BETA</Status><span>Mainnet Miami YES / NO market with 25 USDG protocol-owned liquidity</span></div>
+              <div><Status>LIVE BETA</Status><span>Mainnet Miami YES / NO market with 50 USDG backing</span></div>
               <div><Status>TESTED</Status><span>Real mainnet $5 trade, close, resolution, redemption and complete USDG reconciliation</span></div>
               <div><Status>READ ONLY</Status><span>Railway service connected to Robinhood Chain; automated financial actions disabled</span></div>
               <div><Status tone="pending">PENDING</Status><span>Independent audit, event indexer and production monitoring</span></div>

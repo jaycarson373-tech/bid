@@ -45,7 +45,7 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.match(html, /One live beta market/i);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
-  assert.match(html, /Liquidity/);
+  assert.doesNotMatch(html, /Own an LP share|Add liquidity/);
   assert.match(html, /1\.5%/);
   assert.match(html, /45%/);
   assert.match(html, /30%/);
