@@ -110,6 +110,30 @@ export const bidMarketAbi = [
   },
   {
     type: "function",
+    name: "quoteSell",
+    stateMutability: "view",
+    inputs: [
+      { name: "collateralOut", type: "uint256" },
+      { name: "outcomeIndex", type: "uint256" },
+    ],
+    outputs: [
+      { name: "outcomeTokensIn", type: "uint256" },
+      { name: "creatorFee", type: "uint256" },
+    ],
+  },
+  {
+    type: "function",
+    name: "sell",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "collateralOut", type: "uint256" },
+      { name: "outcomeIndex", type: "uint256" },
+      { name: "maxOutcomeTokensIn", type: "uint256" },
+    ],
+    outputs: [{ name: "outcomeTokensIn", type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "placeBuyLimit",
     stateMutability: "nonpayable",
     inputs: [

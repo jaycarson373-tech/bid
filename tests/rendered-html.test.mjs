@@ -45,6 +45,7 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.match(html, /One live beta market/i);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
+  assert.match(html, /Exit position/);
   assert.doesNotMatch(html, /Own an LP share|Add liquidity/);
   assert.match(html, /1\.5%/);
   assert.match(html, /45%/);
@@ -56,7 +57,7 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.match(html, /MARKETS LIVE/);
   assert.match(html, /ONE MARKET LIVE/);
   assert.match(html, /Market depth and points/);
-  assert.match(html, /25 USDG INITIAL LIQUIDITY/);
+  assert.match(html, /50 USDG LIVE BACKING/);
   assert.match(html, /LOCKED · COMING SOON/);
   assert.match(html, /\$5 per order/i);
   assert.match(html, /Parcl ID 5352987/);
@@ -124,6 +125,11 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /no transaction was built/);
   assert.match(page, /Fill now or cancel/);
   assert.match(page, /otherwise nothing is submitted/);
+  assert.match(page, /maximumSellQuote/);
+  assert.match(page, /Max position/);
+  assert.match(page, /functionName: "quoteSell"/);
+  assert.match(page, /functionName: "sell"/);
+  assert.match(page, /Position sold/);
   assert.match(page, /addFunding/);
   assert.match(page, /removeFundingToCollateral/);
   assert.match(page, /Add liquidity/);

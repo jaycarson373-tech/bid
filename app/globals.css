@@ -3292,6 +3292,15 @@ footer > small {
   background: rgba(233, 255, 0, 0.08);
 }
 
+.trade-direction-selector {
+  padding-top: 0;
+}
+
+.trade-direction-selector button:last-child.active {
+  border-color: rgba(255, 112, 118, 0.7);
+  background: rgba(255, 91, 99, 0.08);
+}
+
 .liquidity-selector span {
   font-family: var(--font-geist-mono);
   font-size: 9px;
@@ -3326,6 +3335,15 @@ footer > small {
   border-color: rgba(233, 255, 0, 0.35);
   color: var(--lime);
   text-transform: uppercase;
+}
+
+.quick-amounts .max-amount:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.sell-return strong {
+  color: #ff858a;
 }
 
 .liquidity-return strong {

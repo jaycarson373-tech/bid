@@ -8,6 +8,7 @@ import {
   formatUnits,
   parseAbiItem,
   parseUnits,
+  type Address,
   type EIP1193Provider,
   type Hex,
 } from "viem";
@@ -25,6 +26,7 @@ import pointsPolicy from "@/config/bid-points-policy-v1.json";
 type Tone = "coral" | "mint" | "violet" | "gold";
 type OrderType = "market" | "limit" | "liquidity";
 type LiquidityAction = "add" | "remove";
+type TradeDirection = "buy" | "sell";
 type MarketReadStatus = "awaiting" | "loading" | "ready" | "error";
 
 type FlywheelProof = {
@@ -306,12 +308,48 @@ function matchesFilter(market: Market, filter: (typeof filters)[number]) {
   return market.mode === "yes-no";
 }
 
+async function maximumSellQuote(
+  market: Address,
+  outcomeIndex: number,
+  availableOutcomeTokens: bigint,
+  maximumCollateralOut: bigint,
+) {
+  let low = 0n;
+  let high = maximumCollateralOut;
+
+  while (low < high) {
+    const candidate = (low + high + 1n) / 2n;
+    try {
+      const [requiredTokens] = await robinhoodPublicClient.readContract({
+        address: market,
+        abi: bidMarketAbi,
+        functionName: "quoteSell",
+        args: [candidate, BigInt(outcomeIndex)],
+      });
+      if (requiredTokens <= availableOutcomeTokens) low = candidate;
+      else high = candidate - 1n;
+    } catch {
+      high = candidate - 1n;
+    }
+  }
+
+  if (low === 0n) return null;
+  const [outcomeTokensIn, creatorFee] = await robinhoodPublicClient.readContract({
+    address: market,
+    abi: bidMarketAbi,
+    functionName: "quoteSell",
+    args: [low, BigInt(outcomeIndex)],
+  });
+  return { collateralOut: low, outcomeTokensIn, creatorFee };
+}
+
 export default function Home() {
   const [selectedId, setSelectedId] = useState(betaMarketId);
   const [filter, setFilter] = useState<(typeof filters)[number]>("All markets");
   const [selectedOutcome, setSelectedOutcome] = useState(0);
   const [amount, setAmount] = useState(isDemo ? "250" : "");
   const [orderType, setOrderType] = useState<OrderType>("market");
+  const [tradeDirection, setTradeDirection] = useState<TradeDirection>("buy");
   const [liquidityAction, setLiquidityAction] = useState<LiquidityAction>("add");
   const [limitPrice, setLimitPrice] = useState("50");
   const [walletOpen, setWalletOpen] = useState(false);
@@ -334,6 +372,13 @@ export default function Home() {
   const [liveQuote, setLiveQuote] = useState<{
     key: string;
     outcomeTokensOut: bigint;
+    creatorFee: bigint;
+    decimals: number;
+  } | null>(null);
+  const [sellQuote, setSellQuote] = useState<{
+    key: string;
+    collateralOut: bigint;
+    outcomeTokensIn: bigint;
     creatorFee: bigint;
     decimals: number;
   } | null>(null);
@@ -381,6 +426,8 @@ export default function Home() {
   const currentLpPosition = lpPosition?.key === lpPositionKey ? lpPosition : null;
   const currentWalletMarket = walletMarketState?.key === walletMarketKey ? walletMarketState : null;
   const selectedOutcomeBalance = currentWalletMarket?.outcomeBalances[selectedOutcome] ?? 0n;
+  const sellQuoteKey = `${selected.id}:${selectedOutcome}:${amount}:${selectedOutcomeBalance}`;
+  const currentSellQuote = sellQuote?.key === sellQuoteKey ? sellQuote : null;
   const hasRedeemablePosition = Boolean(
     currentWalletMarket?.resolved && currentWalletMarket.outcomeBalances.some((balance) => balance > 0n),
   );
@@ -664,6 +711,7 @@ export default function Home() {
     const collateralAmount = Number(amount);
 
     if (
+      tradeDirection !== "buy" ||
       orderType === "liquidity" ||
       !selectedMarketAddress ||
       !Number.isFinite(collateralAmount) ||
@@ -703,7 +751,7 @@ export default function Home() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [amount, orderType, quoteKey, refreshNonce, selectedMarketAddress, selectedOutcome]);
+  }, [amount, orderType, quoteKey, refreshNonce, selectedMarketAddress, selectedOutcome, tradeDirection]);
 
   useEffect(() => {
     let cancelled = false;
@@ -781,6 +829,56 @@ export default function Home() {
     void loadWalletMarketState();
     return () => { cancelled = true; };
   }, [refreshNonce, selected.outcomes, selectedMarketAddress, walletAddress, walletConnected, walletMarketKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const numericAmount = Number(amount);
+
+    if (
+      tradeDirection !== "sell" ||
+      orderType !== "market" ||
+      !selectedMarketAddress ||
+      !currentWalletMarket ||
+      !Number.isFinite(numericAmount) ||
+      numericAmount <= 0
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const availableTokens = parseUnits(amount, currentWalletMarket.decimals);
+        if (availableTokens > selectedOutcomeBalance) {
+          if (!cancelled) setSellQuote(null);
+          return;
+        }
+        const maximumCollateralOut = parseUnits(
+          String(siteConfig.maxTradeAmount),
+          currentWalletMarket.decimals,
+        );
+        const result = await maximumSellQuote(
+          selectedMarketAddress,
+          selectedOutcome,
+          availableTokens,
+          maximumCollateralOut,
+        );
+        if (!cancelled) {
+          setSellQuote(result ? {
+            key: sellQuoteKey,
+            ...result,
+            decimals: currentWalletMarket.decimals,
+          } : null);
+        }
+      } catch {
+        if (!cancelled) setSellQuote(null);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [amount, currentWalletMarket, orderType, selectedMarketAddress, selectedOutcome, selectedOutcomeBalance, sellQuoteKey, tradeDirection]);
 
   useEffect(() => {
     let cancelled = false;
@@ -943,11 +1041,16 @@ export default function Home() {
       return;
     }
 
-    if (!amount || Number(amount) < siteConfig.minTradeAmount) {
+    const isMarketSell = tradeDirection === "sell" && orderType === "market";
+    if (isMarketSell && (!amount || Number(amount) <= 0)) {
+      setNotice("Enter the number of outcome contracts to sell.");
+      return;
+    }
+    if (!isMarketSell && (!amount || Number(amount) < siteConfig.minTradeAmount)) {
       setNotice(`Beta orders start at ${siteConfig.minTradeAmount} ${siteConfig.collateralSymbol}.`);
       return;
     }
-    if (orderType !== "liquidity" && Number(amount) > siteConfig.maxTradeAmount) {
+    if (!isMarketSell && orderType !== "liquidity" && Number(amount) > siteConfig.maxTradeAmount) {
       setNotice(`Beta orders are capped at ${siteConfig.maxTradeAmount} ${siteConfig.collateralSymbol}.`);
       return;
     }
@@ -978,8 +1081,33 @@ export default function Home() {
       });
       const inputAmount = parseUnits(amount, decimals);
       let limitMinOutcomeTokensOut = 0n;
+      let sellCollateralOut = 0n;
 
-      if (orderType === "limit") {
+      if (isMarketSell) {
+        const liveOutcomeBalance = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "outcomeBalanceOf",
+          args: [account, BigInt(selectedOutcome)],
+        });
+        if (inputAmount > liveOutcomeBalance) {
+          setNotice(`This wallet does not have ${amount} ${outcome.code} contracts to sell.`);
+          return;
+        }
+        const result = await maximumSellQuote(
+          selectedMarketAddress,
+          selectedOutcome,
+          inputAmount,
+          parseUnits(String(siteConfig.maxTradeAmount), decimals),
+        );
+        if (!result) {
+          setNotice("This position is too small to sell at the current pool depth.");
+          return;
+        }
+        sellCollateralOut = result.collateralOut;
+      }
+
+      if (orderType === "limit" && tradeDirection === "buy") {
         limitMinOutcomeTokensOut = (inputAmount * 10_000n + priceBps - 1n) / priceBps;
         const [quotedTokens] = await robinhoodPublicClient.readContract({
           address: selectedMarketAddress,
@@ -996,7 +1124,7 @@ export default function Home() {
         }
       }
 
-      const needsCollateralApproval = orderType !== "liquidity" || liquidityAction === "add";
+      const needsCollateralApproval = !isMarketSell && (orderType !== "liquidity" || liquidityAction === "add");
 
       if (needsCollateralApproval) {
         const collateralBalance = await robinhoodPublicClient.readContract({
@@ -1013,11 +1141,12 @@ export default function Home() {
           return;
         }
 
-        const nativeBalance = await robinhoodPublicClient.getBalance({ address: account });
-        if (nativeBalance === 0n) {
-          setNotice(`This wallet needs ETH on ${siteConfig.networkName} to pay transaction gas.`);
-          return;
-        }
+      }
+
+      const nativeBalance = await robinhoodPublicClient.getBalance({ address: account });
+      if (nativeBalance === 0n) {
+        setNotice(`This wallet needs ETH on ${siteConfig.networkName} to pay transaction gas.`);
+        return;
       }
 
       if (orderType === "liquidity" && liquidityAction === "remove") {
@@ -1060,7 +1189,9 @@ export default function Home() {
       setNotice(
         orderType === "liquidity"
           ? `Confirm the liquidity ${liquidityAction === "add" ? "deposit" : "withdrawal"}.`
-          : orderType === "market" ? "Confirm the market order." : "Confirm the price-limited order.",
+          : isMarketSell
+            ? `Confirm the sale for ${formatUnits(sellCollateralOut, decimals)} ${siteConfig.collateralSymbol}.`
+            : orderType === "market" ? "Confirm the market order." : "Confirm the price-limited order.",
       );
       let transactionHash: Hex;
 
@@ -1093,6 +1224,13 @@ export default function Home() {
           functionName: "removeFundingToCollateral",
           args: [inputAmount, minCollateralOut],
         });
+      } else if (isMarketSell) {
+        transactionHash = await walletClient.writeContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "sell",
+          args: [sellCollateralOut, BigInt(selectedOutcome), inputAmount],
+        });
       } else if (orderType === "market") {
         const [quotedTokens] = await robinhoodPublicClient.readContract({
           address: selectedMarketAddress,
@@ -1122,9 +1260,10 @@ export default function Home() {
       }
       setRefreshNonce((value) => value + 1);
       setLastTransaction(transactionHash);
+      if (isMarketSell) setAmount("");
       const actionLabel = orderType === "liquidity"
         ? `Liquidity ${liquidityAction === "add" ? "added" : "withdrawn"}`
-        : orderType === "market" ? "Market order filled" : "Price-limited order filled";
+        : isMarketSell ? "Position sold" : orderType === "market" ? "Market order filled" : "Price-limited order filled";
       setNotice(`${actionLabel}. Transaction ${truncateAddress(transactionHash)} confirmed.`);
     } catch (error) {
       const message = error instanceof Error
@@ -1321,7 +1460,7 @@ export default function Home() {
         <div className="beta-market-banner" aria-label="Beta market availability">
           <span><i />ONE MARKET LIVE</span>
           <strong>MIAMI HOME-PRICE DIRECTION</strong>
-          <small>$5 ORDERS · 25 USDG INITIAL LIQUIDITY</small>
+          <small>$5 ORDERS · 50 USDG LIVE BACKING</small>
           <em>PUBLIC BETA</em>
         </div>
 
@@ -1449,7 +1588,11 @@ export default function Home() {
                   key={type}
                   type="button"
                   disabled={!marketContractConfigured && !isDemo}
-                  onClick={() => setOrderType(type)}
+                  onClick={() => {
+                    setOrderType(type);
+                    if (type === "limit") setTradeDirection("buy");
+                    setAmount("");
+                  }}
                 >
                   <span>{type === "market" ? "Market" : type === "limit" ? "Limit" : "Liquidity"}</span>
                   <small>
@@ -1461,11 +1604,35 @@ export default function Home() {
               ))}
             </div>
 
+            {orderType !== "liquidity" && (
+              <div className="liquidity-selector trade-direction-selector" role="group" aria-label="Trade direction">
+                {(["buy", "sell"] as const).map((direction) => (
+                  <button
+                    className={tradeDirection === direction ? "active" : ""}
+                    key={direction}
+                    type="button"
+                    onClick={() => {
+                      setTradeDirection(direction);
+                      setOrderType("market");
+                      setAmount(direction === "sell" && currentWalletMarket
+                        ? formatUnits(selectedOutcomeBalance, currentWalletMarket.decimals)
+                        : "");
+                    }}
+                  >
+                    <span>{direction === "buy" ? "Buy" : "Sell"}</span>
+                    <small>{direction === "buy" ? "Open or add" : "Exit position"}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <p className="ticket-note ticket-note-top">
               {!siteConfig.isTradingEnabled
                 ? "Trading is paused. BID is preparing shorter UP / DOWN markets with a $5–$50 target order range."
                 : orderType === "liquidity"
                 ? `Supply ${siteConfig.collateralSymbol} to deepen every outcome and receive withdrawable BID-LP shares in this wallet. LP rewards remain reserve-only.`
+                : tradeDirection === "sell"
+                ? `Sell outcome contracts back into the pool. Max finds the largest ${siteConfig.collateralSymbol} return your position can support within the beta cap.`
                 : orderType === "limit"
                 ? "Set the highest average price you will pay. The order fills immediately at that price or better; otherwise nothing is submitted."
                 : `0% BID market fee. Orders use ${siteConfig.collateralSymbol}; Pons and network fees may still apply.`}
@@ -1477,11 +1644,16 @@ export default function Home() {
                     className={`${item.tone} ${selectedOutcome === index ? "active" : ""}`}
                     key={item.code}
                     type="button"
-                    onClick={() => setSelectedOutcome(index)}
+                    onClick={() => {
+                      setSelectedOutcome(index);
+                      if (tradeDirection === "sell" && currentWalletMarket) {
+                        setAmount(formatUnits(currentWalletMarket.outcomeBalances[index] ?? 0n, currentWalletMarket.decimals));
+                      }
+                    }}
                   >
                     <span className="outcome-name">
                       {selected.mode === "field" && <small>{item.code}</small>}
-                      {selected.mode === "yes-no" ? `Buy ${item.label}` : item.label}
+                      {selected.mode === "yes-no" ? `${tradeDirection === "sell" ? "Sell" : "Buy"} ${item.label}` : item.label}
                     </span>
                     {showSelectedPricing
                       ? (
@@ -1517,7 +1689,7 @@ export default function Home() {
                 ))}
               </div>
             )}
-            {orderType === "limit" && (
+            {orderType === "limit" && tradeDirection === "buy" && (
               <label className="limit-price-row" htmlFor="limit-price">
                 <span>Max price</span>
                 <span className="limit-price-input">
@@ -1539,33 +1711,56 @@ export default function Home() {
               <span>
                 {orderType === "liquidity"
                   ? liquidityAction === "add" ? `${siteConfig.collateralSymbol} to supply` : "LP shares to withdraw"
-                  : "Trade amount"}
+                  : tradeDirection === "sell" ? "Contracts to sell" : "Trade amount"}
               </span>
               <small>
                 {orderType === "liquidity"
                   ? `BID-LP ${lpBalanceDisplay}`
+                  : tradeDirection === "sell"
+                    ? currentWalletMarket
+                      ? `${displayTokenAmount(selectedOutcomeBalance, currentWalletMarket.decimals, 4)} ${outcome.code} available`
+                      : walletConnected ? "Loading position" : "Connect wallet"
                   : currentWalletMarket
                     ? `${displayTokenAmount(currentWalletMarket.collateralBalance, currentWalletMarket.decimals, 4)} ${siteConfig.collateralSymbol} · ${truncateAddress(walletAddress)}`
                     : walletConnected ? truncateAddress(walletAddress) : "Connect wallet"}
               </small>
             </label>
             <div className="amount-input">
-              <span>{orderType === "liquidity" && liquidityAction === "remove" ? "LP" : "$"}</span>
+              <span>{orderType === "liquidity" && liquidityAction === "remove" ? "LP" : tradeDirection === "sell" ? "#" : "$"}</span>
               <input
                 id="trade-amount"
                 inputMode="decimal"
-                min={orderType === "liquidity" ? "0" : String(siteConfig.minTradeAmount)}
-                max={orderType === "liquidity" ? undefined : siteConfig.maxTradeAmount}
+                min={orderType === "liquidity" || tradeDirection === "sell" ? "0" : String(siteConfig.minTradeAmount)}
+                max={tradeDirection === "sell" && currentWalletMarket
+                  ? formatUnits(selectedOutcomeBalance, currentWalletMarket.decimals)
+                  : orderType === "liquidity" ? undefined : siteConfig.maxTradeAmount}
                 value={amount}
                 onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
                 aria-label={orderType === "liquidity" && liquidityAction === "remove"
                   ? "BID-LP shares to withdraw"
+                  : tradeDirection === "sell"
+                    ? `${outcome.code} contracts to sell`
                   : `Amount in ${siteConfig.collateralSymbol}`}
               />
-              <em>{orderType === "liquidity" && liquidityAction === "remove" ? "BID-LP" : siteConfig.collateralSymbol}</em>
+              <em>{orderType === "liquidity" && liquidityAction === "remove"
+                ? "BID-LP"
+                : tradeDirection === "sell" ? outcome.code : siteConfig.collateralSymbol}</em>
             </div>
             <div className="quick-amounts">
-              {(orderType === "liquidity" ? [5, 10, 25] : [5]).map((value) => (
+              {tradeDirection === "sell" && orderType !== "liquidity" ? (
+                <button
+                  className="max-amount"
+                  type="button"
+                  disabled={!currentWalletMarket || selectedOutcomeBalance === 0n}
+                  onClick={() => {
+                    if (currentWalletMarket) {
+                      setAmount(formatUnits(selectedOutcomeBalance, currentWalletMarket.decimals));
+                    }
+                  }}
+                >
+                  Max position
+                </button>
+              ) : (orderType === "liquidity" ? [5, 10, 25] : [5]).map((value) => (
                 <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
               ))}
               {orderType === "liquidity" && liquidityAction === "remove" && currentLpPosition && (
@@ -1581,7 +1776,9 @@ export default function Home() {
             {orderType !== "liquidity" && (
               <p className="integration-status">
                 {siteConfig.isTradingEnabled
-                  ? `ONE OPEN BETA MARKET · $${siteConfig.maxTradeAmount} ORDERS`
+                  ? tradeDirection === "sell"
+                    ? `LIVE POOL EXIT · UP TO $${siteConfig.maxTradeAmount} ${siteConfig.collateralSymbol} PER SALE`
+                    : `ONE OPEN BETA MARKET · $${siteConfig.maxTradeAmount} ORDERS`
                   : `NEXT BETA TARGET · ${siteConfig.nextMinTradeAmount}–${siteConfig.nextMaxTradeAmount} USDG PER ORDER`}
               </p>
             )}
@@ -1602,6 +1799,26 @@ export default function Home() {
                       ? `${liquidityResidualDisplay} excess outcome inventory`
                       : `${liquidityResidualDisplay} residual outcome position`}
                   </small>
+                </div>
+              </>
+            ) : tradeDirection === "sell" ? (
+              <>
+                <div className="quote-lines">
+                  <p><span>{outcome.label} pool price</span>{showSelectedPricing ? <strong>{Math.round(quote.price * 10000) / 100}¢</strong> : <LockedValue />}</p>
+                  <p><span>BID market fee</span><strong>0.00%</strong></p>
+                  <p><span>Contracts used</span><strong>{currentSellQuote ? displayTokenAmount(currentSellQuote.outcomeTokensIn, currentSellQuote.decimals, 6) : "—"}</strong></p>
+                  <p><span>Your {outcome.code} position</span><strong>{currentWalletMarket ? displayTokenAmount(selectedOutcomeBalance, currentWalletMarket.decimals, 4) : "—"}</strong></p>
+                  <p><span>Network</span><strong>{siteConfig.networkName}</strong></p>
+                </div>
+
+                <div className="return-box sell-return">
+                  <span>ESTIMATED RETURN</span>
+                  <strong>{currentSellQuote
+                    ? `${displayTokenAmount(currentSellQuote.collateralOut, currentSellQuote.decimals, 6)} ${siteConfig.collateralSymbol}`
+                    : "—"}</strong>
+                  <small>{currentSellQuote
+                    ? "Pool quote · confirmed in wallet"
+                    : selectedOutcomeBalance === 0n ? `No ${outcome.code} position in this wallet` : "Enter contracts or select Max"}</small>
                 </div>
               </>
             ) : (
@@ -1640,6 +1857,7 @@ export default function Home() {
                 || transactionPending
                 || (!marketContractConfigured && !isDemo)
                 || (marketContractConfigured && marketReadStatus === "error" && !selectedPrices)
+                || (tradeDirection === "sell" && walletConnected && (!currentSellQuote || selectedOutcomeBalance === 0n))
               }
             >
               {!siteConfig.isTradingEnabled
@@ -1651,7 +1869,8 @@ export default function Home() {
                 : walletConnected
                   ? orderType === "liquidity"
                     ? liquidityAction === "add" ? "Add liquidity" : "Withdraw liquidity"
-                    : orderType === "market" ? "Review order" : `Buy ${outcome.label} at ≤ ${limitPrice || "—"}¢`
+                    : tradeDirection === "sell" ? `Sell ${outcome.label}`
+                      : orderType === "market" ? "Review order" : `Buy ${outcome.label} at ≤ ${limitPrice || "—"}¢`
                   : "Connect wallet"}
               <span>→</span>
             </button>
