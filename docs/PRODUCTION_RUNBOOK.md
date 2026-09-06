@@ -190,7 +190,7 @@ origin. Keep `NEXT_PUBLIC_LAUNCH_STATE=prelaunch` until the final verification.
 
 ## 5. Railway keeper
 
-Create one Railway service from this repository using `Dockerfile.keeper`, one
+Create one Railway service from this repository. Railway auto-detects the root `Dockerfile`; use one
 replica, and `/` as the health path. Add all keeper/server variables from
 `.env.production.example`; add `KEEPER_PRIVATE_KEY` directly in Railway. Set
 `KEEPER_EXECUTION_ENABLED=false` for the first deployment. The process listens
