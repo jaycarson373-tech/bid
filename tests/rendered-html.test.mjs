@@ -39,7 +39,7 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /Which city will post the larger home-price increase by year-end/);
   assert.match(html, /Will Austin home prices finish 2026 positive year over year/);
   assert.match(html, /Connect wallet/);
-  assert.match(html, /AWAITING LAUNCH/);
+  assert.doesNotMatch(html, /CA AWAITING LAUNCH|class="ca-pill"/i);
   assert.match(html, /0% prediction market fee for now/i);
   assert.match(html, /Orders use USDG/);
   assert.match(html, /Market/);

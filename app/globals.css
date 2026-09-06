@@ -188,34 +188,6 @@ a {
   text-transform: uppercase;
 }
 
-.ca-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid rgba(223, 255, 0, 0.5);
-  background: rgba(223, 255, 0, 0.08);
-  color: #ecff7b;
-  cursor: pointer;
-  font-family: var(--font-geist-mono);
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.ca-pill span {
-  color: var(--lime);
-}
-
-.ca-pill:hover {
-  border-color: var(--lime);
-}
-
-.ca-pill.awaiting {
-  cursor: default;
-}
-
 .pons-button {
   display: inline-grid;
   min-width: 58px;
@@ -2038,19 +2010,6 @@ footer > div {
   text-transform: uppercase;
 }
 
-.footer-ca {
-  border: 0;
-  background: transparent;
-  color: var(--lime);
-  cursor: pointer;
-  font: inherit;
-  text-transform: uppercase;
-}
-
-span.footer-ca {
-  cursor: default;
-}
-
 footer > small {
   grid-column: 1 / -1;
   padding-top: 22px;
@@ -2282,8 +2241,7 @@ footer > small {
   }
 
   .desktop-nav,
-  .network-pill,
-  .ca-pill {
+  .network-pill {
     display: none;
   }
 

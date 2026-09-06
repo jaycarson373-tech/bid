@@ -289,7 +289,6 @@ export default function Home() {
     residualAmounts: readonly bigint[];
     decimals: number;
   } | null>(null);
-  const contractAddress = siteConfig.contractAddress;
   const creatorTaxPercent = siteConfig.creatorTaxBps / 100;
   const verifiedPonsLive = isLive && !siteConfig.isTestnet && siteConfig.isPonsVerified;
 
@@ -843,17 +842,6 @@ export default function Home() {
     }
   };
 
-  const copyContractAddress = async () => {
-    if (!contractAddress) return;
-
-    try {
-      await navigator.clipboard.writeText(contractAddress);
-      setNotice("Contract address copied.");
-    } catch {
-      setNotice("Contract address ready. Copy failed in this browser.");
-    }
-  };
-
   return (
     <main className="site-shell">
       <header className="topbar">
@@ -869,13 +857,6 @@ export default function Home() {
           <a href="/docs">Docs</a>
         </nav>
         <div className="header-actions">
-          {contractAddress ? (
-            <button className="ca-pill" type="button" onClick={copyContractAddress}>
-              CA <span>{truncateAddress(contractAddress)}</span>
-            </button>
-          ) : (
-            <span className="ca-pill awaiting">CA <span>AWAITING LAUNCH</span></span>
-          )}
           <span className="network-pill"><i /> {siteConfig.networkName}</span>
           <a className="pons-button" href={siteConfig.ponsUrl} target="_blank" rel="noreferrer">
             Pons ↗
@@ -1351,13 +1332,6 @@ export default function Home() {
           <a href="#how-it-works">How it works</a>
           <a href="/rewards">Rewards</a>
           <a href="/docs">Docs</a>
-          {contractAddress ? (
-            <button className="footer-ca" type="button" onClick={copyContractAddress}>
-              CA {truncateAddress(contractAddress)}
-            </button>
-          ) : (
-            <span className="footer-ca">CA AWAITING LAUNCH</span>
-          )}
         </div>
         <small>© 2026 BID · NOT INVESTMENT ADVICE</small>
       </footer>
