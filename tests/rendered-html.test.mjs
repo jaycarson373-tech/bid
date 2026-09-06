@@ -144,6 +144,8 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /Rabby/);
   assert.match(page, /Phantom/);
   assert.match(page, /wallet_requestPermissions/);
+  assert.match(page, /wallet_revokePermissions/);
+  assert.match(page, /wallet_disconnect/);
   assert.match(page, /const provider = activeProvider/);
   assert.match(page, /marketDeploymentBlocks/);
   assert.doesNotMatch(page, /href="\/create">Create<\/a>/);

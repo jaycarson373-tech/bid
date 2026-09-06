@@ -186,6 +186,7 @@ type EventProvider = EIP1193Provider & {
   isMetaMask?: boolean;
   isRabby?: boolean;
   isPhantom?: boolean;
+  disconnect?: () => Promise<void>;
 };
 
 type WalletOption = {
@@ -398,6 +399,7 @@ export default function Home() {
     : "—";
 
   const disconnectWallet = () => {
+    const provider = activeProvider;
     setWalletConnected(false);
     setWalletAddress("");
     setActiveProvider(null);
@@ -407,6 +409,24 @@ export default function Home() {
     setLpPosition(null);
     setWalletMarketState(null);
     setNotice("Wallet disconnected from BID.");
+
+    if (provider) {
+      void (async () => {
+        try {
+          await provider.request({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] });
+          return;
+        } catch {
+          // Fall through to wallet-specific disconnect methods.
+        }
+        try {
+          if (provider.disconnect) await provider.disconnect();
+          else await provider.request({ method: "wallet_disconnect" });
+        } catch {
+          // The BID session is already cleared even when a wallet does not
+          // implement programmatic permission revocation.
+        }
+      })();
+    }
   };
 
   useEffect(() => {
@@ -863,14 +883,12 @@ export default function Home() {
   const connectWallet = async (option: WalletOption) => {
     const provider = option.provider;
     try {
-      if (walletConnected && activeProvider === provider) {
-        try {
-          await provider.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
-        } catch (error) {
-          if (providerErrorCode(error) === 4001) throw error;
-          // Some EVM wallets do not implement permission re-selection. Their
-          // normal account request and accountsChanged event remain available.
-        }
+      try {
+        await provider.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
+      } catch (error) {
+        if (providerErrorCode(error) === 4001) throw error;
+        // Some EVM wallets do not implement permission re-selection. Their
+        // normal account request and accountsChanged event remain available.
       }
       const accounts = await provider.request({ method: "eth_requestAccounts" }) as string[];
       const address = accounts[0] ?? "";
