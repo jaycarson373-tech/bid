@@ -63,6 +63,7 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.match(html, /Parcl ID 5352987/);
   assert.match(html, /TOKEN-GATED CREATOR MARKETS/);
   assert.match(html, /earn a capped royalty/i);
+  assert.match(html, /creator-skyline-network/);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });

@@ -2026,6 +2026,15 @@ export default function Home() {
       </section>
 
       <section className="portfolio-tease" id="creator-markets">
+        <div className="creator-skyline-network" aria-hidden="true">
+          <i className="route route-one" />
+          <i className="route route-two" />
+          <i className="route route-three" />
+          <span className="signal signal-one" />
+          <span className="signal signal-two" />
+          <span className="signal signal-three" />
+          <span className="signal signal-four" />
+        </div>
         <span>TOKEN-GATED CREATOR MARKETS / COMING SOON</span>
         <h2>Launch a market. Earn from its activity.</h2>
         <p>

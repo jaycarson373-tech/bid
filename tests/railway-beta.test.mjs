@@ -32,4 +32,8 @@ test("LP deployer and Pons creator keys remain separate", async () => {
   assert.match(keeper, /0x99e8d451e0c936010f0f5d30a7f7b8e773bd8d5b/);
   assert.match(keeper, /0x8d9a7d0e8ccddd7baebba3173a0afc3e24fdb606/);
   assert.match(keeper, /retiredMarketsIgnored/);
+  assert.match(keeper, /pendingFees/);
+  assert.match(keeper, /pendingCreatorTax/);
+  assert.match(keeper, /sweep_and_convert_pons_pool_fees/);
+  assert.match(keeper, /PONS_MIN_CONVERSION_QUOTE_OUT must be greater than zero/);
 });

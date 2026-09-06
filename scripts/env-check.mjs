@@ -207,6 +207,13 @@ if (value("PONS_HOOK_SWEEP_ENABLED") === "true") {
   if (!/^0x[0-9a-f]{64}$/i.test(value("PONS_POOL_ID"))) {
     errors.push("PONS_POOL_ID must be a bytes32 value");
   }
+  try {
+    if (BigInt(value("PONS_MIN_CONVERSION_QUOTE_OUT") || "0") <= 0n) {
+      errors.push("PONS_MIN_CONVERSION_QUOTE_OUT must be greater than zero when Pons hook sweeping is enabled");
+    }
+  } catch {
+    errors.push("PONS_MIN_CONVERSION_QUOTE_OUT must be an integer in quote-token base units");
+  }
 }
 
 if (launchState !== "live") warnings.push(`frontend is in ${launchState} mode`);

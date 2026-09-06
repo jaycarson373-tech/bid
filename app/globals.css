@@ -3869,6 +3869,92 @@ footer > small {
   padding: 46px 42px;
 }
 
+.portfolio-tease::before {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(5, 6, 7, 0.88), rgba(5, 6, 7, 0.5) 58%, rgba(5, 6, 7, 0.8)),
+    url("/brand/bid-market-skyline.jpg") center 58% / cover no-repeat;
+  content: "";
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.portfolio-tease > :not(.creator-skyline-network) {
+  position: relative;
+  z-index: 2;
+}
+
+.creator-skyline-network {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  opacity: 0.48;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+
+.portfolio-tease:hover .creator-skyline-network {
+  opacity: 0.72;
+}
+
+.creator-skyline-network .route {
+  position: absolute;
+  left: 50%;
+  width: 29%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(233, 255, 0, 0.76), rgba(33, 230, 122, 0.2), transparent);
+  background-size: 180% 100%;
+  transform-origin: left center;
+  animation: skyline-route 5.5s linear infinite;
+}
+
+.creator-skyline-network .route-one {
+  top: 36%;
+  transform: rotate(-8deg);
+}
+
+.creator-skyline-network .route-two {
+  top: 48%;
+  transform: rotate(7deg);
+  animation-delay: -1.8s;
+}
+
+.creator-skyline-network .route-three {
+  top: 58%;
+  left: 67%;
+  width: 21%;
+  transform: rotate(-13deg);
+  animation-delay: -3.4s;
+}
+
+.creator-skyline-network .signal {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border: 1px solid rgba(233, 255, 0, 0.88);
+  background: #090b08;
+  box-shadow: 0 0 10px rgba(233, 255, 0, 0.5);
+  animation: skyline-signal 4.8s ease-in-out infinite;
+}
+
+.creator-skyline-network .signal-one { top: 34%; left: 58%; }
+.creator-skyline-network .signal-two { top: 41%; left: 72%; animation-delay: -1.2s; }
+.creator-skyline-network .signal-three { top: 55%; left: 67%; animation-delay: -2.5s; }
+.creator-skyline-network .signal-four { top: 49%; left: 84%; animation-delay: -3.6s; }
+
+@keyframes skyline-route {
+  0% { background-position: 160% 0; opacity: 0.24; }
+  48% { opacity: 0.72; }
+  100% { background-position: -70% 0; opacity: 0.24; }
+}
+
+@keyframes skyline-signal {
+  0%, 82%, 100% { opacity: 0.3; }
+  88% { opacity: 1; }
+}
+
 .portfolio-tease > span {
   margin: 0;
   color: var(--lime);
@@ -3994,6 +4080,20 @@ footer > small {
     padding: 42px 18px;
   }
 
+  .portfolio-tease::before {
+    background-position: 62% center;
+    opacity: 0.3;
+  }
+
+  .creator-skyline-network {
+    opacity: 0.38;
+  }
+
+  .creator-skyline-network .route {
+    left: 42%;
+    width: 45%;
+  }
+
   .portfolio-tease h2 {
     margin-top: 14px;
     font-size: 34px;
@@ -4010,7 +4110,9 @@ footer > small {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flywheel-loop i {
+  .flywheel-loop i,
+  .creator-skyline-network .route,
+  .creator-skyline-network .signal {
     animation: none;
   }
 }

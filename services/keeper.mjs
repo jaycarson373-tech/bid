@@ -40,6 +40,7 @@ const feeEscrow = env("PONS_FEE_ESCROW");
 const feeHook = env("PONS_FEE_HOOK");
 const ponsPoolId = env("PONS_POOL_ID");
 const launchToken = env("NEXT_PUBLIC_BID_CONTRACT_ADDRESS");
+const ponsMinConversionQuoteOut = BigInt(env("PONS_MIN_CONVERSION_QUOTE_OUT") || "0");
 const quoteAssets = (env("PONS_QUOTE_ASSETS") || env("PONS_QUOTE_ASSET"))
   .split(",").map((item) => item.trim()).filter((item) => item && !/^0x0{40}$/i.test(item));
 const ponsCurve = env("PONS_CURVE_ADDRESS");
@@ -67,6 +68,9 @@ if (env("PONS_HOOK_SWEEP_ENABLED") === "true") {
     throw new Error("Pons hook sweep requires execution, treasury, hook, launch token, and quote asset configuration");
   }
   if (!/^0x[0-9a-f]{64}$/i.test(ponsPoolId)) throw new Error("PONS_POOL_ID must be a bytes32 value");
+  if (ponsMinConversionQuoteOut <= 0n) {
+    throw new Error("PONS_MIN_CONVERSION_QUOTE_OUT must be greater than zero when Pons hook sweeping is enabled");
+  }
 }
 
 const publicClient = createPublicClient({ transport: http(rpcUrl) });
@@ -109,6 +113,7 @@ const liquidityVaultAbi = parseAbi([
   "function deployLiquidity(address market,uint256 collateralAmount,uint256 minSharesMinted) returns (uint256 sharesMinted)",
 ]);
 const feeHookAbi = parseAbi([
+  "function pendingFees(bytes32 poolId,address currency) view returns (uint256)",
   "function pendingCreatorTax(bytes32 poolId,address currency) view returns (uint256)",
 ]);
 
@@ -213,21 +218,29 @@ async function claimAndDistributeFees() {
 async function sweepHookFees() {
   if (env("PONS_HOOK_SWEEP_ENABLED") !== "true") return;
   const currencies = [...new Set([launchToken, ...quoteAssets].map((address) => address.toLowerCase()))];
-  const pending = await Promise.all(currencies.map((currency) => publicClient.readContract({
-    address: feeHook,
-    abi: feeHookAbi,
-    functionName: "pendingCreatorTax",
-    args: [ponsPoolId, currency],
-  })));
+  const pending = await Promise.all(currencies.flatMap((currency) => [
+    publicClient.readContract({
+      address: feeHook,
+      abi: feeHookAbi,
+      functionName: "pendingFees",
+      args: [ponsPoolId, currency],
+    }),
+    publicClient.readContract({
+      address: feeHook,
+      abi: feeHookAbi,
+      functionName: "pendingCreatorTax",
+      args: [ponsPoolId, currency],
+    }),
+  ]));
   if (pending.every((amount) => amount === 0n)) return;
   const { request } = await publicClient.simulateContract({
     account,
     address: treasury,
     abi: treasuryAbi,
     functionName: "sweepPonsPoolFees",
-    args: [ponsPoolId, BigInt(env("PONS_MIN_CONVERSION_QUOTE_OUT") || "0"), 0n],
+    args: [ponsPoolId, ponsMinConversionQuoteOut, 0n],
   });
-  await submit(request, "sweep_pons_pool_fees");
+  await submit(request, "sweep_and_convert_pons_pool_fees");
 }
 
 async function deployProtocolLiquidity() {

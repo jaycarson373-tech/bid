@@ -280,9 +280,12 @@ waste gas on races even though duplicate settlement reverts.
 
 After Pons graduation, set the computed `PONS_POOL_ID` and enable
 `PONS_HOOK_SWEEP_ENABLED`. The treasury calls the configured Pons hook as the
-creator recipient. A sweep requiring internal token conversion can still require
-Pons' protocol operator; a failed simulation leaves funds untouched and marks the
-keeper unhealthy for operator intervention.
+creator recipient. Set `PONS_MIN_CONVERSION_QUOTE_OUT` from a fresh Pons quote in
+quote-token base units; zero is rejected. The hook converts launch-token fees through
+the pool into the configured USDG quote asset before escrow credit, so BID does not
+use an arbitrary external swap router. A conversion can still require Pons' protocol
+operator; a failed simulation leaves funds untouched and marks the keeper unhealthy
+for operator intervention.
 
 Railway needs the `NEXT_PUBLIC_BID_*` contract/market addresses used by the
 keeper plus these server-only values:
@@ -352,7 +355,6 @@ checks must be implemented and approved before producing the first real allocati
 - time-weighted LP reward scoring, anti-snapshot eligibility and epoch allocation approval;
 - guarded buyback execution and technically correct BID burn execution;
 - creator-market reward scoring and payout execution;
-- swap/conversion when Pons fees are not paid in market collateral;
 - indexer, history/leaderboard persistence, and operational alerting;
 - production oracle methodology, signer process, dispute policy, and monitoring.
 
