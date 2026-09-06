@@ -154,6 +154,16 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               USDG uses six decimals. The retired field beta&apos;s 25 USDG was recovered in full before this replacement was deployed.
               The replacement&apos;s 25 USDG seed is protocol-owned, with every BID-LP share held by the liquidity vault.
             </p>
+            <h3>Depth policy</h3>
+            <p>
+              BID&apos;s conservative operating target keeps the maximum order at or below 5% of equal per-outcome depth. In a balanced binary pool,
+              100 USDG of initial funding gives each outcome 100 USDG of depth and moves a 50% spot price to approximately 52.4% after a 5 USDG buy.
+              Supporting 50 USDG orders at the same depth ratio requires approximately 1,000 USDG of initial funding.
+            </p>
+            <p className={styles.note}>
+              The live 25 USDG beta is intentionally shallow: a 5 USDG buy moves the ending spot price to approximately 59.0%. Add USDG liquidity before
+              raising the order cap. The active market does not accept USDT collateral.
+            </p>
           </section>
 
           <section id="orders">
@@ -170,7 +180,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             </table>
             <div className={`${styles.callout} ${styles.warning}`}>
               <strong>Keeper required</strong>
-              <p>Resting limits are permissionlessly fillable, but production needs an indexer and keeper to detect executable orders and submit fills.</p>
+              <p>Resting limits are permissionlessly fillable, but the public UI keeps them disabled until cancellation, indexing and keeper execution are active. Market buys remain the verified launch path.</p>
             </div>
           </section>
 
@@ -218,6 +228,11 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               </tbody>
             </table>
             <p className={styles.note}>Smallest-unit rounding always accrues to treasury so the five allocations equal 100% of every fee event. Genesis BID markets charge a 0% BID market fee; Pons and network fees may still apply.</p>
+            <h3>Activity points</h3>
+            <p>
+              <code>BID_POINTS_POLICY_V1</code> awards one beta activity point for each confirmed USDG traded and derives the public board directly from market events.
+              Points are not a reward entitlement. Future LP rewards must use time-weighted eligible liquidity and anti-wash controls; raw volume alone cannot determine payouts.
+            </p>
           </section>
 
           <section id="community">
@@ -353,7 +368,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
           <div>
             <strong>Build status</strong>
             <span><i /> Contracts tested</span>
-            <span><i /> Trading paused for V2</span>
+            <span><i /> One-market beta live</span>
           </div>
         </aside>
       </div>

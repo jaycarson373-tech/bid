@@ -135,4 +135,7 @@ export const siteConfig = {
       isTestnet ? testnetDeployment.marketAddresses.austinPositive : mainnetDeployment.marketAddresses.austinPositive,
     ),
   },
+  marketDeploymentBlocks: isTestnet
+    ? { miamiTampa: "", cityField: "", austinPositive: "" }
+    : mainnetDeployment.marketDeploymentBlocks,
 };

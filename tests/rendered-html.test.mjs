@@ -55,6 +55,7 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.match(html, /HOUSING MARKETS/);
   assert.match(html, /MARKETS LIVE/);
   assert.match(html, /ONE MARKET LIVE/);
+  assert.match(html, /Market depth and points/);
   assert.match(html, /25 USDG INITIAL LIQUIDITY/);
   assert.match(html, /LOCKED · COMING SOON/);
   assert.match(html, /\$5 per order/i);
@@ -77,6 +78,8 @@ test("server-renders professional protocol documentation with honest deployment 
   assert.match(html, /BID token and Pons launch are separate from the live prediction market/i);
   assert.match(html, /Production requirements/);
   assert.match(html, /Funded Merkle reward epochs/);
+  assert.match(html, /keeps the maximum order at or below 5%/i);
+  assert.match(html, /BID_POINTS_POLICY_V1/);
   assert.match(html, /0xD9da3C6F2272760a6AFcd6F2D95114231dF5D186/);
 });
 
@@ -105,13 +108,14 @@ test("server-renders creator markets as a disabled coming-soon workflow", async 
 });
 
 test("keeps the finished product free of starter-preview code", async () => {
-  const [page, layout, packageJson, launchState, siteConfig, feePolicy] = await Promise.all([
+  const [page, layout, packageJson, launchState, siteConfig, feePolicy, pointsPolicy] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../lib/launchState.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/site.ts", import.meta.url), "utf8"),
     readFile(new URL("../config/bid-fee-policy-v1.json", import.meta.url), "utf8"),
+    readFile(new URL("../config/bid-points-policy-v1.json", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /mode: "field"/);
@@ -131,6 +135,12 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /Pons/);
   assert.match(page, /Sample data/);
   assert.match(page, /Winning position redeemed/i);
+  assert.match(page, /event Trade/);
+  assert.match(page, /BETA ACTIVITY LEADERBOARD/);
+  assert.match(page, /Activity points are a beta score, not a reward entitlement/);
+  assert.match(page, /Disconnect wallet/);
+  assert.match(page, /marketDeploymentBlocks/);
+  assert.doesNotMatch(page, /href="\/create">Create<\/a>/);
   assert.match(page, /\/docs/);
   assert.match(layout, /title: "BID — BID the Block"/);
   assert.match(launchState, /: "live"/);
@@ -140,6 +150,7 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(siteConfig, /marketLiquidityShareBps/);
   assert.match(siteConfig, /creatorRewardsShareBps/);
   assert.equal(Object.values(JSON.parse(feePolicy).allocations).reduce((sum, value) => sum + Number(value), 0), 10_000);
+  assert.equal(JSON.parse(pointsPolicy).rewardEntitlement, false);
   assert.match(packageJson, /"name": "bid-real-estate-markets"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 

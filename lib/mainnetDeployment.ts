@@ -12,4 +12,9 @@ export const mainnetDeployment = {
     cityField: "",
     austinPositive: "",
   },
+  marketDeploymentBlocks: {
+    miamiTampa: "56317953",
+    cityField: "",
+    austinPositive: "",
+  },
 } as const;

@@ -20,6 +20,7 @@ import {
 } from "@/lib/bidMarket";
 import { isDemo, isLive } from "@/lib/launchState";
 import { siteConfig } from "@/lib/site";
+import pointsPolicy from "@/config/bid-points-policy-v1.json";
 
 type Tone = "coral" | "mint" | "violet" | "gold";
 type OrderType = "market" | "limit" | "liquidity";
@@ -34,6 +35,28 @@ type FlywheelProof = {
   treasury: bigint;
   creatorRewards: bigint;
   latestTransaction: string;
+};
+
+type ActivityLeader = {
+  address: string;
+  volume: bigint;
+  trades: number;
+};
+
+type MarketActivity = {
+  decimals: number;
+  marketBacking: bigint;
+  feeReceiver: bigint;
+  lpRewardsReserve: bigint;
+  liquidityReserve: bigint;
+  buybackReserve: bigint;
+  treasury: bigint;
+  creatorRewardsReserve: bigint;
+  trackedTotal: bigint;
+  totalVolume: bigint;
+  tradeCount: number;
+  traderCount: number;
+  leaders: ActivityLeader[];
 };
 
 declare global {
@@ -126,6 +149,10 @@ const betaMarketId = "miami-up-sep30";
 const feeAllocatedEvent = parseAbiItem(
   "event FeeAllocated(bytes32 indexed allocationVersion,address indexed asset,uint256 grossAmount,uint256 lpRewardsAmount,uint256 marketLiquidityAmount,uint256 buybackBurnAmount,uint256 treasuryAmount,uint256 creatorRewardsAmount)",
 );
+const tradeEvent = parseAbiItem(
+  "event Trade(address indexed trader,bool indexed isBuy,uint256 indexed outcomeIndex,uint256 collateralAmount,uint256 outcomeTokenAmount,uint256 creatorFee)",
+);
+const activityPointUnit = BigInt(pointsPolicy.tradeVolumeAtomicPerPoint);
 
 function truncateAddress(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
@@ -275,6 +302,8 @@ export default function Home() {
   const [liveCloseDates, setLiveCloseDates] = useState<Record<string, string>>({});
   const [marketReadStatus, setMarketReadStatus] = useState<MarketReadStatus>("awaiting");
   const [flywheelProof, setFlywheelProof] = useState<FlywheelProof | null>(null);
+  const [marketActivity, setMarketActivity] = useState<MarketActivity | null>(null);
+  const [marketActivityUnavailable, setMarketActivityUnavailable] = useState(false);
   const [liveQuote, setLiveQuote] = useState<{
     key: string;
     outcomeTokensOut: bigint;
@@ -341,6 +370,16 @@ export default function Home() {
       4,
     )
     : "—";
+
+  const disconnectWallet = () => {
+    setWalletConnected(false);
+    setWalletAddress("");
+    setWalletOpen(false);
+    setLastTransaction("");
+    setLpPosition(null);
+    setWalletMarketState(null);
+    setNotice("Wallet disconnected from BID.");
+  };
 
   useEffect(() => {
     const provider = window.ethereum as EventProvider | undefined;
@@ -409,6 +448,99 @@ export default function Home() {
     }
 
     void loadMarketPrices();
+    return () => { cancelled = true; };
+  }, [refreshNonce]);
+
+  useEffect(() => {
+    const marketAddress = configuredAddress(siteConfig.marketAddresses.miamiTampa);
+    const collateralAddress = configuredAddress(siteConfig.collateralAddress);
+    const deploymentBlock = siteConfig.marketDeploymentBlocks.miamiTampa;
+    if (!marketAddress || !collateralAddress || !deploymentBlock) return;
+
+    const balanceDestinations = [
+      ["marketBacking", marketAddress],
+      ["feeReceiver", configuredAddress(siteConfig.flywheelTreasuryAddress)],
+      ["lpRewardsReserve", configuredAddress(siteConfig.rewardsVaultAddress)],
+      ["liquidityReserve", configuredAddress(siteConfig.liquidityVaultAddress)],
+      ["buybackReserve", configuredAddress(siteConfig.buybackVaultAddress)],
+      ["treasury", configuredAddress(siteConfig.protocolTreasuryAddress)],
+      ["creatorRewardsReserve", configuredAddress(siteConfig.creatorRewardsVaultAddress)],
+    ] as const;
+
+    let cancelled = false;
+    async function loadMarketActivity() {
+      try {
+        const [decimals, logs, balanceEntries] = await Promise.all([
+          robinhoodPublicClient.readContract({
+            address: collateralAddress!,
+            abi: erc20TradeAbi,
+            functionName: "decimals",
+          }),
+          robinhoodPublicClient.getLogs({
+            address: marketAddress!,
+            event: tradeEvent,
+            fromBlock: BigInt(deploymentBlock),
+          }),
+          Promise.all(balanceDestinations.map(async ([key, address]) => [
+            key,
+            address
+              ? await robinhoodPublicClient.readContract({
+                address: collateralAddress!,
+                abi: erc20TradeAbi,
+                functionName: "balanceOf",
+                args: [address],
+              })
+              : 0n,
+          ] as const)),
+        ]);
+
+        const balances = Object.fromEntries(balanceEntries) as Record<string, bigint>;
+        const traders = new Map<string, ActivityLeader>();
+        let totalVolume = 0n;
+
+        for (const log of logs) {
+          const trader = log.args.trader;
+          const collateralAmount = log.args.collateralAmount ?? 0n;
+          if (!trader) continue;
+          const key = trader.toLowerCase();
+          const current = traders.get(key) ?? { address: trader, volume: 0n, trades: 0 };
+          current.volume += collateralAmount;
+          current.trades += 1;
+          traders.set(key, current);
+          totalVolume += collateralAmount;
+        }
+
+        const trackedTotal = balanceEntries.reduce((total, [, balance]) => total + balance, 0n);
+        const leaders = [...traders.values()]
+          .sort((left, right) => left.volume === right.volume
+            ? left.address.localeCompare(right.address)
+            : left.volume > right.volume ? -1 : 1)
+          .slice(0, 5);
+
+        if (!cancelled) {
+          setMarketActivity({
+            decimals,
+            marketBacking: balances.marketBacking ?? 0n,
+            feeReceiver: balances.feeReceiver ?? 0n,
+            lpRewardsReserve: balances.lpRewardsReserve ?? 0n,
+            liquidityReserve: balances.liquidityReserve ?? 0n,
+            buybackReserve: balances.buybackReserve ?? 0n,
+            treasury: balances.treasury ?? 0n,
+            creatorRewardsReserve: balances.creatorRewardsReserve ?? 0n,
+            trackedTotal,
+            totalVolume,
+            tradeCount: logs.length,
+            traderCount: traders.size,
+            leaders,
+          });
+          setMarketActivityUnavailable(false);
+        }
+      } catch {
+        if (!cancelled) setMarketActivityUnavailable(true);
+      }
+    }
+
+    void loadMarketActivity();
     return () => { cancelled = true; };
   }, [refreshNonce]);
 
@@ -975,7 +1107,6 @@ export default function Home() {
           <a href="#how-it-works">How it works</a>
           <a href="#flywheel">Flywheel</a>
           <a href="/rewards">Rewards</a>
-          <a href="/create">Create</a>
           <a href="/docs">Docs</a>
         </nav>
         <div className="header-actions">
@@ -986,9 +1117,11 @@ export default function Home() {
           <button
             className={`wallet-button ${walletConnected ? "connected" : ""}`}
             type="button"
-            onClick={() => walletConnected ? setNotice(`Wallet connected on Robinhood Chain: ${truncateAddress(walletAddress)}.`) : setWalletOpen(true)}
+            onClick={walletConnected ? disconnectWallet : () => setWalletOpen(true)}
+            aria-label={walletConnected ? `Disconnect ${walletAddress}` : "Connect wallet"}
+            title={walletConnected ? "Disconnect wallet" : undefined}
           >
-            {walletConnected ? truncateAddress(walletAddress) : "Connect wallet"}
+            {walletConnected ? `Disconnect ${truncateAddress(walletAddress)}` : "Connect wallet"}
           </button>
         </div>
       </header>
@@ -1417,6 +1550,52 @@ export default function Home() {
             )}
           </aside>
         </div>
+
+        <div className="market-intelligence" aria-label="Live onchain market activity">
+          <div className="intelligence-head">
+            <div>
+              <span className="section-kicker">ONCHAIN ACTIVITY</span>
+              <h3>Market depth and points.</h3>
+            </div>
+            <a href={`${siteConfig.explorerUrl}/address/${siteConfig.marketAddresses.miamiTampa}`} target="_blank" rel="noreferrer">VIEW MARKET ↗</a>
+          </div>
+          {marketActivity ? (
+            <>
+              <div className="activity-metrics">
+                <div><span>MARKET BACKING</span><strong>{displayTokenAmount(marketActivity.marketBacking, marketActivity.decimals)} <small>USDG</small></strong></div>
+                <div><span>CONFIRMED VOLUME</span><strong>{displayTokenAmount(marketActivity.totalVolume, marketActivity.decimals)} <small>USDG</small></strong></div>
+                <div><span>TRADES</span><strong>{marketActivity.tradeCount}</strong></div>
+                <div><span>TRADERS</span><strong>{marketActivity.traderCount}</strong></div>
+                <div><span>TRACKED USDG</span><strong>{displayTokenAmount(marketActivity.trackedTotal, marketActivity.decimals)} <small>USDG</small></strong></div>
+              </div>
+              <div className="activity-columns">
+                <div className="reserve-ledger">
+                  <span>PROTOCOL USDG LEDGER</span>
+                  <p><span>Fee receiver</span><strong>{displayTokenAmount(marketActivity.feeReceiver, marketActivity.decimals)}</strong></p>
+                  <p><span>LP rewards reserve</span><strong>{displayTokenAmount(marketActivity.lpRewardsReserve, marketActivity.decimals)}</strong></p>
+                  <p><span>Liquidity reserve</span><strong>{displayTokenAmount(marketActivity.liquidityReserve, marketActivity.decimals)}</strong></p>
+                  <p><span>Buyback reserve</span><strong>{displayTokenAmount(marketActivity.buybackReserve, marketActivity.decimals)}</strong></p>
+                  <p><span>Treasury</span><strong>{displayTokenAmount(marketActivity.treasury, marketActivity.decimals)}</strong></p>
+                  <p><span>Creator rewards reserve</span><strong>{displayTokenAmount(marketActivity.creatorRewardsReserve, marketActivity.decimals)}</strong></p>
+                </div>
+                <div className="points-board">
+                  <span>BETA ACTIVITY LEADERBOARD</span>
+                  {marketActivity.leaders.length ? marketActivity.leaders.map((leader, index) => (
+                    <p key={leader.address}>
+                      <i>{String(index + 1).padStart(2, "0")}</i>
+                      <a href={`${siteConfig.explorerUrl}/address/${leader.address}`} target="_blank" rel="noreferrer">{truncateAddress(leader.address)}</a>
+                      <small>{leader.trades} {leader.trades === 1 ? "trade" : "trades"}</small>
+                      <strong>{(leader.volume / activityPointUnit).toString()} PTS</strong>
+                    </p>
+                  )) : <em>No public trades yet.</em>}
+                  <small className="points-policy">1 point per confirmed USDG traded. Activity points are a beta score, not a reward entitlement. LP rewards will additionally require time-weighted eligible liquidity.</small>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="activity-loading">{marketActivityUnavailable ? "Onchain activity is temporarily unavailable." : "Reading confirmed Robinhood Chain activity…"}</p>
+          )}
+        </div>
       </section>
 
       <section className="how-section" id="how-it-works">
@@ -1505,15 +1684,10 @@ export default function Home() {
       </section>
 
       <section className="portfolio-tease" id="creator-markets">
-        <span>COMING SOON / TOKEN-GATED CREATION</span>
-        <h2>Hold. Burn.<br />Own the market.</h2>
-        <p>BID will open market creation to the community. Hold the required $BID, burn to launch, create a housing market, and earn a capped share of the activity it generates.</p>
-        <div className="creator-roadmap" aria-label="Future creator market mechanics">
-          <span><strong>01</strong> Hold $BID</span>
-          <span><strong>02</strong> Burn to launch</span>
-          <span><strong>03</strong> Earn royalties</span>
-        </div>
-        <a className="creator-link" href="/create">Create a market · coming soon</a>
+        <span>CREATOR MARKETS / COMING SOON</span>
+        <h2>Build the next housing market.</h2>
+        <p>Token-gated market creation is planned after the one-market beta. Parameters, initial depth and resolution rules will be reviewed before any market can open.</p>
+        <a className="creator-link" href="/create">Preview creator markets →</a>
       </section>
 
       <footer>

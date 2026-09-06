@@ -1,0 +1,6 @@
+{
+  "version": "BID_POINTS_POLICY_V1",
+  "tradeVolumeAtomicPerPoint": "1000000",
+  "rewardEntitlement": false,
+  "lpRewardsStatus": "RESERVE_ONLY"
+}

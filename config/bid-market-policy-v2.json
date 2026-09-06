@@ -6,6 +6,7 @@
   "maximumOrderAtomic": "50000000",
   "targetFormat": "BINARY_UP_DOWN",
   "tradingFeeBps": 0,
+  "recommendedMaxOrderToEqualOutcomeDepthBps": 500,
   "priceImpactGuardRequired": true,
   "gaslessOrderTarget": true,
   "communityCreationEnabled": false

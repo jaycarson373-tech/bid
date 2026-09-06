@@ -26,9 +26,8 @@ export default function CreateMarketPage() {
           </span>
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
-          <Link href="/#markets">Markets</Link>
+          <Link className="active" href="/#markets">Open market</Link>
           <Link href="/rewards">Rewards</Link>
-          <Link className="active" href="/create">Create</Link>
           <Link href="/docs">Docs</Link>
         </nav>
         <Link className="secondary-cta create-back" href="/">Back to markets <span>←</span></Link>
