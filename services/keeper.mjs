@@ -14,7 +14,7 @@ import { buildLiquidityAllocationPlan } from "./liquidity-allocation.mjs";
 const env = (key) => process.env[key]?.trim() ?? "";
 const enabled = env("KEEPER_EXECUTION_ENABLED") === "true";
 const chainId = Number(env("BID_EXPECTED_CHAIN_ID") || (env("NEXT_PUBLIC_BID_NETWORK") === "testnet" ? "46630" : "4663"));
-const rpcUrl = env("RH_RPC_URL");
+const rpcUrl = env("RH_RPC_URL") || (!enabled && chainId === 4663 ? "https://rpc.mainnet.chain.robinhood.com" : "");
 const pollInterval = Number(env("KEEPER_POLL_INTERVAL_MS") || "15000");
 const maxOrderScan = Number(env("KEEPER_MAX_ORDER_SCAN") || "500");
 const marketAddresses = (env("KEEPER_MARKETS") || [
@@ -36,7 +36,7 @@ const quoteAssets = (env("PONS_QUOTE_ASSETS") || env("PONS_QUOTE_ASSET"))
   .split(",").map((item) => item.trim()).filter((item) => item && !/^0x0{40}$/i.test(item));
 const ponsCurve = env("PONS_CURVE_ADDRESS");
 
-if (!rpcUrl) throw new Error("RH_RPC_URL is required");
+if (!rpcUrl) throw new Error("RH_RPC_URL is required for execution or non-mainnet operation");
 if (!Number.isInteger(chainId) || chainId <= 0) throw new Error("BID_EXPECTED_CHAIN_ID is invalid");
 if (!Number.isFinite(pollInterval) || pollInterval < 5_000) throw new Error("KEEPER_POLL_INTERVAL_MS must be at least 5000");
 if (enabled && (!env("KEEPER_PRIVATE_KEY") || !env("KEEPER_EXPECTED_ADDRESS") || marketAddresses.length === 0)) {

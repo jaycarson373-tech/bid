@@ -53,6 +53,8 @@ treasury/vault addresses. Keep `KEEPER_EXECUTION_ENABLED=false`,
 `PONS_HOOK_SWEEP_ENABLED=false` until fee operations are explicitly activated.
 Market orders execute in the pool; resting limit orders need a funded keeper or
 another caller to fill them later. A read-only keeper will not fill resting orders.
+Until those values are supplied, read-only mode uses Robinhood Chain's public
+mainnet RPC and exposes health only; it cannot sign or move funds.
 
 **Railway later:** add `KEEPER_PRIVATE_KEY` directly under service Variables,
 plus matching `KEEPER_EXPECTED_ADDRESS`. This is the limited operator key, not
