@@ -1443,7 +1443,7 @@ export default function Home() {
             )}
 
             <div className="rail-selector" role="group" aria-label="Order type">
-              {(["market", "limit", "liquidity"] as const).map((type) => (
+              {(["market", "limit"] as const).map((type) => (
                 <button
                   className={orderType === type ? "active" : ""}
                   key={type}
