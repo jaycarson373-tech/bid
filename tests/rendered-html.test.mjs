@@ -30,6 +30,7 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
 
   const html = await response.text();
   assert.match(html, /<title>BID — BID the Block<\/title>/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.bidrh\.com"/i);
   assert.match(html, /Real estate/);
   assert.match(html, /Which city posts the highest home-price growth from September 2026 to March 2027/);
   assert.match(html, /Coming soon/);

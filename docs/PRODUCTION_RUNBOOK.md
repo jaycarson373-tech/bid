@@ -7,17 +7,19 @@ no mainnet write during verification.
 
 This is ONE market with five outcomes (Miami, Tampa, New York, Dallas, Phoenix),
 not five separately seeded pools. It closes March 5, 2027 at 23:59:59 UTC
-(`1804291199`). The selected question compares September 2026 to March 2027.
-The source series, exact observation dates, publication lag, ties and missing-data
-rules still need operator approval and publication before public trading. The
-oracle is a trusted signer, not an implemented automatic housing-data feed.
+(`1804291199`). The selected question compares September 2026 to March 2027 using
+the rules in `docs/markets/BID-FIELD-2027-03-V1.md`. Its SHA-256 is embedded in
+the onchain question. The oracle is a trusted signer, not an implemented
+automatic housing-data feed.
 
-1. Complete the public wallet worksheet below in `.env.production.local`. Fund
-   `BID_DEPLOYER` with **25 USDG plus ETH for deployment gas on chain 4663**.
+1. Fund one deployment wallet with **25 USDG plus ETH for deployment gas on chain 4663**.
    Keep its key in an encrypted local Foundry keystore. Import interactively with
    `cast wallet import bid-deployer --interactive`; never paste it into chat.
-2. Run `npm run deploy:beta`. This simulates the existing treasury, rewards vault,
-   liquidity vault, factory and ONE five-city market together. No final BID CA is
+2. Run `npm run deploy:beta -- --account bid-deployer`. The command derives the
+   public address from the encrypted keystore and temporarily uses it for every
+   required beta role. It automatically creates separate buyback, protocol and
+   creator-reward reserve vaults, then simulates the existing treasury, rewards
+   vault, liquidity vault, factory and ONE five-city market. No final BID CA is
    required. The simulation must pass and its ETH gas estimate must be reviewed.
    Printed addresses from a dry run are NOT deployed addresses.
 3. The explicit spending step is

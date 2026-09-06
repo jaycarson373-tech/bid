@@ -50,7 +50,7 @@ try {
   const closesAt = await read(market, "closesAt");
   check(closesAt === 1804291199n && closesAt > BigInt(Math.floor(Date.now() / 1000)), "closes March 5, 2027 at 23:59:59 UTC");
   check(!await read(market, "resolved"), "market is not already resolved");
-  check(await read(market, "question") === "Which city posts the highest home-price growth from September 2026 to March 2027?", "approved beta question");
+  check(await read(market, "question") === "Which city posts the highest home-price growth from September 2026 to March 2027? Rules SHA-256: 9e4e62ce9a6fd5330a5716ae0c101df4437a3ad00582de88cd72ffb914a3c406", "approved beta question and immutable rules hash");
   const cities = ["Miami", "Tampa", "New York", "Dallas", "Phoenix"];
   check(await read(market, "outcomeCount") === 5n, "exactly five city outcomes");
   for (const [index, city] of cities.entries()) {

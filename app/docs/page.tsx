@@ -180,7 +180,16 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <p>
               Every market locks its question, outcomes, close time, and oracle address at creation.
               After close, the oracle submits a payout vector totaling 1e18. Traders redeem their outcome
-              balances against that vector. The production oracle and exact housing-data methodology are not finalized.
+              balances against that vector.
+            </p>
+            <h3>Five-city beta rules</h3>
+            <p>
+              The beta compares each metro&apos;s September 2026 to March 2027 monthly, not seasonally adjusted
+              S&amp;P Cotality Case-Shiller index distributed by FRED. Series: MIXRNSA, TPXRNSA, NYXRNSA,
+              DAXRNSA and PHXRNSA. The highest full-precision percentage change wins. Trading closes before
+              March data publication; settlement follows the first release containing every required observation.
+              Exact ties split the payout, and a documented invalid-market fallback applies if a series remains
+              unavailable. The versioned rule document&apos;s SHA-256 is embedded in the onchain market question.
             </p>
           </section>
 

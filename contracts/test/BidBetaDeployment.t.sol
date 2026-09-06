@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {DeployBidBeta} from "../script/DeployBidBeta.s.sol";
 import {BidMarket} from "../src/BidMarket.sol";
 import {BidLiquidityVault} from "../src/BidLiquidityVault.sol";
+import {BidReserveVault} from "../src/BidReserveVault.sol";
 import {MockToken, MockPonsFeeEscrow, MockPonsFeeHook} from "./BidMarket.t.sol";
 
 contract BetaPonsFactoryMock {
@@ -92,5 +93,16 @@ contract BidBetaDeploymentTest is Test {
         DeployBidBeta script = new DeployBidBeta();
         vm.expectRevert("mainnet required");
         script.run();
+    }
+
+    function testReserveVaultOnlyLetsOwnerWithdraw() public {
+        BidReserveVault vault = new BidReserveVault(owner);
+        MockToken(USDG).mint(address(vault), 10e6);
+        vm.expectRevert();
+        vault.withdrawToken(MockToken(USDG), trader, 1e6);
+        vm.prank(owner);
+        vault.withdrawToken(MockToken(USDG), trader, 1e6);
+        assertEq(MockToken(USDG).balanceOf(trader), 1e6);
+        assertEq(MockToken(USDG).balanceOf(address(vault)), 9e6);
     }
 }

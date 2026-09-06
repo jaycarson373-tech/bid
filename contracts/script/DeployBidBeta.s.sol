@@ -9,6 +9,7 @@ import {DeployBidMarkets} from "./DeployBidMarkets.s.sol";
 import {BidFlywheelTreasury} from "../src/BidFlywheelTreasury.sol";
 import {BidLiquidityVault} from "../src/BidLiquidityVault.sol";
 import {BidMarketFactory} from "../src/BidMarketFactory.sol";
+import {BidReserveVault} from "../src/BidReserveVault.sol";
 
 /// @dev Composes the existing deployment steps; no token launch or CA binding.
 contract DeployBidBeta is Script {
@@ -24,6 +25,16 @@ contract DeployBidBeta is Script {
         require(collateral.decimals() == 6, "wrong collateral decimals");
         require(collateral.balanceOf(vm.envAddress("BID_DEPLOYER")) >= 25e6, "deployer needs 25 USDG");
         uint256 deploymentBlock = block.number;
+        address deployer = vm.envAddress("BID_DEPLOYER");
+
+        vm.startBroadcast(deployer);
+        BidReserveVault buybackReserve = new BidReserveVault(deployer);
+        BidReserveVault protocolReserve = new BidReserveVault(deployer);
+        BidReserveVault creatorRewardsReserve = new BidReserveVault(deployer);
+        vm.stopBroadcast();
+        vm.setEnv("BID_BUYBACK_VAULT", vm.toString(address(buybackReserve)));
+        vm.setEnv("BID_PROTOCOL_TREASURY", vm.toString(address(protocolReserve)));
+        vm.setEnv("BID_CREATOR_REWARDS_VAULT", vm.toString(address(creatorRewardsReserve)));
 
         (BidFlywheelTreasury treasury, BidLiquidityVault vault,) = new DeployBidTreasury().run();
         BidMarketFactory factory = new DeployBidMarkets().run();
@@ -35,10 +46,10 @@ contract DeployBidBeta is Script {
         outcomes[2] = "New York";
         outcomes[3] = "Dallas";
         outcomes[4] = "Phoenix";
-        vm.startBroadcast(vm.envAddress("BID_DEPLOYER"));
+        vm.startBroadcast(deployer);
         collateral.approve(address(factory), 25e6);
         address market = factory.createProtocolGenesisMarket(
-            "Which city posts the highest home-price growth from September 2026 to March 2027?",
+            "Which city posts the highest home-price growth from September 2026 to March 2027? Rules SHA-256: 9e4e62ce9a6fd5330a5716ae0c101df4437a3ad00582de88cd72ffb914a3c406",
             outcomes, uint64(closeTime), 25e6, address(vault)
         );
         vault.setMarketApproval(market, true);
@@ -48,6 +59,9 @@ contract DeployBidBeta is Script {
         console2.log("BID_MARKET_FACTORY=%s", address(factory));
         console2.log("BID_FLYWHEEL_TREASURY=%s", address(treasury));
         console2.log("BID_LIQUIDITY_VAULT=%s", address(vault));
+        console2.log("NEXT_PUBLIC_BID_BUYBACK_VAULT=%s", address(buybackReserve));
+        console2.log("NEXT_PUBLIC_BID_PROTOCOL_TREASURY=%s", address(protocolReserve));
+        console2.log("NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT=%s", address(creatorRewardsReserve));
         console2.log("KEEPER_MARKETS=%s", market);
         console2.log("NEXT_PUBLIC_BID_MARKET_CITY_FIELD=%s", market);
         console2.log("NEXT_PUBLIC_BID_MARKET_MIA_TPA and NEXT_PUBLIC_BID_MARKET_AUSTIN must stay empty.");

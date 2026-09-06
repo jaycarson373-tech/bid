@@ -27,11 +27,33 @@ env.RH_RPC_URL ||= env.NEXT_PUBLIC_BID_RPC_URL;
 for (const key of Object.keys(env)) {
   if (/PRIVATE_KEY|MNEMONIC|SECRET|SERVICE_ROLE|PASSWORD|API_KEY|ACCESS_TOKEN/i.test(key)) delete env[key];
 }
-const required = [
-  "BID_DEPLOYER", "BID_TREASURY_OWNER", "BID_REWARDS_OWNER", "BID_LIQUIDITY_OPERATOR",
-  "BID_BUYBACK_VAULT", "BID_PROTOCOL_TREASURY", "BID_CREATOR_REWARDS_VAULT",
-  "BID_LIQUIDITY_VAULT_OWNER", "BID_RESOLUTION_ORACLE",
+if (account) {
+  const derived = spawnSync("cast", ["wallet", "address", "--account", account], {
+    cwd: root,
+    env,
+    encoding: "utf8",
+    stdio: ["inherit", "pipe", "inherit"],
+  });
+  const derivedAddress = derived.stdout?.trim() || "";
+  if (derived.status !== 0 || !isAddress(derivedAddress)) {
+    console.error("FAIL: unable to unlock the selected encrypted Foundry keystore.");
+    process.exit(1);
+  }
+  if (env.BID_DEPLOYER && env.BID_DEPLOYER.toLowerCase() !== derivedAddress.toLowerCase()) {
+    console.error("FAIL: BID_DEPLOYER does not match the selected encrypted keystore.");
+    process.exit(1);
+  }
+  env.BID_DEPLOYER = derivedAddress;
+}
+const ownerRoles = [
+  "BID_TREASURY_OWNER",
+  "BID_REWARDS_OWNER",
+  "BID_LIQUIDITY_OPERATOR",
+  "BID_LIQUIDITY_VAULT_OWNER",
+  "BID_RESOLUTION_ORACLE",
 ];
+for (const key of ownerRoles) env[key] ||= env.BID_DEPLOYER;
+const required = ["BID_DEPLOYER", ...ownerRoles];
 const errors = required.filter(key => !isAddress(env[key] || "") || env[key].toLowerCase() === zeroAddress)
   .map(key => `${key}: set a valid nonzero PUBLIC address`);
 if (!/^\d+$/.test(env.BID_MARKET_CLOSE_TIME || "") || BigInt(env.BID_MARKET_CLOSE_TIME) <= BigInt(Math.floor(Date.now() / 1000))) {
@@ -41,12 +63,12 @@ for (const [key, value] of Object.entries({ BID_EXPECTED_CHAIN_ID: "4663", BID_G
   if (env[key] !== value) errors.push(`${key}: this beta command requires ${value}`);
 }
 if (errors.length) {
-  console.error(`FAIL: complete .env.production.local (public configuration only):\n${errors.join("\n")}`);
+  console.error(`FAIL: use --account with an encrypted Foundry keystore, or set BID_DEPLOYER as a public address:\n${errors.join("\n")}`);
   process.exit(1);
 }
 console.log(broadcast
-  ? "MAINNET BROADCAST: deploys contracts and seeds exactly one market with 25 USDG. Keep the transaction receipts."
-  : "READ-ONLY SIMULATION: no funds spent; printed addresses are not live. No final BID CA required.");
+  ? "MAINNET BROADCAST: one encrypted wallet temporarily owns beta administration; separate reserve vaults are created automatically."
+  : "READ-ONLY SIMULATION: one deployer address fills temporary beta roles and separate reserve vaults are created. No funds spent.");
 const command = ["script", "script/DeployBidBeta.s.sol:DeployBidBeta", "--root", "contracts", "--rpc-url", env.RH_RPC_URL, "--sender", env.BID_DEPLOYER, "-vv"];
 if (account) command.push("--account", account);
 if (broadcast) command.push("--broadcast", "--slow");
