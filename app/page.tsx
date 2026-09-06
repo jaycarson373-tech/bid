@@ -2026,9 +2026,11 @@ export default function Home() {
       </section>
 
       <section className="portfolio-tease" id="creator-markets">
-        <span>CREATOR MARKETS / COMING SOON</span>
-        <h2>Build the next housing market.</h2>
-        <p>Token-gated market creation is planned after the one-market beta. Parameters, initial depth and resolution rules will be reviewed before any market can open.</p>
+        <span>TOKEN-GATED CREATOR MARKETS / COMING SOON</span>
+        <h2>Launch a market. Earn from its activity.</h2>
+        <p>
+          Qualified $BID holders will be able to burn to launch, seed a housing market in USDG and earn a capped royalty from legitimate activity in the pool they create. More markets expand housing coverage, while BID&apos;s flywheel is designed to reward LPs and deepen active markets over time.
+        </p>
         <a className="creator-link" href="/create">Preview creator markets →</a>
       </section>
 

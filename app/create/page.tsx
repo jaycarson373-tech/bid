@@ -36,7 +36,9 @@ export default function CreateMarketPage() {
       <section className="create-intro">
         <span className="section-kicker">COMING SOON / TOKEN-GATED</span>
         <h1>Create a market.</h1>
-        <p>BID will open housing-market creation to holders after the creation contracts, activity rules, and creator reward controls are deployed and verified.</p>
+        <p>
+          Hold the required $BID, burn to launch and seed your market in USDG. Approved creators will earn a capped royalty from legitimate activity in the pool they create, bringing more housing views and deeper markets to BID.
+        </p>
       </section>
 
       <section className="create-workspace" aria-label="Future market creation preview">
@@ -55,6 +57,7 @@ export default function CreateMarketPage() {
             <div><dt>STATUS</dt><dd>COMING SOON</dd></div>
             <div><dt>COLLATERAL</dt><dd>USDG</dd></div>
             <div><dt>CREATION GATE</dt><dd>NOT ACTIVE</dd></div>
+            <div><dt>POOL CREATOR ROYALTY</dt><dd>CAPPED AT 3%</dd></div>
             <div><dt>CREATOR REWARDS</dt><dd>RESERVE ONLY</dd></div>
           </dl>
           <button type="button" disabled>CREATION NOT YET ACTIVE</button>

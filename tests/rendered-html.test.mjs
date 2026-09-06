@@ -61,6 +61,8 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.match(html, /LOCKED · COMING SOON/);
   assert.match(html, /\$5 per order/i);
   assert.match(html, /Parcl ID 5352987/);
+  assert.match(html, /TOKEN-GATED CREATOR MARKETS/);
+  assert.match(html, /earn a capped royalty/i);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
@@ -103,6 +105,8 @@ test("server-renders creator markets as a disabled coming-soon workflow", async 
   const html = await response.text();
   assert.match(html, /Create a market/);
   assert.match(html, /COMING SOON/);
+  assert.match(html, /POOL CREATOR ROYALTY/);
+  assert.match(html, /CAPPED AT 3%/);
   assert.match(html, /RESOLUTION SOURCE/);
   assert.match(html, /CREATION NOT YET ACTIVE/);
   assert.match(html, /disabled/);
