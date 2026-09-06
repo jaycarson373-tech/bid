@@ -1,0 +1,14 @@
+.git
+.env*
+node_modules
+.next
+.vinext
+.vercel
+.wrangler
+dist
+build
+outputs
+work
+contracts
+*.pem
+*.key

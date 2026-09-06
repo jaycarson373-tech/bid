@@ -31,7 +31,10 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   const html = await response.text();
   assert.match(html, /<title>BID — BID the Block<\/title>/i);
   assert.match(html, /Real estate/);
-  assert.match(html, /Which U.S. city will have the highest home-price increase by EOY/);
+  assert.match(html, /Which city posts the highest home-price growth from September 2026 to March 2027/);
+  assert.match(html, /Coming soon/);
+  assert.match(html, /Beta/);
+  assert.match(html, /Mar 5, 2027/);
   assert.match(html, /Which city will post the larger home-price increase by year-end/);
   assert.match(html, /Will Austin home prices finish 2026 positive year over year/);
   assert.match(html, /Connect wallet/);

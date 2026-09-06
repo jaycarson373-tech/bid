@@ -31,7 +31,7 @@ function Status({ children, tone = "ready" }: { children: ReactNode; tone?: "rea
 
 export default function DocsPage() {
   const marketAddresses = Object.values(siteConfig.marketAddresses);
-  const marketsConfigured = marketAddresses.length > 0 && marketAddresses.every(Boolean);
+  const marketsConfigured = marketAddresses.some(Boolean);
 
   return (
     <main className={styles.shell}>
@@ -89,6 +89,18 @@ export default function DocsPage() {
           <section id="markets">
             <span className={styles.sectionNumber}>01</span>
             <h2>Market model</h2>
+            <p>
+              The first beta is a single five-city market: Miami, Tampa, New York, Dallas and Phoenix.
+              Trading closes March 5, 2027 at 23:59:59 UTC. Initial funding is 25 USDG,
+              with an immutable 1 USDG per-order cap. Other markets are coming soon.
+              The final BID token address is not required to deploy this pool.
+            </p>
+            <p>
+              Settlement is not automatic: the designated oracle submits the payout after data publication.
+              The exact housing series, observation dates, tie rules and missing-data treatment must be
+              published before accepting public trades. A closing date is not a guaranteed payout date.
+              Fee claiming and automatic reserve spending remain disabled for the initial deployment.
+            </p>
             <p>
               Each market has between two and eight mutually exclusive outcomes. Depositing one unit of
               {siteConfig.collateralSymbol} creates one complete set: one unit of every outcome. After resolution, a complete set

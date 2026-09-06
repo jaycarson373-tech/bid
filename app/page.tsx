@@ -85,10 +85,10 @@ const markets: Market[] = [
   {
     id: "city-field-eoy",
     contractAddress: siteConfig.marketAddresses.cityField,
-    code: "CITY / EOY",
+    code: "CITY / 6 MONTHS",
     mode: "field",
-    question: "Which U.S. city will have the highest home-price increase by EOY?",
-    short: "Highest city price growth by EOY",
+    question: "Which city posts the highest home-price growth from September 2026 to March 2027?",
+    short: "Five-city housing outlook",
     outcomes: [
       { label: "Miami", code: "MIA", price: 0.31, tone: "coral" },
       { label: "Tampa", code: "TPA", price: 0.24, tone: "mint" },
@@ -98,7 +98,7 @@ const markets: Market[] = [
     ],
     volume: "$2.42M",
     liquidity: "$618K",
-    closes: "Dec 31, 2026",
+    closes: "Mar 5, 2027",
     signal: "5 cities · winner takes $1",
     chart: [35, 39, 37, 42, 45, 49, 47, 51, 55, 53, 58, 61, 59, 64, 67, 65, 70, 73, 71, 75, 79, 77, 82, 84],
   },
@@ -253,7 +253,7 @@ function matchesFilter(market: Market, filter: (typeof filters)[number]) {
 }
 
 export default function Home() {
-  const [selectedId, setSelectedId] = useState(markets[0].id);
+  const [selectedId, setSelectedId] = useState("city-field-eoy");
   const [filter, setFilter] = useState<(typeof filters)[number]>("All markets");
   const [selectedOutcome, setSelectedOutcome] = useState(0);
   const [amount, setAmount] = useState(isDemo ? "250" : "");
@@ -976,15 +976,15 @@ export default function Home() {
                   <span className="market-meta">
                     <span>{market.mode.replaceAll("-", " ")}</span>
                     {livePrices[market.id]
-                      ? <em>Live AMM</em>
+                      ? <em>Beta · Live AMM</em>
                       : showSampleData
                         ? <em><SampleBadge compact /> {market.signal}</em>
                         : configuredAddress(market.contractAddress) && marketReadStatus === "error"
                           ? <em>Onchain read unavailable</em>
-                          : <em>Prelaunch</em>}
+                          : <em>{market.mode === "field" ? "Beta · Prelaunch" : "Coming soon"}</em>}
                   </span>
                   <strong>{market.question}</strong>
-                  <small>Resolves {liveCloseDates[market.id] ?? market.closes} · {livePrices[market.id]
+                  <small>Closes {liveCloseDates[market.id] ?? market.closes} · {livePrices[market.id]
                     ? "Onchain pool"
                     : showSampleData ? `Vol ${market.volume}` : "Awaiting liquidity"}</small>
                 </span>
@@ -1018,7 +1018,7 @@ export default function Home() {
                 prices={selectedPrices?.map((price) => price / 10_000)}
               />
               <div>
-                <span>{selected.mode.replaceAll("-", " ")} · resolves {liveCloseDates[selected.id] ?? selected.closes}</span>
+                <span>{selected.mode.replaceAll("-", " ")} · closes {liveCloseDates[selected.id] ?? selected.closes}</span>
                 <h3>{selected.question}</h3>
               </div>
             </div>
@@ -1246,7 +1246,7 @@ export default function Home() {
         </div>
         <div className="settlement-strip">
           <div className="settle-badge"><BrandMark /></div>
-          <p><span>VERIFIABLE BY DESIGN</span> Market terms, closing time, and settlement source are locked before trading opens.</p>
+          <p><span>VERIFIABLE BY DESIGN</span> Closing time is recorded onchain. Settlement is submitted by the configured resolution oracle after housing data is published.</p>
           <div className="settle-flow"><span>Housing index</span><i>→</i><span>Oracle attestation</span><i>→</i><span>Robinhood Chain</span></div>
         </div>
         <div className="revenue-panel" id="flywheel">

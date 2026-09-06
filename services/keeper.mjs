@@ -39,8 +39,8 @@ const ponsCurve = env("PONS_CURVE_ADDRESS");
 if (!rpcUrl) throw new Error("RH_RPC_URL is required");
 if (!Number.isInteger(chainId) || chainId <= 0) throw new Error("BID_EXPECTED_CHAIN_ID is invalid");
 if (!Number.isFinite(pollInterval) || pollInterval < 5_000) throw new Error("KEEPER_POLL_INTERVAL_MS must be at least 5000");
-if (enabled && (!env("KEEPER_PRIVATE_KEY") || marketAddresses.length === 0)) {
-  throw new Error("execution requires KEEPER_PRIVATE_KEY and at least one market");
+if (enabled && (!env("KEEPER_PRIVATE_KEY") || !env("KEEPER_EXPECTED_ADDRESS") || marketAddresses.length === 0)) {
+  throw new Error("execution requires KEEPER_PRIVATE_KEY, KEEPER_EXPECTED_ADDRESS and at least one market");
 }
 if (liquidityDeploymentEnabled && (!enabled || !liquidityVault || !collateral)) {
   throw new Error("LP deployment requires execution, liquidity vault, and collateral addresses");

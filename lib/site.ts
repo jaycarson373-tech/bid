@@ -3,13 +3,42 @@ import feePolicy from "@/config/bid-fee-policy-v1.json";
 
 const PLACEHOLDER = /(<[^>]+>|\b(?:undefined|null|nan|test_token|testnet_address)\b|required|printed|your-project)/i;
 
-function publicValue(name: string, fallback = "") {
-  const value = process.env[name]?.trim() || fallback;
+// Next.js only inlines public variables accessed with literal property names.
+const publicEnvironment = {
+  NEXT_PUBLIC_BID_NETWORK: process.env.NEXT_PUBLIC_BID_NETWORK,
+  NEXT_PUBLIC_PONS_VERIFIED: process.env.NEXT_PUBLIC_PONS_VERIFIED,
+  NEXT_PUBLIC_BID_RPC_URL: process.env.NEXT_PUBLIC_BID_RPC_URL,
+  NEXT_PUBLIC_PONS_URL: process.env.NEXT_PUBLIC_PONS_URL,
+  NEXT_PUBLIC_PONS_FACTORY: process.env.NEXT_PUBLIC_PONS_FACTORY,
+  NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT: process.env.NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT,
+  NEXT_PUBLIC_BID_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_BID_CONTRACT_ADDRESS,
+  NEXT_PUBLIC_BID_COLLATERAL_SYMBOL: process.env.NEXT_PUBLIC_BID_COLLATERAL_SYMBOL,
+  NEXT_PUBLIC_BID_COLLATERAL_ADDRESS: process.env.NEXT_PUBLIC_BID_COLLATERAL_ADDRESS,
+  NEXT_PUBLIC_BID_MARKET_FACTORY: process.env.NEXT_PUBLIC_BID_MARKET_FACTORY,
+  NEXT_PUBLIC_BID_FLYWHEEL_TREASURY: process.env.NEXT_PUBLIC_BID_FLYWHEEL_TREASURY,
+  NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK: process.env.NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK,
+  NEXT_PUBLIC_BID_REWARDS_VAULT: process.env.NEXT_PUBLIC_BID_REWARDS_VAULT,
+  NEXT_PUBLIC_BID_REWARDS_MANIFEST_URL: process.env.NEXT_PUBLIC_BID_REWARDS_MANIFEST_URL,
+  NEXT_PUBLIC_BID_LIQUIDITY_VAULT: process.env.NEXT_PUBLIC_BID_LIQUIDITY_VAULT,
+  NEXT_PUBLIC_BID_BUYBACK_VAULT: process.env.NEXT_PUBLIC_BID_BUYBACK_VAULT,
+  NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT: process.env.NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT,
+  NEXT_PUBLIC_BID_PROTOCOL_TREASURY: process.env.NEXT_PUBLIC_BID_PROTOCOL_TREASURY,
+  NEXT_PUBLIC_BID_MARKET_MIA_TPA: process.env.NEXT_PUBLIC_BID_MARKET_MIA_TPA,
+  NEXT_PUBLIC_BID_MARKET_CITY_FIELD: process.env.NEXT_PUBLIC_BID_MARKET_CITY_FIELD,
+  NEXT_PUBLIC_BID_MARKET_AUSTIN: process.env.NEXT_PUBLIC_BID_MARKET_AUSTIN,
+};
+
+function publicValue(name: keyof typeof publicEnvironment, fallback = "") {
+  const value = publicEnvironment[name]?.trim() || fallback;
   return PLACEHOLDER.test(value) ? "" : value;
 }
 
 const isTestnet = publicValue("NEXT_PUBLIC_BID_NETWORK", "mainnet") === "testnet";
 const isPonsVerified = publicValue("NEXT_PUBLIC_PONS_VERIFIED") === "true";
+const maxTradeAmount = Number(publicValue("NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT", "1"));
+if (!Number.isFinite(maxTradeAmount) || maxTradeAmount <= 0) {
+  throw new Error("NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT must be a positive finite number");
+}
 const allocationTotal = Object.values(feePolicy.allocations).reduce((total, bps) => total + bps, 0);
 
 if (allocationTotal !== feePolicy.basisPoints) {
@@ -43,7 +72,7 @@ export const siteConfig = {
   buybackBurnShareBps: feePolicy.allocations.buybackBurn,
   treasuryShareBps: feePolicy.allocations.treasury,
   creatorRewardsShareBps: feePolicy.allocations.creatorRewards,
-  maxTradeAmount: Number(publicValue("NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT", "1")),
+  maxTradeAmount,
   contractAddress: publicValue(
     "NEXT_PUBLIC_BID_CONTRACT_ADDRESS",
     isTestnet ? testnetDeployment.bidTokenAddress : "",

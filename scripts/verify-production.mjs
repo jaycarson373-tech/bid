@@ -41,7 +41,6 @@ const requiredEnvironment = [
   "NEXT_PUBLIC_BID_BUYBACK_VAULT",
   "NEXT_PUBLIC_BID_PROTOCOL_TREASURY",
   "NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT",
-  "NEXT_PUBLIC_BID_MARKET_MIA_TPA",
   "NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT",
   "NEXT_PUBLIC_PONS_FACTORY",
   "BID_RESOLUTION_ORACLE",
@@ -206,11 +205,12 @@ const addresses = {
   ponsCurve: required("PONS_CURVE_ADDRESS"),
   ponsQuote: required("PONS_QUOTE_ASSET"),
 };
-const marketDefinitions = [
-  [required("NEXT_PUBLIC_BID_MARKET_MIA_TPA"), "Which city will post the larger home-price increase by year-end?", ["Miami", "Tampa"]],
-];
+const marketDefinitions = [];
+if (env("NEXT_PUBLIC_BID_MARKET_MIA_TPA")) {
+  marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_MIA_TPA"), "Which city will post the larger home-price increase by year-end?", ["Miami", "Tampa"]]);
+}
 if (env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD")) {
-  marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD"), "Which U.S. city will have the highest home-price increase by EOY?", ["Miami", "Tampa", "New York", "Dallas", "Phoenix"]]);
+  marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD"), "Which city posts the highest home-price growth from September 2026 to March 2027?", ["Miami", "Tampa", "New York", "Dallas", "Phoenix"]]);
 }
 if (env("NEXT_PUBLIC_BID_MARKET_AUSTIN")) {
   marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_AUSTIN"), "Will Austin home prices finish 2026 positive year over year?", ["Yes", "No"]]);

@@ -54,7 +54,6 @@ const LIVE_KEYS = [
   "NEXT_PUBLIC_BID_BUYBACK_VAULT",
   "NEXT_PUBLIC_BID_PROTOCOL_TREASURY",
   "NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT",
-  "NEXT_PUBLIC_BID_MARKET_MIA_TPA",
   "NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT",
   "RH_RPC_URL",
   "PONS_FEE_ESCROW",
@@ -139,11 +138,9 @@ if (launchState === "live") {
     if (!value(key)) errors.push(`${key} is required for live mode`);
   }
   const genesisMarketCount = Number(value("BID_GENESIS_MARKET_COUNT") || "1");
-  if (genesisMarketCount >= 2 && !value("NEXT_PUBLIC_BID_MARKET_CITY_FIELD")) {
-    errors.push("NEXT_PUBLIC_BID_MARKET_CITY_FIELD is required when BID_GENESIS_MARKET_COUNT is at least 2");
-  }
-  if (genesisMarketCount >= 3 && !value("NEXT_PUBLIC_BID_MARKET_AUSTIN")) {
-    errors.push("NEXT_PUBLIC_BID_MARKET_AUSTIN is required when BID_GENESIS_MARKET_COUNT is 3");
+  const configuredMarkets = ["NEXT_PUBLIC_BID_MARKET_MIA_TPA", "NEXT_PUBLIC_BID_MARKET_CITY_FIELD", "NEXT_PUBLIC_BID_MARKET_AUSTIN"].filter(key => value(key));
+  if (!Number.isInteger(genesisMarketCount) || genesisMarketCount < 1 || genesisMarketCount > 3 || configuredMarkets.length !== genesisMarketCount) {
+    errors.push("BID_GENESIS_MARKET_COUNT must match the number of configured market addresses (1-3)");
   }
   if (value("NEXT_PUBLIC_PONS_VERIFIED") !== "true") {
     errors.push("NEXT_PUBLIC_PONS_VERIFIED must be true after onchain verification");

@@ -18,6 +18,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern contracts/lib --ignore-pattern contracts/out --ignore-pattern contracts/cache",
     "env:check": "node --env-file-if-exists=.env.production.local scripts/env-check.mjs",
     "costs:production": "node --env-file-if-exists=.env.production.local scripts/production-costs.mjs",
+    "deploy:beta": "node --env-file-if-exists=.env.production.local scripts/deploy-beta.mjs",
+    "verify:beta": "node --env-file-if-exists=.env.production.local scripts/verify-beta.mjs",
     "rewards:build": "node scripts/build-rewards-epoch.mjs",
     "setup:production": "npm run env:check && npm run lint && npm run test:contracts && npm run test:vercel",
     "verify:production": "node --env-file-if-exists=.env.production.local scripts/verify-production.mjs",

@@ -105,14 +105,16 @@ try {
     console.log(`  ${gasUnits.toLocaleString("en-US")} gas = ${formatEther(gasUnits * gasPrice)} ETH`);
   }
   console.log(`Keeper minimum configured reserve: ${formatEther(keeperReserve)} ETH`);
-console.log("Genesis liquidity capital (not a fee):");
-console.log("  Capped beta: 25 USDG for one market");
-console.log("  Immutable beta order cap: 1 USDG per order");
+  console.log("Genesis liquidity capital (not a fee):");
+  console.log("  Capped beta default: 25 USDG for one market");
+  console.log("  Beta order cap default: 1 USDG per order");
   if (configuredPerMarket) {
     const perMarket = BigInt(configuredPerMarket);
-    console.log(`  Configured: ${formatUnits(perMarket * 3n, collateralDecimals)} USDG total (${formatUnits(perMarket, collateralDecimals)} per market)`);
+    const count = BigInt(process.env.BID_GENESIS_MARKET_COUNT || "1");
+    if (count < 1n || count > 3n || perMarket <= 0n) throw new Error("invalid genesis funding configuration");
+    console.log(`  Configured: ${formatUnits(perMarket * count, collateralDecimals)} USDG total (${count} market(s))`);
   }
-  console.log("Deployment gas is finalized only after the public owner/operator addresses and final BID CA are bound.");
+  console.log("Run deploy:beta without --broadcast for a deployment gas simulation after setting public wallet addresses. No final BID CA required.");
   console.log("PASS  live fee and gas data loaded; no transaction was submitted");
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);

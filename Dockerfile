@@ -9,6 +9,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY services ./services
+COPY config ./config
 USER node
 EXPOSE 8080
 CMD ["npm", "run", "start:keeper"]

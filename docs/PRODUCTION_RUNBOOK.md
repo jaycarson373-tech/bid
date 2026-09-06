@@ -3,6 +3,63 @@
 This is the canonical launch path. It is deliberately fail-closed and performs
 no mainnet write during verification.
 
+## First five-city beta: shortest deployment path
+
+This is ONE market with five outcomes (Miami, Tampa, New York, Dallas, Phoenix),
+not five separately seeded pools. It closes March 5, 2027 at 23:59:59 UTC
+(`1804291199`). The selected question compares September 2026 to March 2027.
+The source series, exact observation dates, publication lag, ties and missing-data
+rules still need operator approval and publication before public trading. The
+oracle is a trusted signer, not an implemented automatic housing-data feed.
+
+1. Complete the public wallet worksheet below in `.env.production.local`. Fund
+   `BID_DEPLOYER` with **25 USDG plus ETH for deployment gas on chain 4663**.
+   Keep its key in an encrypted local Foundry keystore. Import interactively with
+   `cast wallet import bid-deployer --interactive`; never paste it into chat.
+2. Run `npm run deploy:beta`. This simulates the existing treasury, rewards vault,
+   liquidity vault, factory and ONE five-city market together. No final BID CA is
+   required. The simulation must pass and its ETH gas estimate must be reviewed.
+   Printed addresses from a dry run are NOT deployed addresses.
+3. The explicit spending step is
+   `npm run deploy:beta -- --account bid-deployer --broadcast`.
+   This signs locally and seeds the market with 25 USDG. If interrupted, inspect
+   `contracts/broadcast/DeployBidBeta.s.sol/4663/` before any retry; do not blindly
+   run a fresh broadcast. Save the confirmed receipts and resulting public addresses.
+4. In Vercel, set `NEXT_PUBLIC_BID_NETWORK=mainnet`, the public RPC and USDG values
+   from `.env.production.example`, `NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT=1`, and the
+   printed `NEXT_PUBLIC_BID_MARKET_CITY_FIELD`, factory and vault values. Leave
+   `NEXT_PUBLIC_BID_MARKET_MIA_TPA`, `NEXT_PUBLIC_BID_MARKET_AUSTIN` and the final
+   token CA empty. Keep `NEXT_PUBLIC_LAUNCH_STATE=prelaunch` until the token flow
+   is verified; independently configured pools can quote/trade. Redeploy Vercel
+   because public variables are compiled into its browser bundle.
+5. Run `npm run verify:beta` with the confirmed public deployment outputs.
+   It verifies deployed bytecode, pool funding, five outcomes, oracle, close time,
+   one-dollar cap and receipts before public trading. Approve only a tiny first
+   order after publishing resolution rules. Later launch the token and run the
+   separate Pons/CA verification and binding procedure below.
+
+**Pons creator address:** enter the confirmed deployed `BidFlywheelTreasury`
+address in Pons' `creatorFeeRecipient` field when launching the token. It is the
+same public address as `NEXT_PUBLIC_BID_FLYWHEEL_TREASURY`. Do not enter the
+deployer address, Railway operator address or a private key in that field.
+
+**Railway now:** the root `railway.json` selects the Dockerfile, single replica,
+health route and restart policy. Set `RH_RPC_URL`, `BID_EXPECTED_CHAIN_ID=4663`,
+`KEEPER_MARKETS` to the confirmed five-city address, and the printed public
+treasury/vault addresses. Keep `KEEPER_EXECUTION_ENABLED=false`,
+`LP_DEPLOYMENT_ENABLED=false`, `PONS_CURVE_SWEEP_ENABLED=false` and
+`PONS_HOOK_SWEEP_ENABLED=false` until fee operations are explicitly activated.
+Market orders execute in the pool; resting limit orders need a funded keeper or
+another caller to fill them later. A read-only keeper will not fill resting orders.
+
+**Railway later:** add `KEEPER_PRIVATE_KEY` directly under service Variables,
+plus matching `KEEPER_EXPECTED_ADDRESS`. This is the limited operator key, not
+the deployer/treasury/oracle key. No signer key goes in Vercel. Supabase is not
+used. Repository deployment configuration does not provision service secrets.
+
+The 45/30/10/10/5 allocation is tested, but does not mean live claiming, rewards,
+buybacks or LP deployment are activated. Preserve reserves until approved.
+
 ## Mainnet input worksheet
 
 These public values are required before the first treasury deployment:
