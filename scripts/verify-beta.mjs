@@ -45,12 +45,12 @@ try {
   check(isAddressEqual(await read(vault, "owner"), vaultOwner), "final liquidity vault owner");
   check(await read(vault, "approvedMarkets", [market]), "vault approves this market");
   check(await read(market, "balanceOf", [vault]) >= 25_000_000n, "protocol-owned seed LP shares present");
-  check(await read(market, "maxTradeAmount") === 5_000_000n, "immutable 5 USDG order cap");
+  check(await read(market, "maxTradeAmount") === 5_000_000n, "initial 5 USDG order cap");
   check(Number(await read(market, "creatorFeeBps")) === 0, "zero prediction-market fee");
   const closesAt = await read(market, "closesAt");
   check(closesAt === 1804291199n && closesAt > BigInt(Math.floor(Date.now() / 1000)), "closes March 5, 2027 at 23:59:59 UTC");
   check(!await read(market, "resolved"), "market is not already resolved");
-  check(await read(market, "question") === "Which city posts the highest home-price growth from September 2026 to March 2027? Rules SHA-256: 9e4e62ce9a6fd5330a5716ae0c101df4437a3ad00582de88cd72ffb914a3c406", "approved beta question and immutable rules hash");
+  check(await read(market, "question") === "Which city posts the highest home-price growth from September 2026 to March 2027? Rules SHA-256: 7482dc1665a34149e76f5ee17e2ecdc3fb593b655130074b94e398f56bc59678", "approved beta question and immutable rules hash");
   const cities = ["Miami", "Tampa", "New York", "Dallas", "Phoenix"];
   check(await read(market, "outcomeCount") === 5n, "exactly five city outcomes");
   for (const [index, city] of cities.entries()) {

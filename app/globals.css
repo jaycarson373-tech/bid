@@ -3095,6 +3095,7 @@ footer > small {
 
   .hero-banner-image {
     object-position: 27% center;
+    opacity: 0.9;
   }
 
   .hero-shade {
@@ -3168,16 +3169,6 @@ footer > small {
 }
 
 /* Institutional market and fee-policy polish */
-.hero h1 > span {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--lime);
-  font-family: var(--font-geist-mono);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-
 .market-card {
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
 }
@@ -3416,11 +3407,6 @@ footer > small {
 }
 
 @media (max-width: 760px) {
-  .hero h1 > span {
-    margin-bottom: 5px;
-    font-size: 9px;
-  }
-
   .market-card:hover {
     transform: none;
   }

@@ -33,11 +33,13 @@ contract BidMarketFactory is Ownable {
         bool enabled, uint256 minimumBidBalance, uint256 bidBurnAmount, uint16 creatorRoyaltyBps
     );
     event BidTokenBound(address indexed bidToken);
+    event DefaultMaxTradeAmountUpdated(uint256 previousAmount, uint256 newAmount);
+    event MarketMaxTradeAmountUpdated(address indexed market, uint256 newAmount);
 
     IERC20 public immutable collateral;
     IERC20 public bidToken;
     address public immutable resolutionOracle;
-    uint256 public immutable maxTradeAmount;
+    uint256 public maxTradeAmount;
 
     bool public communityCreationEnabled;
     uint256 public minimumBidBalance;
@@ -72,6 +74,20 @@ contract BidMarketFactory is Ownable {
 
     function marketAt(uint256 index) external view returns (address) {
         return _markets[index];
+    }
+
+    function setDefaultMaxTradeAmount(uint256 newMaxTradeAmount) external onlyOwner {
+        if (newMaxTradeAmount == 0) revert InvalidTradeLimit();
+        uint256 previousAmount = maxTradeAmount;
+        maxTradeAmount = newMaxTradeAmount;
+        emit DefaultMaxTradeAmountUpdated(previousAmount, newMaxTradeAmount);
+    }
+
+    function setMarketMaxTradeAmount(address market, uint256 newMaxTradeAmount) external onlyOwner {
+        if (!isBidMarket[market]) revert InvalidAddress();
+        if (newMaxTradeAmount == 0) revert InvalidTradeLimit();
+        BidMarket(market).setMaxTradeAmount(newMaxTradeAmount);
+        emit MarketMaxTradeAmountUpdated(market, newMaxTradeAmount);
     }
 
     function allMarkets() external view returns (address[] memory) {

@@ -82,7 +82,7 @@ These public values are required before the first treasury deployment:
 | `BID_MARKET_CLOSE_TIME` | Approved future Unix timestamp |
 | `BID_GENESIS_MARKET_COUNT` | `1` for the capped beta |
 | `BID_INITIAL_LIQUIDITY` | `25000000` for the 25 USDG seed |
-| `BID_MAX_TRADE_AMOUNT` | `5000000` for the immutable 5 USDG order cap; UI minimum is 1 USDG |
+| `BID_MAX_TRADE_AMOUNT` | `5000000` for the initial 5 USDG order cap; UI minimum is 1 USDG |
 
 The final BID CA and Pons curve are outputs of `LaunchBidOnPons`, not inputs to
 the first deployment. `BID_REWARDS_VAULT` is the distributor address printed by
@@ -167,7 +167,7 @@ directly to `BID_LIQUIDITY_VAULT`.
 
 Zero initial liquidity cannot quote or execute a trade. The 25 USDG seed is protocol-owned
 capital, not a fee. The interface enforces a 1 USDG minimum and the contract enforces
-an immutable 5 USDG maximum to limit early price impact.
+a factory-owner-controlled 5 USDG initial maximum to limit early price impact.
 The configured recurring threshold `LP_MIN_DEPLOY_AMOUNT=1000000` batches at least 1 USDG before the
 keeper spends gas. `LP_TARGET_DEPTH=100000000` sets a 100 USDG beta target; the
 keeper deterministically allocates to approved open markets in proportion to

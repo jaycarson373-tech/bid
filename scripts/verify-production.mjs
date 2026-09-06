@@ -210,7 +210,7 @@ if (env("NEXT_PUBLIC_BID_MARKET_MIA_TPA")) {
   marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_MIA_TPA"), "Which city will post the larger home-price increase by year-end?", ["Miami", "Tampa"]]);
 }
 if (env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD")) {
-  marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD"), "Which city posts the highest home-price growth from September 2026 to March 2027? Rules SHA-256: 9e4e62ce9a6fd5330a5716ae0c101df4437a3ad00582de88cd72ffb914a3c406", ["Miami", "Tampa", "New York", "Dallas", "Phoenix"]]);
+  marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD"), "Which city posts the highest home-price growth from September 2026 to March 2027? Rules SHA-256: 7482dc1665a34149e76f5ee17e2ecdc3fb593b655130074b94e398f56bc59678", ["Miami", "Tampa", "New York", "Dallas", "Phoenix"]]);
 }
 if (env("NEXT_PUBLIC_BID_MARKET_AUSTIN")) {
   marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_AUSTIN"), "Will Austin home prices finish 2026 positive year over year?", ["Yes", "No"]]);

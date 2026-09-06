@@ -92,7 +92,7 @@ export default function DocsPage() {
             <p>
               The first beta is a single five-city market: Miami, Tampa, New York, Dallas and Phoenix.
               Trading closes March 5, 2027 at 23:59:59 UTC. Initial funding is 25 USDG,
-              with an immutable 1 USDG per-order cap. Other markets are coming soon.
+              with a 5 USDG initial per-order cap controlled by the factory owner. Other markets are coming soon.
               The final BID token address is not required to deploy this pool.
             </p>
             <p>
@@ -184,10 +184,10 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             </p>
             <h3>Five-city beta rules</h3>
             <p>
-              The beta compares each metro&apos;s September 2026 to March 2027 monthly, not seasonally adjusted
-              S&amp;P Cotality Case-Shiller index distributed by FRED. Series: MIXRNSA, TPXRNSA, NYXRNSA,
-              DAXRNSA and PHXRNSA. The highest full-precision percentage change wins. Trading closes before
-              March data publication; settlement follows the first release containing every required observation.
+              The beta compares each city&apos;s September 30, 2026 to March 31, 2027 Parcl Labs Price Feed.
+              Exact Census place GEOIDs identify Miami, Tampa, New York, Dallas and Phoenix. The highest
+              full-precision percentage change wins. Trading closes before the end observation; settlement follows
+              the first eligible Parcl API response containing every required observation.
               Exact ties split the payout, and a documented invalid-market fallback applies if a series remains
               unavailable. The versioned rule document&apos;s SHA-256 is embedded in the onchain market question.
             </p>
@@ -240,13 +240,14 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><Status>TESTED</Status><span>Versioned 45/30/10/10/5 fee allocation with deterministic rounding</span></div>
               <div><Status>TESTED</Status><span>Operator-managed deployment into protocol-owned market LP</span></div>
               <div><Status>TESTED</Status><span>Funded Merkle reward epochs with one-time wallet claims</span></div>
-              <div><Status tone="pending">PENDING</Status><span>Independent audit and mainnet deployment</span></div>
-              <div><Status tone="pending">PENDING</Status><span>Keeper deployment, oracle policy, indexer and monitoring</span></div>
+              <div><Status>LIVE BETA</Status><span>Mainnet five-city market with 25 USDG protocol-owned liquidity</span></div>
+              <div><Status>LIVE</Status><span>Single-replica Railway keeper on Robinhood Chain</span></div>
+              <div><Status tone="pending">PENDING</Status><span>Independent audit, event indexer and production monitoring</span></div>
             </div>
 
             <h3>Addresses</h3>
             <dl className={styles.addresses}>
-              <div><dt>{siteConfig.collateralSymbol}</dt><dd><code>{siteConfig.collateralAddress || "AWAITING LAUNCH"}</code></dd></div>
+              <div><dt>{siteConfig.collateralSymbol}</dt><dd><code>{siteConfig.collateralAddress || "UNAVAILABLE"}</code></dd></div>
               <div><dt>{siteConfig.isTestnet ? "Pons v2 mainnet reference" : "Pons v2 factory"}</dt><dd><code>{siteConfig.ponsFactory || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>BID market factory</dt><dd><code>{siteConfig.marketFactoryAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Flywheel treasury</dt><dd><code>{siteConfig.flywheelTreasuryAddress || "AWAITING PUBLICATION"}</code></dd></div>
@@ -303,7 +304,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <h2>Production operator flow</h2>
             <ol>
               <li>Deploy the rewards distributor, treasury and liquidity vault with multisig owners and the Railway keeper&apos;s public operator address.</li>
-              <li>Deploy the market factory and one capped genesis market before the token CA exists, supplying 25 USDG with a 1 USDG immutable order cap. The factory keeps community creation locked.</li>
+              <li>Deploy the market factory and one capped genesis market before the token CA exists, supplying 25 USDG with a 5 USDG initial order cap. The factory owner can update that cap; community creation stays locked.</li>
               <li>Run <code>LaunchBidOnPons.s.sol</code> from an encrypted local Foundry keystore with a 150 bps creator fee, buyback disabled, USDG pair asset, and the treasury contract as creator recipient.</li>
               <li>Run <code>BindBidPonsCurve.s.sol</code> from the deployer; it verifies the launch, binds the final token and curve once, and hands factory and treasury ownership to their final multisigs.</li>
               <li>Put the public addresses in Vercel and Railway; put the keeper signer only in Railway&apos;s secret manager.</li>
@@ -351,7 +352,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
           <div>
             <strong>Build status</strong>
             <span><i /> Contracts tested</span>
-            <span className={styles.pendingText}><i /> Mainnet pending</span>
+            <span><i /> Mainnet beta live</span>
           </div>
         </aside>
       </div>

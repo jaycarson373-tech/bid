@@ -72,7 +72,7 @@ const LIVE_KEYS = [
 const errors = [];
 const warnings = [];
 const value = (key) => process.env[key]?.trim() ?? "";
-const launchState = value("NEXT_PUBLIC_LAUNCH_STATE") || "prelaunch";
+const launchState = value("NEXT_PUBLIC_LAUNCH_STATE") || "live";
 const network = value("NEXT_PUBLIC_BID_NETWORK") || "mainnet";
 
 for (const key of ["BID_INITIAL_LIQUIDITY", "BID_MAX_TRADE_AMOUNT"]) {

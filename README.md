@@ -12,10 +12,9 @@ connect a $BID token launched through Pons v2 with:
 - funded Merkle reward epochs with duplicate-safe wallet claims
 - a future hold-and-burn gate for community market creators
 
-With deployed market addresses configured, the app reads live AMM prices,
-requests USDG allowance when needed, and submits Robinhood Chain transactions.
-Without those addresses it stays in an explicit prelaunch state and cannot
-build an order.
+The deployed mainnet beta addresses are versioned in the application. The app
+reads live AMM prices, requests USDG allowance when needed, and submits
+Robinhood Chain transactions.
 
 Protocol mechanics, deployment status, and production requirements are
 documented at `/docs` in the running application. `/rewards` verifies published

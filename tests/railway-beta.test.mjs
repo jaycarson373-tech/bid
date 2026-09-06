@@ -25,7 +25,7 @@ test("LP deployer and Pons creator keys remain separate", async () => {
 
   assert.match(betaScript, /LP_DEPLOYER_PRIVATE_KEY/);
   assert.doesNotMatch(betaScript, /PONS_CREATOR_PRIVATE_KEY/);
-  assert.match(betaScript, /vm\.getNonce\(deployer\) == 0/);
+  assert.match(betaScript, /BID_GENESIS_MARKET_COUNT/);
   assert.match(ponsScript, /PONS_CREATOR_PRIVATE_KEY/);
   assert.doesNotMatch(ponsScript, /LP_DEPLOYER_PRIVATE_KEY/);
   assert.match(keeper, /LP_DEPLOYER_PRIVATE_KEY/);

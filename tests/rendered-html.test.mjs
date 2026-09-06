@@ -23,7 +23,7 @@ async function render(pathname = "/") {
   );
 }
 
-test("server-renders the BID market board in prelaunch without fabricated telemetry", async () => {
+test("server-renders the live BID beta market board without fabricated telemetry", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -40,12 +40,13 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /Will Austin home prices finish 2026 positive year over year/);
   assert.match(html, /Connect wallet/);
   assert.doesNotMatch(html, /CA AWAITING LAUNCH|class="ca-pill"/i);
-  assert.match(html, /0% prediction market fee for now/i);
+  assert.match(html, /0% BID market fee/i);
+  assert.match(html, /USDG-BACKED MARKETS/);
   assert.match(html, /Orders use USDG/);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
   assert.match(html, /Liquidity/);
-  assert.match(html, /Mainnet prelaunch/i);
+  assert.match(html, /Mainnet beta live/i);
   assert.match(html, /1\.5%/);
   assert.match(html, /45%/);
   assert.match(html, /30%/);
@@ -53,7 +54,7 @@ test("server-renders the BID market board in prelaunch without fabricated teleme
   assert.match(html, /CREATOR REWARDS/);
   assert.doesNotMatch(html, /Solana|pump\.fun/i);
   assert.match(html, /HOUSING MARKETS/);
-  assert.match(html, /1 MARKET AT LAUNCH/);
+  assert.match(html, /1 MARKET ACTIVATING/);
   assert.match(html, /\$1 MINIMUM · \$5 MAXIMUM PER ORDER/);
   assert.match(html, /OTHER POOLS COMING SOON/);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
@@ -74,7 +75,7 @@ test("server-renders professional protocol documentation with honest deployment 
   assert.match(html, /final token CA and Pons launch record are awaiting verification/i);
   assert.match(html, /Production requirements/);
   assert.match(html, /Funded Merkle reward epochs/);
-  assert.match(html, /AWAITING PUBLICATION/);
+  assert.match(html, /0xD9da3C6F2272760a6AFcd6F2D95114231dF5D186/);
 });
 
 test("server-renders the rewards claim surface in an honest prelaunch state", async () => {
@@ -122,7 +123,7 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /Add liquidity/);
   assert.match(page, /Withdraw liquidity/);
   assert.match(page, /waitForTransactionReceipt/);
-  assert.match(page, /0% prediction market fee for now/i);
+  assert.match(page, /0% BID market fee/i);
   assert.match(page, /BID CREATOR FEE/);
   assert.match(page, /Robinhood Chain/);
   assert.match(page, /Pons/);
@@ -130,7 +131,7 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /Awaiting liquidity/i);
   assert.match(page, /\/docs/);
   assert.match(layout, /title: "BID — BID the Block"/);
-  assert.match(launchState, /"prelaunch"/);
+  assert.match(launchState, /: "live"/);
   assert.match(siteConfig, /feePolicy\.creatorFeeBps/);
   assert.match(siteConfig, /PLACEHOLDER/);
   assert.match(siteConfig, /lpRewardsShareBps/);

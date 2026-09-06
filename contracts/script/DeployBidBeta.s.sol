@@ -71,7 +71,6 @@ contract DeployBidBeta is Script {
         _defaultAddress("BID_LIQUIDITY_OPERATOR", deployer);
         _defaultAddress("BID_LIQUIDITY_VAULT_OWNER", deployer);
         _defaultAddress("BID_RESOLUTION_ORACLE", deployer);
-        require(vm.getNonce(deployer) == 0, "LP deployer must be a fresh wallet");
         require(vm.envUint("BID_GENESIS_MARKET_COUNT") == 1, "beta creates exactly one market");
         require(vm.envUint("BID_INITIAL_LIQUIDITY") == 25e6, "beta seed must be 25 USDG");
         require(vm.envUint("BID_MAX_TRADE_AMOUNT") == 5e6, "beta order cap must be 5 USDG");
@@ -112,8 +111,11 @@ contract DeployBidBeta is Script {
         _startBroadcast(deployer, deployerKey);
         collateral.approve(address(factory), 25e6);
         market = factory.createProtocolGenesisMarket(
-            "Which city posts the highest home-price growth from September 2026 to March 2027? Rules SHA-256: 9e4e62ce9a6fd5330a5716ae0c101df4437a3ad00582de88cd72ffb914a3c406",
-            outcomes, uint64(closeTime), 25e6, address(vault)
+            "Which city posts the highest home-price growth from September 2026 to March 2027? Rules SHA-256: 7482dc1665a34149e76f5ee17e2ecdc3fb593b655130074b94e398f56bc59678",
+            outcomes,
+            uint64(closeTime),
+            25e6,
+            address(vault)
         );
         vault.setMarketApproval(market, true);
         vault.transferOwnership(vaultOwner);

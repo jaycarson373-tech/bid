@@ -83,6 +83,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
     event MarketResolved(uint256[] payouts);
     event Redeemed(address indexed account, uint256 collateralOut);
     event CreatorFeesClaimed(address indexed creator, uint256 amount);
+    event MaxTradeAmountUpdated(uint256 previousAmount, uint256 newAmount);
 
     IERC20 public immutable collateral;
     address public immutable factory;
@@ -90,7 +91,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
     address public immutable marketCreator;
     uint64 public immutable closesAt;
     uint16 public immutable creatorFeeBps;
-    uint256 public immutable maxTradeAmount;
+    uint256 public maxTradeAmount;
     uint8 private immutable _collateralDecimals;
     string public question;
 
@@ -134,6 +135,14 @@ contract BidMarket is ERC20, ReentrancyGuard {
 
     function outcomeCount() external view returns (uint256) {
         return _outcomeLabels.length;
+    }
+
+    function setMaxTradeAmount(uint256 newMaxTradeAmount) external {
+        if (msg.sender != factory) revert NotFactory();
+        if (newMaxTradeAmount == 0) revert ZeroAmount();
+        uint256 previousAmount = maxTradeAmount;
+        maxTradeAmount = newMaxTradeAmount;
+        emit MaxTradeAmountUpdated(previousAmount, newMaxTradeAmount);
     }
 
     function decimals() public view override returns (uint8) {

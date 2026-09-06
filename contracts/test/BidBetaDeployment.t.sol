@@ -5,14 +5,22 @@ import {Test} from "forge-std/Test.sol";
 import {DeployBidBeta} from "../script/DeployBidBeta.s.sol";
 import {BidMarket} from "../src/BidMarket.sol";
 import {BidLiquidityVault} from "../src/BidLiquidityVault.sol";
+import {BidMarketFactory} from "../src/BidMarketFactory.sol";
 import {BidReserveVault} from "../src/BidReserveVault.sol";
 import {MockToken, MockPonsFeeEscrow, MockPonsFeeHook} from "./BidMarket.t.sol";
 
 contract BetaPonsFactoryMock {
     address public immutable feeEscrow;
     address public immutable memeHook;
-    constructor(address escrow, address hook) { feeEscrow = escrow; memeHook = hook; }
-    function approvedPairTokens(address) external pure returns (bool) { return true; }
+
+    constructor(address escrow, address hook) {
+        feeEscrow = escrow;
+        memeHook = hook;
+    }
+
+    function approvedPairTokens(address) external pure returns (bool) {
+        return true;
+    }
 }
 
 contract BidBetaDeploymentTest is Test {
@@ -62,14 +70,21 @@ contract BidBetaDeploymentTest is Test {
         assertEq(MockToken(USDG).balanceOf(deployer), 0);
         assertEq(market.closesAt(), CLOSE);
         assertEq(market.spotPricesBps().length, 5);
-        for (uint256 i; i < 5; ++i) assertEq(market.spotPricesBps()[i], 2000);
+        for (uint256 i; i < 5; ++i) {
+            assertEq(market.spotPricesBps()[i], 2000);
+        }
         assertEq(BidLiquidityVault(payable(vaultAddress)).owner(), owner);
         assertEq(BidLiquidityVault(payable(vaultAddress)).operator(), operator);
+        BidMarketFactory factory = BidMarketFactory(market.factory());
+        vm.prank(factory.owner());
+        factory.setMarketMaxTradeAmount(marketAddress, 6e6);
+        assertEq(market.maxTradeAmount(), 6e6);
+        market.quoteBuy(6e6, 0);
         MockToken(USDG).mint(trader, 7e6);
         vm.startPrank(trader);
         MockToken(USDG).approve(marketAddress, 7e6);
         vm.expectRevert(BidMarket.TradeAmountExceeded.selector);
-        market.buy(5e6 + 1, 0, 0);
+        market.buy(6e6 + 1, 0, 0);
         uint256 purchased = market.buy(1e6, 0, 0);
         assertGt(purchased, 1e6);
         uint256 requiredTokens;

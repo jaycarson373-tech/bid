@@ -1,4 +1,5 @@
 import { testnetDeployment } from "@/lib/testnetDeployment";
+import { mainnetDeployment } from "@/lib/mainnetDeployment";
 import feePolicy from "@/config/bid-fee-policy-v1.json";
 
 const PLACEHOLDER = /(<[^>]+>|\b(?:undefined|null|nan|test_token|testnet_address)\b|required|printed|your-project)/i;
@@ -35,8 +36,8 @@ function publicValue(name: keyof typeof publicEnvironment, fallback = "") {
 
 const isTestnet = publicValue("NEXT_PUBLIC_BID_NETWORK", "mainnet") === "testnet";
 const isPonsVerified = publicValue("NEXT_PUBLIC_PONS_VERIFIED") === "true";
-// The first beta market has a fixed public order range; the contract independently
-// enforces the same 5 USDG ceiling.
+// The beta UI starts with this public range; the factory owner can update the
+// onchain ceiling and a matching UI release can follow.
 const maxTradeAmount = 5;
 const allocationTotal = Object.values(feePolicy.allocations).reduce((total, bps) => total + bps, 0);
 
@@ -84,46 +85,49 @@ export const siteConfig = {
   ),
   marketFactoryAddress: publicValue(
     "NEXT_PUBLIC_BID_MARKET_FACTORY",
-    isTestnet ? testnetDeployment.marketFactoryAddress : "",
+    isTestnet ? testnetDeployment.marketFactoryAddress : mainnetDeployment.marketFactoryAddress,
   ),
   flywheelTreasuryAddress: publicValue(
     "NEXT_PUBLIC_BID_FLYWHEEL_TREASURY",
-    isTestnet ? testnetDeployment.flywheelTreasuryAddress : "",
+    isTestnet ? testnetDeployment.flywheelTreasuryAddress : mainnetDeployment.flywheelTreasuryAddress,
   ),
-  flywheelDeploymentBlock: publicValue("NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK"),
+  flywheelDeploymentBlock: publicValue(
+    "NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK",
+    isTestnet ? "" : mainnetDeployment.deploymentBlock,
+  ),
   rewardsVaultAddress: publicValue(
     "NEXT_PUBLIC_BID_REWARDS_VAULT",
-    isTestnet ? testnetDeployment.rewardsVaultAddress : "",
+    isTestnet ? testnetDeployment.rewardsVaultAddress : mainnetDeployment.rewardsVaultAddress,
   ),
   rewardsManifestUrl: publicValue("NEXT_PUBLIC_BID_REWARDS_MANIFEST_URL"),
   liquidityVaultAddress: publicValue(
     "NEXT_PUBLIC_BID_LIQUIDITY_VAULT",
-    isTestnet ? testnetDeployment.liquidityVaultAddress : "",
+    isTestnet ? testnetDeployment.liquidityVaultAddress : mainnetDeployment.liquidityVaultAddress,
   ),
   buybackVaultAddress: publicValue(
     "NEXT_PUBLIC_BID_BUYBACK_VAULT",
-    isTestnet ? testnetDeployment.buybackVaultAddress : "",
+    isTestnet ? testnetDeployment.buybackVaultAddress : mainnetDeployment.buybackVaultAddress,
   ),
   creatorRewardsVaultAddress: publicValue(
     "NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT",
-    isTestnet ? testnetDeployment.creatorRewardsVaultAddress : "",
+    isTestnet ? testnetDeployment.creatorRewardsVaultAddress : mainnetDeployment.creatorRewardsVaultAddress,
   ),
   protocolTreasuryAddress: publicValue(
     "NEXT_PUBLIC_BID_PROTOCOL_TREASURY",
-    isTestnet ? testnetDeployment.protocolTreasuryAddress : "",
+    isTestnet ? testnetDeployment.protocolTreasuryAddress : mainnetDeployment.protocolTreasuryAddress,
   ),
   marketAddresses: {
     miamiTampa: publicValue(
       "NEXT_PUBLIC_BID_MARKET_MIA_TPA",
-      isTestnet ? testnetDeployment.marketAddresses.miamiTampa : "",
+      isTestnet ? testnetDeployment.marketAddresses.miamiTampa : mainnetDeployment.marketAddresses.miamiTampa,
     ),
     cityField: publicValue(
       "NEXT_PUBLIC_BID_MARKET_CITY_FIELD",
-      isTestnet ? testnetDeployment.marketAddresses.cityField : "",
+      isTestnet ? testnetDeployment.marketAddresses.cityField : mainnetDeployment.marketAddresses.cityField,
     ),
     austinPositive: publicValue(
       "NEXT_PUBLIC_BID_MARKET_AUSTIN",
-      isTestnet ? testnetDeployment.marketAddresses.austinPositive : "",
+      isTestnet ? testnetDeployment.marketAddresses.austinPositive : mainnetDeployment.marketAddresses.austinPositive,
     ),
   },
 };

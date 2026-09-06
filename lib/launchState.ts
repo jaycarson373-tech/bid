@@ -5,7 +5,7 @@ const rawLaunchState = process.env.NEXT_PUBLIC_LAUNCH_STATE;
 
 export const LAUNCH_STATE: LaunchState = launchStates.includes(rawLaunchState as LaunchState)
   ? (rawLaunchState as LaunchState)
-  : "prelaunch";
+  : "live";
 
 export const isLive = LAUNCH_STATE === "live";
 export const isDemo = LAUNCH_STATE === "demo";

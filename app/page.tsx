@@ -884,7 +884,7 @@ export default function Home() {
         <div className="hero-content">
           <div className="hero-copy">
             <div className="eyebrow"><span>BID</span> HOUSING MARKETS // {siteConfig.networkName.toUpperCase()}</div>
-            <h1 id="hero-title"><span>BID</span>Real estate<br />prediction markets.</h1>
+            <h1 id="hero-title">Real estate<br />prediction markets.</h1>
             <p>
               Trade where cities and home prices go next. Housing prediction markets on Robinhood Chain.
             </p>
@@ -899,8 +899,8 @@ export default function Home() {
             ? "AMM connected"
             : marketContractConfigured && marketReadStatus === "error"
               ? "Onchain read unavailable"
-              : `${siteConfig.isTestnet ? "Testnet" : "Mainnet"} prelaunch`}</span>
-          <span>0% prediction market fee for now</span>
+              : `${siteConfig.isTestnet ? "Testnet" : "Mainnet"} beta live`}</span>
+          <span>0% BID market fee</span>
           <span>{creatorTaxPercent}% BID creator fee fuels the flywheel</span>
         </div>
       </section>
@@ -915,7 +915,7 @@ export default function Home() {
           </>
         ) : (
           <div className="launch-strip">
-            <span>0% PREDICTION MARKET FEE FOR NOW</span>
+            <span>USDG-BACKED MARKETS</span>
             <strong>{siteConfig.collateralSymbol}-backed finite-outcome pools.</strong>
             <em>1.5% BID creator fee → protocol flywheel</em>
           </div>
@@ -932,7 +932,7 @@ export default function Home() {
         </div>
 
         <div className="beta-market-banner" aria-label="Beta market availability">
-          <span><i />{betaMarketOpen ? "1 MARKET OPEN" : "1 MARKET AT LAUNCH"}</span>
+          <span><i />{betaMarketOpen ? "1 MARKET OPEN" : "1 MARKET ACTIVATING"}</span>
           <strong>FIVE-CITY HOUSING OUTLOOK</strong>
           <small>$1 MINIMUM · $5 MAXIMUM PER ORDER</small>
           <em>OTHER POOLS COMING SOON</em>
@@ -1207,7 +1207,7 @@ export default function Home() {
               {transactionPending
                 ? "Waiting for confirmation"
                 : !marketContractConfigured && !isDemo
-                  ? "Market prelaunch"
+                  ? "Market activating"
                 : walletConnected
                   ? orderType === "liquidity"
                     ? liquidityAction === "add" ? "Add liquidity" : "Withdraw liquidity"
@@ -1216,7 +1216,7 @@ export default function Home() {
               <span>→</span>
             </button>
             {!marketContractConfigured && (
-              <p className="integration-status">PRELAUNCH · AWAITING LIQUIDITY</p>
+              <p className="integration-status">LIVE MARKET · QUOTE UPDATING</p>
             )}
             {marketContractConfigured && marketReadStatus === "error" && !selectedPrices && (
               <p className="integration-status">This pool is configured, but its onchain state is unavailable. Transactions stay disabled until the read succeeds.</p>
@@ -1246,8 +1246,8 @@ export default function Home() {
         </div>
         <div className="settlement-strip">
           <div className="settle-badge"><BrandMark /></div>
-          <p><span>VERIFIABLE BY DESIGN</span> Closing time is recorded onchain. Settlement is submitted by the configured resolution oracle after housing data is published.</p>
-          <div className="settle-flow"><span>Housing index</span><i>→</i><span>Oracle attestation</span><i>→</i><span>Robinhood Chain</span></div>
+          <p><span>VERIFIABLE BY DESIGN</span> Closing time is recorded onchain. Settlement is submitted by the configured resolution oracle after Parcl housing data is published.</p>
+          <div className="settle-flow"><span>Parcl housing data</span><i>→</i><span>BID oracle attestation</span><i>→</i><span>Robinhood Chain</span></div>
         </div>
         <div className="revenue-panel" id="flywheel">
           <div className="revenue-copy">
@@ -1326,7 +1326,7 @@ export default function Home() {
         <a className="brand footer-brand" href="#top"><BrandMark /><span>BID</span></a>
         <p>Real estate prediction markets on Robinhood Chain. {siteConfig.isTestnet
           ? "tBID test environment."
-          : verifiedPonsLive ? "$BID verified on Pons." : "$BID awaiting launch verification."}</p>
+          : verifiedPonsLive ? "$BID verified on Pons." : "$BID token verification pending."}</p>
         <div>
           <a href="#markets">Markets</a>
           <a href="#how-it-works">How it works</a>
