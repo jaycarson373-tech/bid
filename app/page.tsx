@@ -977,6 +977,25 @@ export default function Home() {
         functionName: "decimals",
       });
       const inputAmount = parseUnits(amount, decimals);
+      let limitMinOutcomeTokensOut = 0n;
+
+      if (orderType === "limit") {
+        limitMinOutcomeTokensOut = (inputAmount * 10_000n + priceBps - 1n) / priceBps;
+        const [quotedTokens] = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress,
+          abi: bidMarketAbi,
+          functionName: "quoteBuy",
+          args: [inputAmount, BigInt(selectedOutcome)],
+        });
+
+        if (quotedTokens < limitMinOutcomeTokensOut) {
+          setNotice(
+            `The pool cannot fill this order at ${limitPrice}¢ or better right now. No approval or order was submitted.`,
+          );
+          return;
+        }
+      }
+
       const needsCollateralApproval = orderType !== "liquidity" || liquidityAction === "add";
 
       if (needsCollateralApproval) {
@@ -1041,7 +1060,7 @@ export default function Home() {
       setNotice(
         orderType === "liquidity"
           ? `Confirm the liquidity ${liquidityAction === "add" ? "deposit" : "withdrawal"}.`
-          : orderType === "market" ? "Confirm the market order." : "Confirm the onchain limit order.",
+          : orderType === "market" ? "Confirm the market order." : "Confirm the price-limited order.",
       );
       let transactionHash: Hex;
 
@@ -1089,12 +1108,11 @@ export default function Home() {
           args: [inputAmount, BigInt(selectedOutcome), minOutcomeTokensOut],
         });
       } else {
-        const minOutcomeTokensOut = (inputAmount * 10_000n + priceBps - 1n) / priceBps;
         transactionHash = await walletClient.writeContract({
           address: selectedMarketAddress,
           abi: bidMarketAbi,
-          functionName: "placeBuyLimit",
-          args: [inputAmount, BigInt(selectedOutcome), minOutcomeTokensOut],
+          functionName: "buy",
+          args: [inputAmount, BigInt(selectedOutcome), limitMinOutcomeTokensOut],
         });
       }
 
@@ -1106,7 +1124,7 @@ export default function Home() {
       setLastTransaction(transactionHash);
       const actionLabel = orderType === "liquidity"
         ? `Liquidity ${liquidityAction === "add" ? "added" : "withdrawn"}`
-        : orderType === "market" ? "Market order filled" : "Limit order placed";
+        : orderType === "market" ? "Market order filled" : "Price-limited order filled";
       setNotice(`${actionLabel}. Transaction ${truncateAddress(transactionHash)} confirmed.`);
     } catch (error) {
       const message = error instanceof Error
@@ -1289,7 +1307,14 @@ export default function Home() {
         <div className="market-stats" aria-label="Live market statistics">
           <div><span>MARKETS LIVE</span><strong>1</strong></div>
           <div><span>FORMAT</span><strong>YES / NO</strong></div>
-          <div><span>LIQUIDITY</span><strong>25 <small>USDG</small></strong></div>
+          <div>
+            <span>USDG BACKING</span>
+            <strong>
+              {marketActivity
+                ? displayTokenAmount(marketActivity.marketBacking, marketActivity.decimals, 2)
+                : "—"} <small>USDG</small>
+            </strong>
+          </div>
           <div><span>ORDER SIZE</span><strong>$5</strong></div>
         </div>
 
@@ -1423,16 +1448,14 @@ export default function Home() {
                   className={orderType === type ? "active" : ""}
                   key={type}
                   type="button"
-                  disabled={!isDemo && type !== "market"}
+                  disabled={!marketContractConfigured && !isDemo}
                   onClick={() => setOrderType(type)}
                 >
                   <span>{type === "market" ? "Market" : type === "limit" ? "Limit" : "Liquidity"}</span>
                   <small>
-                    {!isDemo && type !== "market"
-                      ? "Coming soon"
-                      : type === "market"
+                    {type === "market"
                       ? "Fill from pool"
-                      : type === "limit" ? "Set max price" : "Earn LP share"}
+                      : type === "limit" ? "Fill now or cancel" : "Own an LP share"}
                   </small>
                 </button>
               ))}
@@ -1442,7 +1465,9 @@ export default function Home() {
               {!siteConfig.isTradingEnabled
                 ? "Trading is paused. BID is preparing shorter UP / DOWN markets with a $5–$50 target order range."
                 : orderType === "liquidity"
-                ? `Supply ${siteConfig.collateralSymbol} to deepen every outcome. Withdrawals merge balanced inventory back into ${siteConfig.collateralSymbol}.`
+                ? `Supply ${siteConfig.collateralSymbol} to deepen every outcome and receive withdrawable BID-LP shares in this wallet. LP rewards remain reserve-only.`
+                : orderType === "limit"
+                ? "Set the highest average price you will pay. The order fills immediately at that price or better; otherwise nothing is submitted."
                 : `0% BID market fee. Orders use ${siteConfig.collateralSymbol}; Pons and network fees may still apply.`}
             </p>
             {orderType !== "liquidity" && (
@@ -1540,7 +1565,7 @@ export default function Home() {
               <em>{orderType === "liquidity" && liquidityAction === "remove" ? "BID-LP" : siteConfig.collateralSymbol}</em>
             </div>
             <div className="quick-amounts">
-              {(orderType === "liquidity" ? [1, 5, 10, 25] : [5]).map((value) => (
+              {(orderType === "liquidity" ? [5, 10, 25] : [5]).map((value) => (
                 <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
               ))}
               {orderType === "liquidity" && liquidityAction === "remove" && currentLpPosition && (
@@ -1584,7 +1609,7 @@ export default function Home() {
                 <div className="quote-lines">
                   <p><span>{orderType === "market" ? `${outcome.label} pool price` : "Limit price"}</span>{showSelectedPricing || orderType === "limit" ? <strong>{Math.round(quote.price * 10000) / 100}¢</strong> : <LockedValue />}</p>
                   <p><span>Protocol fee</span><strong>0.00%</strong></p>
-                  <p><span>Est. contracts</span>{showSelectedPricing || orderType === "limit" ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
+                  <p><span>{orderType === "limit" ? "Minimum contracts" : "Est. contracts"}</span>{showSelectedPricing || orderType === "limit" ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
                   <p><span>Your {outcome.code} position</span><strong>{currentWalletMarket ? displayTokenAmount(selectedOutcomeBalance, currentWalletMarket.decimals, 4) : "—"}</strong></p>
                   <p><span>Network</span><strong>{siteConfig.networkName}</strong></p>
                 </div>
@@ -1626,7 +1651,7 @@ export default function Home() {
                 : walletConnected
                   ? orderType === "liquidity"
                     ? liquidityAction === "add" ? "Add liquidity" : "Withdraw liquidity"
-                    : orderType === "market" ? "Review order" : `Place ${outcome.label} limit`
+                    : orderType === "market" ? "Review order" : `Buy ${outcome.label} at ≤ ${limitPrice || "—"}¢`
                   : "Connect wallet"}
               <span>→</span>
             </button>

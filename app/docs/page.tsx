@@ -174,13 +174,14 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <tbody>
                 <tr><td>Market buy</td><td>Immediate against pool</td><td>{siteConfig.collateralSymbol} moves only on execution</td></tr>
                 <tr><td>Market sell</td><td>Immediate against pool</td><td>Outcome balance burns on execution</td></tr>
-                <tr><td>Limit buy</td><td>Immediate or keeper-fillable</td><td>{siteConfig.collateralSymbol} escrowed; owner can cancel</td></tr>
-                <tr><td>Limit sell</td><td>Immediate or keeper-fillable</td><td>Maximum outcome input escrowed</td></tr>
+                <tr><td>Price-limited buy</td><td>Immediate fill at the maximum average price or better</td><td>No resting escrow</td></tr>
+                <tr><td>Resting limit buy</td><td>Contract supported; public UI disabled</td><td>{siteConfig.collateralSymbol} escrowed until fill or cancellation</td></tr>
+                <tr><td>Resting limit sell</td><td>Contract supported; public UI disabled</td><td>Maximum outcome input escrowed until fill or cancellation</td></tr>
               </tbody>
             </table>
             <div className={`${styles.callout} ${styles.warning}`}>
-              <strong>Keeper required</strong>
-              <p>Resting limits are permissionlessly fillable, but the public UI keeps them disabled until cancellation, indexing and keeper execution are active. Market buys remain the verified launch path.</p>
+              <strong>Keeper required for resting orders</strong>
+              <p>The public beta exposes immediate price protection only: a limit fills against the pool now or submits nothing. Resting limits remain disabled until cancellation, indexing and keeper execution are active.</p>
             </div>
           </section>
 

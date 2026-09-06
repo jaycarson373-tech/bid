@@ -122,7 +122,8 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /mode: "yes-no"/);
   assert.match(page, /no signature requested/i);
   assert.match(page, /no transaction was built/);
-  assert.match(page, /placeBuyLimit/);
+  assert.match(page, /Fill now or cancel/);
+  assert.match(page, /otherwise nothing is submitted/);
   assert.match(page, /addFunding/);
   assert.match(page, /removeFundingToCollateral/);
   assert.match(page, /Add liquidity/);
