@@ -14,6 +14,8 @@ test("Railway beta service is a one-shot mainnet deployment", async () => {
   assert.match(dockerfile, /DeployBidBeta\.s\.sol:DeployBidBeta/);
   assert.match(dockerfile, /https:\/\/rpc\.mainnet\.chain\.robinhood\.com/);
   assert.match(dockerfile, /--broadcast/);
+  assert.match(dockerfile, /RUN chown -R foundry:foundry/);
+  assert.match(dockerfile, /CMD \["forge script /);
 });
 
 test("LP deployer and Pons creator keys remain separate", async () => {

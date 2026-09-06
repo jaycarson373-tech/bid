@@ -1,10 +1,13 @@
 FROM ghcr.io/foundry-rs/foundry:latest
 
+USER root
 WORKDIR /app/contracts
 COPY contracts ./
+RUN chown -R foundry:foundry /app/contracts
+USER foundry
 RUN if [ ! -f lib/forge-std/src/Script.sol ]; then git clone https://github.com/foundry-rs/forge-std.git lib/forge-std && git -C lib/forge-std checkout 77041d2ce690e692d6e03cc812b57d1ddaa4d505; fi
 RUN if [ ! -f lib/openzeppelin-contracts/contracts/access/Ownable.sol ]; then git clone https://github.com/OpenZeppelin/openzeppelin-contracts.git lib/openzeppelin-contracts && git -C lib/openzeppelin-contracts checkout c64a1edb67b6e3f4a15cca8909c9482ad33a02b0; fi
 RUN forge build
 
 # One-shot Railway service. The onchain nonce guard prevents accidental replay.
-CMD ["script", "script/DeployBidBeta.s.sol:DeployBidBeta", "--root", ".", "--rpc-url", "https://rpc.mainnet.chain.robinhood.com", "--broadcast", "--slow", "-vv"]
+CMD ["forge script script/DeployBidBeta.s.sol:DeployBidBeta --root . --rpc-url https://rpc.mainnet.chain.robinhood.com --broadcast --slow -vv"]
