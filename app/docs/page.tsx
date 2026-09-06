@@ -143,16 +143,16 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               inventory directly back into {siteConfig.collateralSymbol}, and leaves only the imbalance as redeemable outcome
               positions. A minimum-collateral check protects the transaction from pool movement.
             </p>
-            <h3>Genesis funding</h3>
+            <h3>Original beta funding</h3>
             <table>
               <thead><tr><th>Initial seed</th><th>Order cap</th><th>Use</th></tr></thead>
               <tbody>
-                <tr><td>25 USDG</td><td>1 USDG</td><td>Capped one-market beta</td></tr>
+                <tr><td>25 USDG</td><td>5 USDG</td><td>Trading paused; full recovery prepared</td></tr>
               </tbody>
             </table>
             <p className={styles.note}>
-              USDG uses six decimals. Set <code>BID_INITIAL_LIQUIDITY=25000000</code>, <code>BID_MAX_TRADE_AMOUNT=5000000</code>, and <code>BID_GENESIS_MARKET_COUNT=1</code>. The beta interface accepts orders from 1 to 5 USDG.
-              Zero liquidity cannot produce a quote. The 25 USDG seed remains protocol-owned and every genesis BID-LP share is minted directly to the liquidity vault.
+              USDG uses six decimals. The original field beta accepted orders from 1 to 5 USDG and is now paused before liquidity recovery.
+              Its 25 USDG seed remains protocol-owned, with every BID-LP share held by the liquidity vault. The next beta targets 5 to 50 USDG orders in shorter binary city markets.
             </p>
           </section>
 
@@ -217,7 +217,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
                 <tr><td>Market creator rewards</td><td>RESERVE ONLY</td><td>Accrues until community markets and anti-wash reward rules are active.</td></tr>
               </tbody>
             </table>
-            <p className={styles.note}>Smallest-unit rounding always accrues to treasury so the five allocations equal 100% of every fee event. Genesis BID markets charge a 0% prediction-market fee for now; network gas still applies.</p>
+            <p className={styles.note}>Smallest-unit rounding always accrues to treasury so the five allocations equal 100% of every fee event. Genesis BID markets charge a 0% BID market fee; Pons and network fees may still apply.</p>
           </section>
 
           <section id="community">
@@ -352,7 +352,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
           <div>
             <strong>Build status</strong>
             <span><i /> Contracts tested</span>
-            <span><i /> Mainnet beta live</span>
+            <span><i /> Trading paused for V2</span>
           </div>
         </aside>
       </div>

@@ -20,6 +20,8 @@
     "costs:production": "node --env-file-if-exists=.env.production.local scripts/production-costs.mjs",
     "deploy:beta": "node --env-file-if-exists=.env.production.local scripts/deploy-beta.mjs",
     "verify:beta": "node --env-file-if-exists=.env.production.local scripts/verify-beta.mjs",
+    "recover:beta:check": "node --env-file-if-exists=.env.production.local scripts/recover-beta-liquidity.mjs",
+    "recover:beta": "node --env-file-if-exists=.env.production.local scripts/recover-beta-liquidity.mjs --execute",
     "rewards:build": "node scripts/build-rewards-epoch.mjs",
     "setup:production": "npm run env:check && npm run lint && npm run test:contracts && npm run test:vercel",
     "verify:production": "node --env-file-if-exists=.env.production.local scripts/verify-production.mjs",

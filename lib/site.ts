@@ -7,6 +7,7 @@ const PLACEHOLDER = /(<[^>]+>|\b(?:undefined|null|nan|test_token|testnet_address
 // Next.js only inlines public variables accessed with literal property names.
 const publicEnvironment = {
   NEXT_PUBLIC_BID_NETWORK: process.env.NEXT_PUBLIC_BID_NETWORK,
+  NEXT_PUBLIC_BID_TRADING_ENABLED: process.env.NEXT_PUBLIC_BID_TRADING_ENABLED,
   NEXT_PUBLIC_PONS_VERIFIED: process.env.NEXT_PUBLIC_PONS_VERIFIED,
   NEXT_PUBLIC_BID_RPC_URL: process.env.NEXT_PUBLIC_BID_RPC_URL,
   NEXT_PUBLIC_PONS_URL: process.env.NEXT_PUBLIC_PONS_URL,
@@ -36,6 +37,7 @@ function publicValue(name: keyof typeof publicEnvironment, fallback = "") {
 
 const isTestnet = publicValue("NEXT_PUBLIC_BID_NETWORK", "mainnet") === "testnet";
 const isPonsVerified = publicValue("NEXT_PUBLIC_PONS_VERIFIED") === "true";
+const isTradingEnabled = publicValue("NEXT_PUBLIC_BID_TRADING_ENABLED", "false") === "true";
 // The beta UI starts with this public range; the factory owner can update the
 // onchain ceiling and a matching UI release can follow.
 const maxTradeAmount = 5;
@@ -48,6 +50,7 @@ if (allocationTotal !== feePolicy.basisPoints) {
 export const siteConfig = {
   isTestnet,
   isPonsVerified,
+  isTradingEnabled,
   networkName: isTestnet ? "Robinhood Chain Testnet" : "Robinhood Chain",
   robinhoodChainId: isTestnet ? 46630 : 4663,
   robinhoodChainHex: isTestnet ? "0xb626" : "0x1237",
@@ -74,6 +77,8 @@ export const siteConfig = {
   creatorRewardsShareBps: feePolicy.allocations.creatorRewards,
   minTradeAmount: 1,
   maxTradeAmount,
+  nextMinTradeAmount: 5,
+  nextMaxTradeAmount: 50,
   contractAddress: publicValue(
     "NEXT_PUBLIC_BID_CONTRACT_ADDRESS",
     isTestnet ? testnetDeployment.bidTokenAddress : "",

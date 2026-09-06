@@ -18,11 +18,17 @@ const chainId = Number(env("BID_EXPECTED_CHAIN_ID") || (env("NEXT_PUBLIC_BID_NET
 const rpcUrl = env("RH_RPC_URL") || (!enabled && chainId === 4663 ? "https://rpc.mainnet.chain.robinhood.com" : "");
 const pollInterval = Number(env("KEEPER_POLL_INTERVAL_MS") || "15000");
 const maxOrderScan = Number(env("KEEPER_MAX_ORDER_SCAN") || "500");
-const marketAddresses = (env("KEEPER_MARKETS") || [
+const configuredMarketAddresses = (env("KEEPER_MARKETS") || [
   env("NEXT_PUBLIC_BID_MARKET_MIA_TPA"),
   env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD"),
   env("NEXT_PUBLIC_BID_MARKET_AUSTIN"),
 ].filter(Boolean).join(",")).split(",").map((item) => item.trim()).filter(Boolean);
+const retiredMarketAddresses = new Set([
+  // Original six-month field beta. Recovery is prepared and this address must never be refilled.
+  "0x99e8d451e0c936010f0f5d30a7f7b8e773bd8d5b",
+  ...env("KEEPER_RETIRED_MARKETS").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean),
+]);
+const marketAddresses = configuredMarketAddresses.filter((address) => !retiredMarketAddresses.has(address.toLowerCase()));
 const treasury = env("NEXT_PUBLIC_BID_FLYWHEEL_TREASURY");
 const liquidityVault = env("NEXT_PUBLIC_BID_LIQUIDITY_VAULT");
 const collateral = env("NEXT_PUBLIC_BID_COLLATERAL_ADDRESS") || env("BID_COLLATERAL_TOKEN");
@@ -40,8 +46,8 @@ const ponsCurve = env("PONS_CURVE_ADDRESS");
 if (!rpcUrl) throw new Error("RH_RPC_URL is required for execution or non-mainnet operation");
 if (!Number.isInteger(chainId) || chainId <= 0) throw new Error("BID_EXPECTED_CHAIN_ID is invalid");
 if (!Number.isFinite(pollInterval) || pollInterval < 5_000) throw new Error("KEEPER_POLL_INTERVAL_MS must be at least 5000");
-if (enabled && (!operatorPrivateKey || !env("KEEPER_EXPECTED_ADDRESS") || marketAddresses.length === 0)) {
-  throw new Error("execution requires LP_DEPLOYER_PRIVATE_KEY (or legacy KEEPER_PRIVATE_KEY), KEEPER_EXPECTED_ADDRESS and at least one market");
+if (enabled && (!operatorPrivateKey || !env("KEEPER_EXPECTED_ADDRESS"))) {
+  throw new Error("execution requires LP_DEPLOYER_PRIVATE_KEY (or legacy KEEPER_PRIVATE_KEY) and KEEPER_EXPECTED_ADDRESS");
 }
 if (liquidityDeploymentEnabled && (!enabled || !liquidityVault || !collateral)) {
   throw new Error("LP deployment requires execution, liquidity vault, and collateral addresses");
@@ -333,7 +339,13 @@ if (liquidityDeploymentEnabled) {
 }
 status.chainId = actualChainId;
 status.ready = true;
-log("keeper_ready", { mode: status.mode, chainId: actualChainId, markets: marketAddresses.length, keeper: status.keeper });
+log("keeper_ready", {
+  mode: status.mode,
+  chainId: actualChainId,
+  markets: marketAddresses.length,
+  retiredMarketsIgnored: configuredMarketAddresses.length - marketAddresses.length,
+  keeper: status.keeper,
+});
 
 const server = createServer((request, response) => {
   const healthy = status.ready && !status.lastError;

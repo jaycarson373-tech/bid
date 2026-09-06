@@ -201,7 +201,9 @@ function SampleBadge({ compact = false }: { compact?: boolean }) {
   return <span className={`sample-badge ${compact ? "compact" : ""}`}>Sample data</span>;
 }
 
-function LockedValue({ children = "Awaiting liquidity" }: { children?: string }) {
+function LockedValue({
+  children = siteConfig.isTradingEnabled ? "Awaiting liquidity" : "Trading paused",
+}: { children?: string }) {
   return <strong className="locked-value">{children}</strong>;
 }
 
@@ -299,7 +301,7 @@ export default function Home() {
   const displayedMarkets = markets
     .filter((market) => matchesFilter(market, filter))
     .sort((left, right) => Number(right.id === betaMarketId) - Number(left.id === betaMarketId));
-  const betaMarketOpen = Boolean(livePrices[betaMarketId]);
+  const betaMarketFunded = Boolean(livePrices[betaMarketId]);
   const showSampleData = isDemo;
   const selectedPrices = livePrices[selected.id];
   const showSelectedPricing = Boolean(selectedPrices) || showSampleData;
@@ -640,6 +642,11 @@ export default function Home() {
   };
 
   const reviewOrder = async () => {
+    if (!siteConfig.isTradingEnabled) {
+      setNotice("Trading is paused while BID prepares the shorter $5–$50 beta market.");
+      return;
+    }
+
     if (!walletConnected) {
       setWalletOpen(true);
       return;
@@ -924,7 +931,9 @@ export default function Home() {
           </div>
         </div>
         <div className="hero-status" aria-label="Protocol highlights">
-          <span><i /> {selectedPrices
+          <span><i /> {!siteConfig.isTradingEnabled
+            ? "Beta rebuild in progress"
+            : selectedPrices
             ? "AMM connected"
             : marketContractConfigured && marketReadStatus === "error"
               ? "Onchain read unavailable"
@@ -957,21 +966,21 @@ export default function Home() {
             <span className="section-kicker">THE BOARD</span>
             <h2>Price the city.</h2>
           </div>
-          <p>One five-city market opens first. Head-to-head and YES/NO pools are coming soon.</p>
+          <p>The first beta pool is being retired while BID prepares shorter, more useful housing markets.</p>
         </div>
 
         <div className="market-stats" aria-label="Live market statistics">
-          <div><span>MARKETS LIVE</span><strong>1</strong></div>
-          <div><span>LIVE OUTCOMES</span><strong>5</strong></div>
-          <div><span>INITIAL LIQUIDITY</span><strong>25 <small>USDG</small></strong></div>
-          <div><span>ORDER RANGE</span><strong>$1–$5</strong></div>
+          <div><span>MARKETS LIVE</span><strong>0</strong></div>
+          <div><span>NEXT FORMAT</span><strong>UP / DOWN</strong></div>
+          <div><span>RECOVERY QUOTE</span><strong>25 <small>USDG</small></strong></div>
+          <div><span>NEXT ORDER RANGE</span><strong>$5–$50</strong></div>
         </div>
 
         <div className="beta-market-banner" aria-label="Beta market availability">
-          <span><i />{betaMarketOpen ? "1 MARKET OPEN" : "1 MARKET ACTIVATING"}</span>
-          <strong>FIVE-CITY HOUSING OUTLOOK</strong>
-          <small>$1 MINIMUM · $5 MAXIMUM PER ORDER</small>
-          <em>OTHER POOLS COMING SOON</em>
+          <span><i />TRADING PAUSED</span>
+          <strong>NEXT BETA IN DEVELOPMENT</strong>
+          <small>$5 MINIMUM · $50 MAXIMUM TARGET</small>
+          <em>SHORTER CITY MARKETS</em>
         </div>
 
         <div className="filter-row" role="group" aria-label="Filter markets">
@@ -992,15 +1001,16 @@ export default function Home() {
           <div className="market-list">
             {displayedMarkets.map((market, index) => {
               const isBetaMarket = market.id === betaMarketId;
+              const isMarketEnabled = isBetaMarket && siteConfig.isTradingEnabled;
               return (
               <button
-                className={`market-card ${isBetaMarket ? "beta-market" : "coming-soon"} ${selectedId === market.id ? "selected" : ""}`}
+                className={`market-card ${isMarketEnabled ? "beta-market" : isBetaMarket ? "paused-market" : "coming-soon"} ${isMarketEnabled && selectedId === market.id ? "selected" : ""}`}
                 key={market.id}
                 type="button"
-                onClick={isBetaMarket ? () => chooseMarket(market) : undefined}
-                disabled={!isBetaMarket}
+                onClick={isMarketEnabled ? () => chooseMarket(market) : undefined}
+                disabled={!isMarketEnabled}
                 aria-pressed={selectedId === market.id}
-                aria-disabled={!isBetaMarket}
+                aria-disabled={!isMarketEnabled}
               >
                 <span className="card-index">{String(index + 1).padStart(2, "0")}</span>
                 <MarketVisual
@@ -1011,7 +1021,9 @@ export default function Home() {
                 <span className="market-copy">
                   <span className="market-meta">
                     <span>{market.mode.replaceAll("-", " ")}</span>
-                    {livePrices[market.id]
+                    {isBetaMarket && !siteConfig.isTradingEnabled
+                      ? <em>{betaMarketFunded ? "Retiring · Trading paused" : "Retired"}</em>
+                      : livePrices[market.id]
                       ? <em>Open · Beta</em>
                       : showSampleData
                         ? <em><SampleBadge compact /> {market.signal}</em>
@@ -1021,9 +1033,15 @@ export default function Home() {
                   </span>
                   <strong>{market.question}</strong>
                   <small>{isBetaMarket
-                    ? `Resolves ${liveCloseDates[market.id] ?? market.closes} · $1–$5 per order`
+                    ? siteConfig.isTradingEnabled
+                      ? `Resolves ${liveCloseDates[market.id] ?? market.closes} · $1–$5 per order`
+                      : "Original beta · liquidity recovery prepared"
                     : `Resolves ${market.closes} · Pool coming soon`}</small>
-                  {!isBetaMarket && <span className="market-lock">LOCKED · COMING SOON</span>}
+                  {!isMarketEnabled && (
+                    <span className="market-lock">
+                      {isBetaMarket ? "TRADING PAUSED · RECOVERY PREPARED" : "LOCKED · COMING SOON"}
+                    </span>
+                  )}
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
                   {livePrices[market.id] || showSampleData ? (
@@ -1033,11 +1051,15 @@ export default function Home() {
                       </span>
                     ))
                   ) : (
-                    <span className="outcome-quote locked-quote"><LockedValue>{isBetaMarket ? "Awaiting liquidity" : "Coming soon"}</LockedValue></span>
+                    <span className="outcome-quote locked-quote">
+                      <LockedValue>
+                        {isBetaMarket ? siteConfig.isTradingEnabled ? "Awaiting liquidity" : "Trading paused" : "Coming soon"}
+                      </LockedValue>
+                    </span>
                   )}
                   {market.mode === "field" && <small>+2 more cities</small>}
                 </span>
-                <span className="select-arrow">{isBetaMarket ? "↗" : "LOCKED"}</span>
+                <span className="select-arrow">{isMarketEnabled ? "↗" : isBetaMarket ? "PAUSED" : "LOCKED"}</span>
               </button>
               );
             })}
@@ -1092,9 +1114,11 @@ export default function Home() {
             </div>
 
             <p className="ticket-note ticket-note-top">
-              {orderType === "liquidity"
+              {!siteConfig.isTradingEnabled
+                ? "Trading is paused. BID is preparing shorter UP / DOWN markets with a $5–$50 target order range."
+                : orderType === "liquidity"
                 ? `Supply ${siteConfig.collateralSymbol} to deepen every outcome. Withdrawals merge balanced inventory back into ${siteConfig.collateralSymbol}.`
-                : `0% prediction market fee for now. Orders use ${siteConfig.collateralSymbol}; network gas still applies.`}
+                : `0% BID market fee. Orders use ${siteConfig.collateralSymbol}; Pons and network fees may still apply.`}
             </p>
             {orderType !== "liquidity" && (
               <div className={`outcome-picker ${selected.mode === "field" ? "field-picker" : ""}`}>
@@ -1187,7 +1211,7 @@ export default function Home() {
               <em>{orderType === "liquidity" && liquidityAction === "remove" ? "BID-LP" : siteConfig.collateralSymbol}</em>
             </div>
             <div className="quick-amounts">
-              {(orderType === "liquidity" ? [1, 5, 10, 25] : [1, 2, 3, 5]).map((value) => (
+              {(orderType === "liquidity" ? [1, 5, 10, 25] : siteConfig.isTradingEnabled ? [1, 2, 3, 5] : [5, 10, 25, 50]).map((value) => (
                 <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
               ))}
               {orderType === "liquidity" && liquidityAction === "remove" && currentLpPosition && (
@@ -1200,7 +1224,13 @@ export default function Home() {
                 </button>
               )}
             </div>
-            {orderType !== "liquidity" && <p className="integration-status">ONE OPEN BETA MARKET · {siteConfig.minTradeAmount}–{siteConfig.maxTradeAmount} USDG PER ORDER</p>}
+            {orderType !== "liquidity" && (
+              <p className="integration-status">
+                {siteConfig.isTradingEnabled
+                  ? `ONE OPEN BETA MARKET · ${siteConfig.minTradeAmount}–${siteConfig.maxTradeAmount} USDG PER ORDER`
+                  : `NEXT BETA TARGET · ${siteConfig.nextMinTradeAmount}–${siteConfig.nextMaxTradeAmount} USDG PER ORDER`}
+              </p>
+            )}
 
             {orderType === "liquidity" ? (
               <>
@@ -1251,12 +1281,15 @@ export default function Home() {
               type="button"
               onClick={reviewOrder}
               disabled={
-                transactionPending
+                !siteConfig.isTradingEnabled
+                || transactionPending
                 || (!marketContractConfigured && !isDemo)
                 || (marketContractConfigured && marketReadStatus === "error" && !selectedPrices)
               }
             >
-              {transactionPending
+              {!siteConfig.isTradingEnabled
+                ? "Trading paused · New beta in development"
+                : transactionPending
                 ? "Waiting for confirmation"
                 : !marketContractConfigured && !isDemo
                   ? "Market activating"

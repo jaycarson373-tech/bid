@@ -220,6 +220,7 @@ database service key, or signer credential:
 NEXT_PUBLIC_SITE_URL
 NEXT_PUBLIC_LAUNCH_STATE
 NEXT_PUBLIC_BID_NETWORK
+NEXT_PUBLIC_BID_TRADING_ENABLED
 NEXT_PUBLIC_BID_RPC_URL
 NEXT_PUBLIC_PONS_URL
 NEXT_PUBLIC_BID_COLLATERAL_SYMBOL
@@ -242,6 +243,20 @@ NEXT_PUBLIC_BID_MARKET_CITY_FIELD
 NEXT_PUBLIC_BID_MARKET_AUSTIN
 NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT
 ```
+
+Keep `NEXT_PUBLIC_BID_TRADING_ENABLED=false` while a market is being recovered,
+retired, or replaced. Turning it on requires a deployed market whose onchain
+order bounds match the published interface.
+
+## Retired beta recovery
+
+Run `npm run recover:beta:check` for a read-only proof that the liquidity vault
+still owns every LP share, no trade or limit-order events exist, and the full
+25 USDG can be recovered without residual outcomes. The execution command is
+restart-safe but remains blocked unless `BID_BETA_RECOVERY_ACK` contains the
+exact one-time acknowledgement documented by the checker. It uses the existing
+Railway `LP_DEPLOYER_PRIVATE_KEY`; never move that key into Vercel or a public
+variable. Do not configure recovery as a persistent Railway start command.
 
 Build with `npm ci` and `npm run build`. Attach the production domain, apply the
 DNS record Vercel or Sites returns, and set `NEXT_PUBLIC_SITE_URL` to its HTTPS

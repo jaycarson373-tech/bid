@@ -30,4 +30,6 @@ test("LP deployer and Pons creator keys remain separate", async () => {
   assert.doesNotMatch(ponsScript, /LP_DEPLOYER_PRIVATE_KEY/);
   assert.match(keeper, /LP_DEPLOYER_PRIVATE_KEY/);
   assert.doesNotMatch(keeper, /PONS_CREATOR_PRIVATE_KEY/);
+  assert.match(keeper, /0x99e8d451e0c936010f0f5d30a7f7b8e773bd8d5b/);
+  assert.match(keeper, /retiredMarketsIgnored/);
 });
