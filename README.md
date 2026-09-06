@@ -61,18 +61,23 @@ a transaction, then shows the lean and recommended genesis-liquidity capital.
 ## Robinhood Chain + Pons
 
 The interface connects an injected EVM wallet and switches it to Robinhood Chain
-(chain ID `4663`). Add the factory and three genesis market addresses from the
+(chain ID `4663`). Add the factory and capped genesis market address from the
 deployment output to the matching `NEXT_PUBLIC_BID_MARKET_*` variables.
 
-The target Pons v2 launch fixes the creator tax at `250` basis points (`2.5%`).
+The target Pons v2 launch fixes the BID creator fee at `150` basis points (`1.5%`).
 The exact factory, escrow, token, curve, quote asset, and recipient are
 configuration values and must pass `npm run verify:production`; none is
 silently assumed. The creator-fee recipient must be the BID fee treasury, with
-claimed proceeds allocated 70/20/10:
+claimed proceeds allocated under `BID_FEE_POLICY_V1`:
 
-- `1.75%` of tax-generating trade value to prediction-market rewards;
-- `0.50%` of tax-generating trade value to protocol-owned market liquidity;
-- `0.25%` of tax-generating trade value to the protocol reserve.
+- `45%` to the LP rewards reserve;
+- `30%` to protocol-owned market liquidity;
+- `10%` to the buyback and burn reserve;
+- `10%` directly to the protocol treasury;
+- `5%` to the market creator rewards reserve.
+
+Pons may charge separate protocol or base fees. BID does not publish an all-in
+trading fee until the current production Pons contracts have been verified.
 
 Pons creator fees first accrue on the launch curve or hook, then move to its fee
 escrow after a sweep. `BidFlywheelTreasury` calls both sweep paths as the
@@ -83,11 +88,11 @@ verified.
 
 The repository includes a single-replica Railway keeper for limit-order fills,
 pre-graduation curve sweeps, post-graduation hook sweeps, escrow claims, treasury distribution, and
-deployment of the 20% collateral allocation into approved protocol-owned LP.
-It does not yet implement automated reward scoring and anti-wash eligibility,
-automatic conversion into the market collateral, an indexer/history database,
-or the production housing oracle policy. The funded reward epoch and wallet
-claim path is implemented. See `docs/PRODUCTION_RUNBOOK.md`.
+deployment of the 30% collateral allocation into approved protocol-owned LP by
+actual depth deficit. It does not yet implement time-weighted LP reward scoring,
+buyback execution, creator-reward scoring, an indexer/history database, or the
+production housing oracle policy. Those allocations remain reserves. The funded
+reward epoch and wallet claim path is implemented. See `docs/PRODUCTION_RUNBOOK.md`.
 
 ## Contracts
 

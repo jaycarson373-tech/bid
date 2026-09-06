@@ -8,6 +8,9 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
+import { bidFeePolicy } from "../config/bid-fee-policy.mjs";
+import { buildLiquidityAllocationPlan } from "./liquidity-allocation.mjs";
+
 const env = (key) => process.env[key]?.trim() ?? "";
 const enabled = env("KEEPER_EXECUTION_ENABLED") === "true";
 const chainId = Number(env("BID_EXPECTED_CHAIN_ID") || (env("NEXT_PUBLIC_BID_NETWORK") === "testnet" ? "46630" : "4663"));
@@ -23,7 +26,8 @@ const treasury = env("NEXT_PUBLIC_BID_FLYWHEEL_TREASURY");
 const liquidityVault = env("NEXT_PUBLIC_BID_LIQUIDITY_VAULT");
 const collateral = env("NEXT_PUBLIC_BID_COLLATERAL_ADDRESS") || env("BID_COLLATERAL_TOKEN");
 const liquidityDeploymentEnabled = env("LP_DEPLOYMENT_ENABLED") === "true";
-const minimumLiquidityDeployment = BigInt(env("LP_MIN_DEPLOY_AMOUNT") || "100000000");
+const minimumLiquidityDeployment = BigInt(env("LP_MIN_DEPLOY_AMOUNT") || "1000000");
+const targetLiquidityDepth = BigInt(env("LP_TARGET_DEPTH") || "100000000");
 const feeEscrow = env("PONS_FEE_ESCROW");
 const feeHook = env("PONS_FEE_HOOK");
 const ponsPoolId = env("PONS_POOL_ID");
@@ -44,6 +48,9 @@ if (liquidityDeploymentEnabled && (!enabled || !liquidityVault || !collateral)) 
 if (liquidityDeploymentEnabled && minimumLiquidityDeployment <= 0n) {
   throw new Error("LP_MIN_DEPLOY_AMOUNT must be greater than zero");
 }
+if (liquidityDeploymentEnabled && targetLiquidityDepth <= 0n) {
+  throw new Error("LP_TARGET_DEPTH must be greater than zero");
+}
 if (env("PONS_CURVE_SWEEP_ENABLED") === "true" && (!enabled || !treasury || !ponsCurve)) {
   throw new Error("Pons curve sweep requires execution, treasury, and curve configuration");
 }
@@ -63,6 +70,7 @@ const marketAbi = parseAbi([
   "function fillLimitOrder(uint256 orderId)",
   "function closesAt() view returns (uint64)",
   "function resolved() view returns (bool)",
+  "function poolBalances() view returns (uint256[])",
   "function quoteAddFunding(uint256 collateralAmount) view returns (uint256 sharesMinted,uint256[] outcomeTokensOut)",
 ]);
 const escrowAbi = parseAbi([
@@ -72,6 +80,8 @@ const escrowAbi = parseAbi([
 const treasuryAbi = parseAbi([
   "function claimPonsNative() returns (uint256)",
   "function claimPonsToken(address token) returns (uint256)",
+  "function claimAndDistributePonsNative() returns (uint256)",
+  "function claimAndDistributePonsToken(address token) returns (uint256)",
   "function distributeNative()",
   "function distributeToken(address token)",
   "function sweepPonsCurveFees(uint256 minBuybackTokensOut)",
@@ -100,6 +110,7 @@ const status = {
   running: false,
   chainId: null,
   keeper: account?.address ?? null,
+  allocationVersion: bidFeePolicy.version,
   lastCycleStartedAt: null,
   lastCycleCompletedAt: null,
   lastError: null,
@@ -168,8 +179,8 @@ async function claimAndDistributeFees() {
   if (!treasury || !feeEscrow) return;
   const nativeOwed = await publicClient.readContract({ address: feeEscrow, abi: escrowAbi, functionName: "balanceOf", args: [treasury] });
   if (nativeOwed > 0n) {
-    const { request } = await publicClient.simulateContract({ account, address: treasury, abi: treasuryAbi, functionName: "claimPonsNative" });
-    await submit(request, "claim_pons_native");
+    const { request } = await publicClient.simulateContract({ account, address: treasury, abi: treasuryAbi, functionName: "claimAndDistributePonsNative" });
+    await submit(request, "claim_and_allocate_pons_native");
   }
   const nativeBalance = await publicClient.getBalance({ address: treasury });
   if (nativeBalance > 0n) {
@@ -180,8 +191,8 @@ async function claimAndDistributeFees() {
   for (const token of quoteAssets) {
     const owed = await publicClient.readContract({ address: feeEscrow, abi: escrowAbi, functionName: "balanceOfToken", args: [treasury, token] });
     if (owed > 0n) {
-      const { request } = await publicClient.simulateContract({ account, address: treasury, abi: treasuryAbi, functionName: "claimPonsToken", args: [token] });
-      await submit(request, `claim_pons_token:${token}`);
+      const { request } = await publicClient.simulateContract({ account, address: treasury, abi: treasuryAbi, functionName: "claimAndDistributePonsToken", args: [token] });
+      await submit(request, `claim_and_allocate_pons_token:${token}`);
     }
     const balance = await publicClient.readContract({ address: token, abi: tokenAbi, functionName: "balanceOf", args: [treasury] });
     if (balance > 0n) {
@@ -216,27 +227,34 @@ async function deployProtocolLiquidity() {
   const now = BigInt(Math.floor(Date.now() / 1000));
   const eligibleMarkets = [];
   for (const market of marketAddresses) {
-    const [closesAt, resolved] = await Promise.all([
+    const [closesAt, resolved, balances] = await Promise.all([
       publicClient.readContract({ address: market, abi: marketAbi, functionName: "closesAt" }),
       publicClient.readContract({ address: market, abi: marketAbi, functionName: "resolved" }),
+      publicClient.readContract({ address: market, abi: marketAbi, functionName: "poolBalances" }),
     ]);
-    if (!resolved && closesAt > now) eligibleMarkets.push(market);
+    if (!resolved && closesAt > now && balances.length > 0) {
+      eligibleMarkets.push({
+        address: market,
+        currentDepth: balances.reduce((minimum, balance) => balance < minimum ? balance : minimum),
+      });
+    }
   }
   if (eligibleMarkets.length === 0) return;
 
-  let remaining = await publicClient.readContract({
+  const available = await publicClient.readContract({
     address: collateral,
     abi: tokenAbi,
     functionName: "balanceOf",
     args: [liquidityVault],
   });
-  if (remaining < minimumLiquidityDeployment * BigInt(eligibleMarkets.length)) return;
+  const plan = buildLiquidityAllocationPlan(
+    eligibleMarkets,
+    available,
+    targetLiquidityDepth,
+    minimumLiquidityDeployment,
+  );
 
-  for (let index = 0; index < eligibleMarkets.length; index += 1) {
-    const market = eligibleMarkets[index];
-    const marketsRemaining = BigInt(eligibleMarkets.length - index);
-    const amount = remaining / marketsRemaining;
-    if (amount < minimumLiquidityDeployment) break;
+  for (const { address: market, amount } of plan) {
     const [quotedShares] = await publicClient.readContract({
       address: market,
       abi: marketAbi,
@@ -252,7 +270,6 @@ async function deployProtocolLiquidity() {
       args: [market, amount, minimumShares],
     });
     await submit(request, `deploy_liquidity:${market}`);
-    remaining -= amount;
   }
 }
 

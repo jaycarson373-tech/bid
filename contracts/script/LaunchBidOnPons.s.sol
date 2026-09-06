@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
+import {BidFeePolicy} from "../src/BidFeePolicy.sol";
+
 interface IBidTreasuryFactoryBinding {
     function owner() external view returns (address);
     function ponsFactory() external view returns (address);
@@ -43,7 +45,7 @@ interface IPonsV2LaunchFactory {
 }
 
 contract LaunchBidOnPons is Script {
-    uint16 private constant BID_CREATOR_TAX_BPS = 250;
+    uint16 private constant BID_CREATOR_TAX_BPS = BidFeePolicy.CREATOR_FEE_BPS;
 
     function run() external returns (address token, address curve) {
         uint256 expectedChainId = vm.envUint("BID_EXPECTED_CHAIN_ID");
@@ -85,7 +87,7 @@ contract LaunchBidOnPons is Script {
         require(pairToken.code.length > 0, "Pons pair token has no code");
         require(factory.approvedPairTokens(pairToken), "Pons pair token is not approved");
         require(factory.canLaunch(deployer), "deployer cannot launch on Pons");
-        require(factory.maxCreatorTaxBps() >= BID_CREATOR_TAX_BPS, "Pons tax cap below 2.5%");
+        require(factory.maxCreatorTaxBps() >= BID_CREATOR_TAX_BPS, "Pons tax cap below 1.5%");
     }
 
     function _tokenParams(IPonsV2LaunchFactory factory, uint256 launchConfigId, address pairToken, address treasury)

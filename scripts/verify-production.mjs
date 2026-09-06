@@ -3,9 +3,13 @@ import {
   formatEther,
   http,
   isAddressEqual,
+  keccak256,
   parseAbi,
+  toBytes,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+
+import { bidFeePolicy } from "../config/bid-fee-policy.mjs";
 
 const checks = [];
 const failures = [];
@@ -26,25 +30,33 @@ const requiredEnvironment = [
   "RH_RPC_URL",
   "NEXT_PUBLIC_BID_NETWORK",
   "NEXT_PUBLIC_SITE_URL",
+  "NEXT_PUBLIC_CREATOR_TAX_BPS",
   "NEXT_PUBLIC_BID_CONTRACT_ADDRESS",
   "NEXT_PUBLIC_BID_COLLATERAL_ADDRESS",
   "NEXT_PUBLIC_BID_MARKET_FACTORY",
   "NEXT_PUBLIC_BID_FLYWHEEL_TREASURY",
+  "NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK",
   "NEXT_PUBLIC_BID_REWARDS_VAULT",
   "NEXT_PUBLIC_BID_LIQUIDITY_VAULT",
-  "NEXT_PUBLIC_BID_RESERVE_VAULT",
+  "NEXT_PUBLIC_BID_BUYBACK_VAULT",
+  "NEXT_PUBLIC_BID_PROTOCOL_TREASURY",
+  "NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT",
   "NEXT_PUBLIC_BID_MARKET_MIA_TPA",
-  "NEXT_PUBLIC_BID_MARKET_CITY_FIELD",
-  "NEXT_PUBLIC_BID_MARKET_AUSTIN",
+  "NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT",
   "NEXT_PUBLIC_PONS_FACTORY",
   "BID_RESOLUTION_ORACLE",
   "BID_COLLATERAL_TOKEN",
   "BID_TOKEN_ADDRESS",
   "BID_FLYWHEEL_TREASURY",
   "BID_MARKET_FACTORY",
+  "BID_MAX_TRADE_AMOUNT",
+  "BID_GENESIS_MARKET_COUNT",
   "BID_FACTORY_OWNER",
   "BID_TREASURY_OWNER",
   "BID_REWARDS_OWNER",
+  "BID_BUYBACK_VAULT",
+  "BID_PROTOCOL_TREASURY",
+  "BID_CREATOR_REWARDS_VAULT",
   "BID_LIQUIDITY_OPERATOR",
   "BID_LIQUIDITY_VAULT_OWNER",
   "PONS_FEE_ESCROW",
@@ -76,22 +88,29 @@ const factoryAbi = parseAbi([
   "function collateral() view returns (address)",
   "function bidToken() view returns (address)",
   "function resolutionOracle() view returns (address)",
+  "function maxTradeAmount() view returns (uint256)",
   "function communityCreationEnabled() view returns (bool)",
   "function allMarkets() view returns (address[])",
   "function isBidMarket(address) view returns (bool)",
 ]);
 const treasuryAbi = parseAbi([
   "function owner() view returns (address)",
-  "function rewardsVault() view returns (address)",
+  "function lpRewardsReserve() view returns (address)",
   "function liquidityVault() view returns (address)",
-  "function reserveVault() view returns (address)",
+  "function buybackBurnReserve() view returns (address)",
+  "function protocolTreasury() view returns (address)",
+  "function creatorRewardsReserve() view returns (address)",
   "function ponsFeeEscrow() view returns (address)",
   "function ponsFeeHook() view returns (address)",
   "function ponsFactory() view returns (address)",
   "function ponsCurve() view returns (address)",
-  "function REWARDS_SHARE_BPS() view returns (uint256)",
-  "function LIQUIDITY_SHARE_BPS() view returns (uint256)",
-  "function RESERVE_SHARE_BPS() view returns (uint256)",
+  "function ALLOCATION_VERSION() view returns (bytes32)",
+  "function LP_REWARDS_BPS() view returns (uint256)",
+  "function MARKET_LIQUIDITY_BPS() view returns (uint256)",
+  "function BUYBACK_BURN_BPS() view returns (uint256)",
+  "function TREASURY_BPS() view returns (uint256)",
+  "function CREATOR_REWARDS_BPS() view returns (uint256)",
+  "function BPS() view returns (uint256)",
 ]);
 const liquidityVaultAbi = parseAbi([
   "function owner() view returns (address)",
@@ -108,6 +127,7 @@ const marketAbi = parseAbi([
   "function collateral() view returns (address)",
   "function oracle() view returns (address)",
   "function creatorFeeBps() view returns (uint16)",
+  "function maxTradeAmount() view returns (uint256)",
   "function closesAt() view returns (uint64)",
   "function resolved() view returns (bool)",
   "function question() view returns (string)",
@@ -171,7 +191,9 @@ const addresses = {
   treasury: required("NEXT_PUBLIC_BID_FLYWHEEL_TREASURY"),
   rewardsVault: required("NEXT_PUBLIC_BID_REWARDS_VAULT"),
   liquidityVault: required("NEXT_PUBLIC_BID_LIQUIDITY_VAULT"),
-  reserveVault: required("NEXT_PUBLIC_BID_RESERVE_VAULT"),
+  buybackVault: required("NEXT_PUBLIC_BID_BUYBACK_VAULT"),
+  protocolTreasury: required("NEXT_PUBLIC_BID_PROTOCOL_TREASURY"),
+  creatorRewardsVault: required("NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT"),
   oracle: required("BID_RESOLUTION_ORACLE"),
   factoryOwner: required("BID_FACTORY_OWNER"),
   treasuryOwner: required("BID_TREASURY_OWNER"),
@@ -186,9 +208,13 @@ const addresses = {
 };
 const marketDefinitions = [
   [required("NEXT_PUBLIC_BID_MARKET_MIA_TPA"), "Which city will post the larger home-price increase by year-end?", ["Miami", "Tampa"]],
-  [required("NEXT_PUBLIC_BID_MARKET_CITY_FIELD"), "Which U.S. city will have the highest home-price increase by EOY?", ["Miami", "Tampa", "New York", "Dallas", "Phoenix"]],
-  [required("NEXT_PUBLIC_BID_MARKET_AUSTIN"), "Will Austin home prices finish 2026 positive year over year?", ["Yes", "No"]],
 ];
+if (env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD")) {
+  marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_CITY_FIELD"), "Which U.S. city will have the highest home-price increase by EOY?", ["Miami", "Tampa", "New York", "Dallas", "Phoenix"]]);
+}
+if (env("NEXT_PUBLIC_BID_MARKET_AUSTIN")) {
+  marketDefinitions.push([env("NEXT_PUBLIC_BID_MARKET_AUSTIN"), "Will Austin home prices finish 2026 positive year over year?", ["Yes", "No"]]);
+}
 
 async function hasCode(address, label) {
   const code = await client.getCode({ address });
@@ -199,13 +225,26 @@ async function run() {
   assert(env("NEXT_PUBLIC_BID_NETWORK") === "mainnet", "frontend network is Robinhood Chain mainnet");
   assert(chainId === 4663, "production expected chain ID is 4663");
   assert(env("PONS_PROTOCOL_VERSION") === "v2", "Pons protocol version is explicitly v2");
-  assert(env("NEXT_PUBLIC_CREATOR_TAX_BPS") === "250", "creator tax is fixed at 2.5%");
+  assert(
+    env("NEXT_PUBLIC_CREATOR_TAX_BPS") === String(bidFeePolicy.creatorFeeBps),
+    "BID creator fee is fixed at 1.5%",
+  );
+  assert(BigInt(required("NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK")) >= 0n, "flywheel deployment block is configured");
   assert(await client.getChainId() === chainId, `RPC is connected to expected chain ${chainId}`);
   assert(sameAddress(required("PONS_FACTORY"), addresses.ponsFactory), "deployment and frontend Pons factories match");
   assert(sameAddress(required("BID_COLLATERAL_TOKEN"), addresses.collateral), "deployment and frontend collateral match");
   assert(sameAddress(required("BID_TOKEN_ADDRESS"), addresses.token), "deployment BID token matches final CA");
   assert(sameAddress(required("BID_FLYWHEEL_TREASURY"), addresses.treasury), "deployment and frontend treasuries match");
   assert(sameAddress(required("BID_MARKET_FACTORY"), addresses.factory), "deployment and frontend market factories match");
+  assert(sameAddress(required("BID_BUYBACK_VAULT"), addresses.buybackVault), "deployment and frontend buyback reserves match");
+  assert(
+    sameAddress(required("BID_PROTOCOL_TREASURY"), addresses.protocolTreasury),
+    "deployment and frontend protocol treasuries match",
+  );
+  assert(
+    sameAddress(required("BID_CREATOR_REWARDS_VAULT"), addresses.creatorRewardsVault),
+    "deployment and frontend creator rewards reserves match",
+  );
 
   await Promise.all([
     hasCode(addresses.token, "BID token"),
@@ -231,11 +270,12 @@ async function run() {
   assert(decimals === Number(env("BID_EXPECTED_TOKEN_DECIMALS") || "18"), `token decimals are ${decimals}`);
   assert(supply > 0n, `${tokenName} has nonzero supply`);
 
-  const [factoryOwner, factoryCollateral, factoryToken, factoryOracle, communityEnabled, allMarkets] = await Promise.all([
+  const [factoryOwner, factoryCollateral, factoryToken, factoryOracle, factoryMaxTrade, communityEnabled, allMarkets] = await Promise.all([
     client.readContract({ address: addresses.factory, abi: factoryAbi, functionName: "owner" }),
     client.readContract({ address: addresses.factory, abi: factoryAbi, functionName: "collateral" }),
     client.readContract({ address: addresses.factory, abi: factoryAbi, functionName: "bidToken" }),
     client.readContract({ address: addresses.factory, abi: factoryAbi, functionName: "resolutionOracle" }),
+    client.readContract({ address: addresses.factory, abi: factoryAbi, functionName: "maxTradeAmount" }),
     client.readContract({ address: addresses.factory, abi: factoryAbi, functionName: "communityCreationEnabled" }),
     client.readContract({ address: addresses.factory, abi: factoryAbi, functionName: "allMarkets" }),
   ]);
@@ -243,15 +283,18 @@ async function run() {
   assert(sameAddress(factoryCollateral, addresses.collateral), "factory collateral matches configured collateral");
   assert(sameAddress(factoryToken, addresses.token), "factory BID token matches final CA");
   assert(sameAddress(factoryOracle, addresses.oracle), "factory resolution oracle matches configuration");
+  assert(factoryMaxTrade === BigInt(required("BID_MAX_TRADE_AMOUNT")), "factory enforces the configured beta order cap");
+  assert(marketDefinitions.length === Number(required("BID_GENESIS_MARKET_COUNT")), "configured genesis market count matches public addresses");
   assert(communityEnabled === false, "community market creation remains disabled at launch");
   assert(allMarkets.length === marketDefinitions.length, "factory contains exactly the configured genesis markets");
 
   for (const [marketAddress, expectedQuestion, expectedOutcomes] of marketDefinitions) {
-    const [marketFactory, collateral, oracle, feeBps, closesAt, resolved, question, count, balances, prices, registered, vaultLpBalance] = await Promise.all([
+    const [marketFactory, collateral, oracle, feeBps, maxTradeAmount, closesAt, resolved, question, count, balances, prices, registered, vaultLpBalance] = await Promise.all([
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "factory" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "collateral" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "oracle" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "creatorFeeBps" }),
+      client.readContract({ address: marketAddress, abi: marketAbi, functionName: "maxTradeAmount" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "closesAt" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "resolved" }),
       client.readContract({ address: marketAddress, abi: marketAbi, functionName: "question" }),
@@ -265,6 +308,7 @@ async function run() {
     assert(sameAddress(collateral, addresses.collateral), `${question}: collateral is correct`);
     assert(sameAddress(oracle, addresses.oracle), `${question}: oracle is correct`);
     assert(feeBps === 0, `${question}: genesis trading fee is 0%`);
+    assert(maxTradeAmount === BigInt(required("BID_MAX_TRADE_AMOUNT")), `${question}: beta order cap is enforced`);
     assert(Number(closesAt) > Math.floor(Date.now() / 1000), `${question}: close time is in the future`);
     assert(!resolved, `${question}: market is unresolved`);
     assert(question === expectedQuestion, `${question}: question matches release configuration`);
@@ -287,40 +331,62 @@ async function run() {
 
   const [
     treasuryOwner,
-    rewardsVault,
+    lpRewardsReserve,
     liquidityVault,
-    reserveVault,
+    buybackBurnReserve,
+    protocolTreasury,
+    creatorRewardsReserve,
     ponsEscrow,
     ponsFeeHook,
     treasuryPonsFactory,
     treasuryPonsCurve,
-    rewardsShare,
-    liquidityShare,
-    reserveShare,
+    allocationVersion,
+    lpRewardsShare,
+    marketLiquidityShare,
+    buybackBurnShare,
+    treasuryShare,
+    creatorRewardsShare,
+    basisPoints,
   ] = await Promise.all([
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "owner" }),
-    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "rewardsVault" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "lpRewardsReserve" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "liquidityVault" }),
-    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "reserveVault" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "buybackBurnReserve" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "protocolTreasury" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "creatorRewardsReserve" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ponsFeeEscrow" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ponsFeeHook" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ponsFactory" }),
     client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ponsCurve" }),
-    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "REWARDS_SHARE_BPS" }),
-    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "LIQUIDITY_SHARE_BPS" }),
-    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "RESERVE_SHARE_BPS" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "ALLOCATION_VERSION" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "LP_REWARDS_BPS" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "MARKET_LIQUIDITY_BPS" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "BUYBACK_BURN_BPS" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "TREASURY_BPS" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "CREATOR_REWARDS_BPS" }),
+    client.readContract({ address: addresses.treasury, abi: treasuryAbi, functionName: "BPS" }),
   ]);
   assert(sameAddress(treasuryOwner, addresses.treasuryOwner), "treasury owner matches production owner");
-  assert(sameAddress(rewardsVault, addresses.rewardsVault), "rewards vault destination matches configuration");
+  assert(sameAddress(lpRewardsReserve, addresses.rewardsVault), "LP rewards reserve matches configuration");
   assert(sameAddress(liquidityVault, addresses.liquidityVault), "liquidity vault destination matches configuration");
-  assert(sameAddress(reserveVault, addresses.reserveVault), "reserve vault destination matches configuration");
+  assert(sameAddress(buybackBurnReserve, addresses.buybackVault), "buyback and burn reserve matches configuration");
+  assert(sameAddress(protocolTreasury, addresses.protocolTreasury), "protocol treasury matches configuration");
+  assert(sameAddress(creatorRewardsReserve, addresses.creatorRewardsVault), "creator rewards reserve matches configuration");
   assert(sameAddress(ponsEscrow, addresses.ponsEscrow), "treasury is bound to the verified Pons escrow");
   assert(sameAddress(ponsFeeHook, addresses.ponsFeeHook), "treasury is bound to the verified Pons fee hook");
   assert(sameAddress(treasuryPonsFactory, addresses.ponsFactory), "treasury is bound to the verified Pons factory");
   assert(sameAddress(treasuryPonsCurve, addresses.ponsCurve), "treasury is bound to the BID Pons curve");
+  assert(allocationVersion === keccak256(toBytes(bidFeePolicy.version)), "allocation policy version matches canonical configuration");
+  const expectedAllocation = bidFeePolicy.allocations;
+  assert(lpRewardsShare === BigInt(expectedAllocation.lpRewards), "LP rewards allocation is 45%");
+  assert(marketLiquidityShare === BigInt(expectedAllocation.marketLiquidity), "market liquidity allocation is 30%");
+  assert(buybackBurnShare === BigInt(expectedAllocation.buybackBurn), "buyback and burn allocation is 10%");
+  assert(treasuryShare === BigInt(expectedAllocation.treasury), "protocol treasury allocation is 10%");
+  assert(creatorRewardsShare === BigInt(expectedAllocation.creatorRewards), "creator rewards allocation is 5%");
   assert(
-    rewardsShare === 7_000n && liquidityShare === 2_000n && reserveShare === 1_000n,
-    "treasury split is 70% rewards / 20% liquidity / 10% reserve",
+    lpRewardsShare + marketLiquidityShare + buybackBurnShare + treasuryShare + creatorRewardsShare
+      === basisPoints,
+    "treasury allocation sums to 100%",
   );
 
   const [rewardsOwner, rewardsOutstanding] = await Promise.all([
@@ -370,7 +436,7 @@ async function run() {
   assert(sameAddress(launch.creatorFeeRecipient, addresses.treasury), "Pons creator fees pay the flywheel treasury");
   assert(sameAddress(launch.pairToken, addresses.ponsQuote), "Pons quote asset matches configuration");
   assert(sameAddress(launch.pairToken, addresses.collateral), "Pons quote asset matches market collateral; no unimplemented swap is required");
-  assert(launch.creatorTaxBps === 250, "Pons launch creator tax is exactly 2.5%");
+  assert(launch.creatorTaxBps === bidFeePolicy.creatorFeeBps, "Pons launch BID creator fee is exactly 1.5%");
   assert(launch.buybackEnabled === false, "Pons buyback is disabled so creator fees remain available to the BID flywheel");
   assert(sameAddress(factoryEscrow, addresses.ponsEscrow), "Pons factory reports the configured fee escrow");
   assert(sameAddress(factoryHook, addresses.ponsFeeHook), "Pons factory reports the configured fee hook");

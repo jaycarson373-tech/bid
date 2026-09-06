@@ -354,22 +354,23 @@
 }
 
 .split {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .split > div {
-  min-height: 150px;
+  min-height: 108px;
+  padding: 14px;
 }
 
 .split strong {
   display: block;
   color: #e9ff00;
-  font-size: 44px;
+  font-size: 32px;
 }
 
 .split span {
   display: block;
-  margin-top: 38px;
+  margin-top: 22px;
   color: #b0b7ac;
   text-transform: uppercase;
 }
@@ -493,6 +494,9 @@
 }
 
 @media (max-width: 1120px) {
+  .split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .layout {
     grid-template-columns: 190px minmax(0, 760px);
     gap: 36px;

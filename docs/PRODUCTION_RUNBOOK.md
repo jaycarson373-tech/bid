@@ -14,7 +14,9 @@ These public values are required before the first treasury deployment:
 | `BID_REWARDS_OWNER` | Safe or multisig that publishes reviewed reward roots |
 | `BID_FACTORY_OWNER` | Final Safe or multisig |
 | `BID_LIQUIDITY_VAULT_OWNER` | Final Safe or multisig |
-| `BID_RESERVE_VAULT` | Reserve Safe or multisig |
+| `BID_BUYBACK_VAULT` | Buyback and burn reserve Safe or multisig |
+| `BID_PROTOCOL_TREASURY` | Protocol treasury Safe or multisig |
+| `BID_CREATOR_REWARDS_VAULT` | Creator rewards reserve Safe or multisig |
 | `BID_LIQUIDITY_OPERATOR` | Public address derived from the Railway keeper signer |
 | `BID_RESOLUTION_ORACLE` | Dedicated production oracle address |
 | `BID_MARKET_CLOSE_TIME` | Approved future Unix timestamp |
@@ -46,11 +48,14 @@ creator-fee recipient.
    verifier requires the Pons quote asset to equal BID market collateral so no
    unreviewed swap executor sits in the money path.
 4. Deploy `BidRewardsDistributor`, `BidFlywheelTreasury` and `BidLiquidityVault`
-   with the verified Pons escrow, reserve destination, keeper operator, and final
+   with the verified Pons escrow, reserve destinations, keeper operator, and final
    multisig addresses. The deployer temporarily owns the treasury and liquidity
    vault until the scripted curve binding and genesis setup hand them to their
    final owners. Record all three addresses.
-5. Keep the website in `prelaunch` and the Railway keeper in read-only mode.
+5. Deploy `BidMarketFactory` without a BID token, then create and fund the three
+   USDG genesis markets. Community creation remains disabled. The deployer keeps
+   temporary factory ownership only until the final token bind.
+6. Keep the website in `prelaunch` and the Railway keeper in read-only mode.
 
 The treasury address printed by `DeployBidTreasury` is the exact address entered
 as the Pons `creatorFeeRecipient`. It is a contract, not the deployer wallet. The
@@ -65,7 +70,7 @@ factory, USDG approval, escrow, hook, tax cap, and current launch economics. Whe
 
 Launch `$BID` through the verified Pons v2 factory with:
 
-- creator tax: exactly `250` bps;
+- BID creator fee: exactly `150` bps;
 - creator fee recipient: the deployed `BidFlywheelTreasury`;
 - buyback: disabled, so the creator bucket is available to the BID flywheel;
 - quote asset: the verified asset recorded in `PONS_QUOTE_ASSET`;
@@ -78,7 +83,8 @@ Use `LaunchBidOnPons.s.sol` with an encrypted Foundry keystore. It reads the
 metadata and salt from the local launch variables, pins `previewLaunchEconomics`,
 and enforces the recipient, tax, pair token and buyback settings before broadcast.
 Use `BindBidPonsCurve.s.sol` from the deployer keystore immediately after; it
-binds the curve and transfers treasury ownership to `BID_TREASURY_OWNER`.
+binds the curve and final BID token exactly once, then transfers treasury and
+factory ownership to `BID_TREASURY_OWNER` and `BID_FACTORY_OWNER`.
 Run every Foundry script once without `--broadcast` first and review the complete
 simulation before signing the mainnet transaction.
 
@@ -91,22 +97,20 @@ fees only.
 ## Genesis USDG funding
 
 `BID_INITIAL_LIQUIDITY` is the amount per market in six-decimal USDG base units.
-The three genesis markets require three times that amount in the deployer wallet.
+The capped beta deploys one market by default and requires that amount in the deployer wallet.
 The production script pays from the deployer but mints all initial BID-LP shares
 directly to `BID_LIQUIDITY_VAULT`.
 
-| Per market | Total for three | Positioning |
+| Initial seed | Order cap | Positioning |
 | --- | --- | --- |
-| 5,000 USDG (`5000000000`) | 15,000 USDG | Thin beta |
-| 10,000 USDG (`10000000000`) | 30,000 USDG | Lean public launch |
-| 25,000 USDG (`25000000000`) | 75,000 USDG | Recommended launch target |
+| 25 USDG (`25000000`) | 1 USDG (`1000000`) | Capped one-market beta |
 
-At 25,000 USDG per pool, a 500 USDG opening trade moves a binary market from
-50% to roughly 51% spot and a five-outcome market from 20% to roughly 21.6% spot.
-These are curve-depth estimates, not guaranteed fills. The configured recurring
-threshold `LP_MIN_DEPLOY_AMOUNT=100000000` batches at least 100 USDG per eligible
-market before the keeper spends gas; the keeper divides the vault balance evenly
-across open approved markets.
+Zero initial liquidity cannot quote or execute a trade. The 25 USDG seed is protocol-owned
+capital, not a fee, and the immutable 1 USDG order cap limits early price impact.
+The configured recurring threshold `LP_MIN_DEPLOY_AMOUNT=1000000` batches at least 1 USDG before the
+keeper spends gas. `LP_TARGET_DEPTH=100000000` sets a 100 USDG beta target; the
+keeper deterministically allocates to approved open markets in proportion to
+their actual outcome-pool depth deficits.
 
 ## Launch cost check
 
@@ -119,7 +123,7 @@ npm run costs:production
 It verifies Robinhood Chain ID `4663`, confirms bytecode at the configured Pons
 factory, reads the live Pons `launchFee()` and gas price, and shows sample gas
 costs without submitting a transaction. It also reports the configured keeper
-reserve and, when `BID_INITIAL_LIQUIDITY` is set, the exact three-market USDG
+reserve and, when `BID_INITIAL_LIQUIDITY` is set, the exact capped-beta USDG
 capital requirement.
 
 Treat these separately:
@@ -142,7 +146,7 @@ npm run verify:production
 ```
 
 The verifier checks chain ID, bytecode, token metadata, Pons launch record,
-creator tax and recipient, escrow, quote asset, factory/market wiring, oracle,
+creator fee and recipient, escrow, quote asset, factory/market wiring, oracle,
 hook binding, ownership, market close times, funded pools, live quotes, keeper identity and
 gas balance when enabled, plus the deployed frontend CA and placeholder scan.
 
@@ -165,10 +169,13 @@ NEXT_PUBLIC_BID_CONTRACT_ADDRESS
 NEXT_PUBLIC_BID_COLLATERAL_ADDRESS
 NEXT_PUBLIC_BID_MARKET_FACTORY
 NEXT_PUBLIC_BID_FLYWHEEL_TREASURY
+NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK
 NEXT_PUBLIC_BID_REWARDS_VAULT
 NEXT_PUBLIC_BID_REWARDS_MANIFEST_URL
 NEXT_PUBLIC_BID_LIQUIDITY_VAULT
-NEXT_PUBLIC_BID_RESERVE_VAULT
+NEXT_PUBLIC_BID_BUYBACK_VAULT
+NEXT_PUBLIC_BID_PROTOCOL_TREASURY
+NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT
 NEXT_PUBLIC_BID_MARKET_MIA_TPA
 NEXT_PUBLIC_BID_MARKET_CITY_FIELD
 NEXT_PUBLIC_BID_MARKET_AUSTIN
@@ -189,8 +196,8 @@ returns or logs the private key.
 
 After read-only production verification passes, set
 `KEEPER_EXECUTION_ENABLED=true` and `LP_DEPLOYMENT_ENABLED=true`. Onchain order
-activity, zero-before-transfer fee accounting, and balance-consuming LP deposits
-make restarts retry-safe. Do not run multiple keeper replicas; concurrent replicas
+activity, atomic claim-and-allocation, and balance-consuming LP deposits make
+restarts retry-safe. Do not run multiple keeper replicas; concurrent replicas
 waste gas on races even though duplicate settlement reverts.
 
 After Pons graduation, set the computed `PONS_POOL_ID` and enable
@@ -221,6 +228,7 @@ KEEPER_MAX_ORDER_SCAN
 KEEPER_MIN_BALANCE_WEI
 LP_DEPLOYMENT_ENABLED
 LP_MIN_DEPLOY_AMOUNT
+LP_TARGET_DEPTH
 ```
 
 Add `RH_RPC_URL` and `KEEPER_PRIVATE_KEY` as Railway secrets. The raw key must
@@ -238,10 +246,10 @@ added.
 ## 7. Reward airdrops
 
 The rewards distributor is deployed as `NEXT_PUBLIC_BID_REWARDS_VAULT`, so every
-70% treasury distribution funds claimable inventory. An epoch is a one-time
+45% LP-rewards allocation funds reserved inventory. An epoch is a one-time
 Merkle root over `(epochId, asset, account, amount)` allocations.
 
-1. Produce an approved allocation JSON from the finalized reward policy.
+1. Produce an approved allocation JSON from finalized time-weighted LP and anti-snapshot rules.
 2. Run `npm run rewards:build -- input.json output.json`.
 3. Reconcile `totalAllocation` against the distributor's uncommitted balance.
 4. Have `BID_REWARDS_OWNER` publish the epoch through its Safe.
@@ -257,13 +265,15 @@ The `/rewards` interface verifies the manifest asset, root and total allocation
 against the contract before enabling a wallet claim. Leave the manifest URL empty
 until the first epoch is published; the page then renders an honest awaiting state.
 
-Automated trading-volume scoring is intentionally not invented by the contract.
-The anti-wash rules, eligibility window, exclusions and score calculation must be
-approved before producing the first real allocation file.
+Automated LP scoring is intentionally not invented by the contract. Time-weighted
+liquidity, anti-snapshot rules, eligibility windows, exclusions and anti-wash
+checks must be implemented and approved before producing the first real allocation file.
 
 ## 8. Required systems not implemented
 
-- automated reward scoring, anti-wash eligibility and epoch allocation approval;
+- time-weighted LP reward scoring, anti-snapshot eligibility and epoch allocation approval;
+- guarded buyback execution and technically correct BID burn execution;
+- creator-market reward scoring and payout execution;
 - swap/conversion when Pons fees are not paid in market collateral;
 - indexer, history/leaderboard persistence, and operational alerting;
 - production oracle methodology, signer process, dispute policy, and monitoring.

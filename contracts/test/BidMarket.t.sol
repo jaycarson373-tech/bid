@@ -7,6 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {BidMarket} from "../src/BidMarket.sol";
 import {BidMarketFactory} from "../src/BidMarketFactory.sol";
 import {BidFlywheelTreasury} from "../src/BidFlywheelTreasury.sol";
+import {BidFeePolicy} from "../src/BidFeePolicy.sol";
 import {BidLiquidityVault} from "../src/BidLiquidityVault.sol";
 
 contract MockToken is ERC20 {
@@ -52,6 +53,16 @@ contract MockPonsFeeEscrow {
     }
 }
 
+contract MockPonsBadEscrow {
+    function claim() external pure returns (uint256 amount) {
+        return 1;
+    }
+
+    function claimToken(address) external pure returns (uint256 amount) {
+        return 1;
+    }
+}
+
 contract MockPonsFeeHook {
     address public lastCaller;
     bytes32 public lastPoolId;
@@ -84,6 +95,12 @@ contract MockPonsCreatorControls {
     }
 }
 
+contract RejectNative {
+    receive() external payable {
+        revert("reject native");
+    }
+}
+
 contract BidMarketTest is Test {
     MockToken internal usdg;
     MockToken internal bid;
@@ -97,7 +114,8 @@ contract BidMarketTest is Test {
     function setUp() public {
         usdg = new MockToken("USDG", "USDG", 6);
         bid = new MockToken("BID", "BID", 18);
-        factory = new BidMarketFactory(usdg, bid, address(this), address(this));
+        factory = new BidMarketFactory(usdg, address(this), address(this), 50_000e6);
+        factory.bindBidToken(bid);
         closesAt = uint64(block.timestamp + 30 days);
 
         usdg.mint(address(this), 1_000_000e6);
@@ -153,6 +171,16 @@ contract BidMarketTest is Test {
         uint256[] memory prices = market.spotPricesBps();
         assertGt(prices[0], 5_000);
         assertEq(prices[0] + prices[1], 10_000);
+    }
+
+    function testBetaTradeCapRejectsOversizedOrders() public {
+        vm.expectRevert(BidMarket.TradeAmountExceeded.selector);
+        vm.prank(trader);
+        market.buy(50_000e6 + 1, 0, 0);
+
+        vm.expectRevert(BidMarket.TradeAmountExceeded.selector);
+        vm.prank(trader);
+        market.placeBuyLimit(50_000e6 + 1, 0, 1);
     }
 
     function testBuyAndSellRoundTripUsesPoolLiquidity() public {
@@ -327,6 +355,41 @@ contract BidMarketTest is Test {
         assertEq(claimed, 25e6);
         assertEq(usdg.balanceOf(trader), creatorBalanceBefore + claimed);
     }
+
+    function testGenesisMarketCanLaunchBeforeBidTokenIsBound() public {
+        BidMarketFactory prelaunchFactory = new BidMarketFactory(usdg, address(this), address(this), 50_000e6);
+        usdg.approve(address(prelaunchFactory), 1_000e6);
+        string[] memory outcomes = new string[](2);
+        outcomes[0] = "Yes";
+        outcomes[1] = "No";
+
+        address created = prelaunchFactory.createGenesisMarket(
+            "Can this market launch before the BID token?", outcomes, closesAt, 1_000e6
+        );
+
+        assertTrue(prelaunchFactory.isBidMarket(created));
+        assertEq(address(prelaunchFactory.bidToken()), address(0));
+    }
+
+    function testBidTokenBindingIsOwnerOnlyAndOneTime() public {
+        BidMarketFactory prelaunchFactory = new BidMarketFactory(usdg, address(this), address(this), 50_000e6);
+
+        vm.expectRevert();
+        vm.prank(trader);
+        prelaunchFactory.bindBidToken(bid);
+
+        prelaunchFactory.bindBidToken(bid);
+        assertEq(address(prelaunchFactory.bidToken()), address(bid));
+
+        vm.expectRevert(BidMarketFactory.BidTokenAlreadyBound.selector);
+        prelaunchFactory.bindBidToken(bid);
+    }
+
+    function testCommunityCreationCannotEnableBeforeBidTokenBinding() public {
+        BidMarketFactory prelaunchFactory = new BidMarketFactory(usdg, address(this), address(this), 50_000e6);
+        vm.expectRevert(BidMarketFactory.BidTokenNotBound.selector);
+        prelaunchFactory.setCommunityCreationConfig(true, 1, 1, 100);
+    }
 }
 
 contract BidFlywheelTreasuryTest is Test {
@@ -338,7 +401,9 @@ contract BidFlywheelTreasuryTest is Test {
     BidFlywheelTreasury internal treasury;
     address internal rewardsVault = makeAddr("rewardsVault");
     address internal liquidityVault = makeAddr("liquidityVault");
+    address internal buybackVault = makeAddr("buybackVault");
     address internal reserveVault = makeAddr("reserveVault");
+    address internal creatorRewardsVault = makeAddr("creatorRewardsVault");
 
     function setUp() public {
         token = new MockToken("Fee Token", "FEE", 18);
@@ -349,7 +414,9 @@ contract BidFlywheelTreasuryTest is Test {
         treasury = new BidFlywheelTreasury(
             rewardsVault,
             liquidityVault,
+            buybackVault,
             reserveVault,
+            creatorRewardsVault,
             address(ponsFactory),
             address(feeEscrow),
             address(feeHook),
@@ -358,22 +425,66 @@ contract BidFlywheelTreasuryTest is Test {
         treasury.setPonsCurve(address(curve));
     }
 
-    function testSplitsErc20ProceedsSeventyTwentyTen() public {
-        token.mint(address(treasury), 101e18);
+    function testSplitsOneHundredUnitsFortyFiveThirtyTenTenFive() public {
+        token.mint(address(treasury), 100e18);
         treasury.distributeToken(token);
 
-        assertEq(token.balanceOf(rewardsVault), 70.7e18);
-        assertEq(token.balanceOf(liquidityVault), 20.2e18);
-        assertEq(token.balanceOf(reserveVault), 10.1e18);
+        assertEq(token.balanceOf(rewardsVault), 45e18);
+        assertEq(token.balanceOf(liquidityVault), 30e18);
+        assertEq(token.balanceOf(buybackVault), 10e18);
+        assertEq(token.balanceOf(reserveVault), 10e18);
+        assertEq(token.balanceOf(creatorRewardsVault), 5e18);
     }
 
-    function testSplitsNativeProceedsSeventyTwentyTen() public {
+    function testOddErc20AmountRemainderGoesToTreasury() public {
+        token.mint(address(treasury), 101);
+        treasury.distributeToken(token);
+
+        assertEq(token.balanceOf(rewardsVault), 45);
+        assertEq(token.balanceOf(liquidityVault), 30);
+        assertEq(token.balanceOf(buybackVault), 10);
+        assertEq(token.balanceOf(reserveVault), 11);
+        assertEq(token.balanceOf(creatorRewardsVault), 5);
+    }
+
+    function testOneSmallestUnitRemainderGoesToTreasury() public {
+        token.mint(address(treasury), 1);
+        treasury.distributeToken(token);
+
+        assertEq(token.balanceOf(rewardsVault), 0);
+        assertEq(token.balanceOf(liquidityVault), 0);
+        assertEq(token.balanceOf(buybackVault), 0);
+        assertEq(token.balanceOf(reserveVault), 1);
+        assertEq(token.balanceOf(creatorRewardsVault), 0);
+    }
+
+    function testVeryLargeAllocationPreservesEveryUnit() public view {
+        uint256 gross = type(uint128).max;
+        (uint256 lp, uint256 liquidity, uint256 buyback, uint256 protocol, uint256 creator) =
+            treasury.previewAllocation(gross);
+
+        assertEq(lp + liquidity + buyback + protocol + creator, gross);
+        assertGe(protocol, gross * BidFeePolicy.TREASURY_BPS / BidFeePolicy.BPS);
+    }
+
+    function testAllocationPolicyIsVersionedAndSumsToOneHundredPercent() public view {
+        assertEq(treasury.ALLOCATION_VERSION(), keccak256("BID_FEE_POLICY_V1"));
+        assertEq(
+            treasury.LP_REWARDS_BPS() + treasury.MARKET_LIQUIDITY_BPS() + treasury.BUYBACK_BURN_BPS()
+                + treasury.TREASURY_BPS() + treasury.CREATOR_REWARDS_BPS(),
+            treasury.BPS()
+        );
+    }
+
+    function testSplitsNativeProceedsFortyFiveThirtyTenTenFive() public {
         vm.deal(address(treasury), 3 ether);
         treasury.distributeNative();
 
-        assertEq(rewardsVault.balance, 2.1 ether);
-        assertEq(liquidityVault.balance, 0.6 ether);
+        assertEq(rewardsVault.balance, 1.35 ether);
+        assertEq(liquidityVault.balance, 0.9 ether);
+        assertEq(buybackVault.balance, 0.3 ether);
         assertEq(reserveVault.balance, 0.3 ether);
+        assertEq(creatorRewardsVault.balance, 0.15 ether);
     }
 
     function testClaimsPonsTokenThenDistributesExactlyOnce() public {
@@ -385,11 +496,50 @@ contract BidFlywheelTreasuryTest is Test {
         assertEq(treasury.claimPonsToken(address(token)), 0);
         treasury.distributeToken(token);
 
-        assertEq(token.balanceOf(rewardsVault), 7.7e18);
-        assertEq(token.balanceOf(liquidityVault), 2.2e18);
+        assertEq(token.balanceOf(rewardsVault), 4.95e18);
+        assertEq(token.balanceOf(liquidityVault), 3.3e18);
+        assertEq(token.balanceOf(buybackVault), 1.1e18);
         assertEq(token.balanceOf(reserveVault), 1.1e18);
+        assertEq(token.balanceOf(creatorRewardsVault), 0.55e18);
         vm.expectRevert(BidFlywheelTreasury.NothingToDistribute.selector);
         treasury.distributeToken(token);
+    }
+
+    function testAtomicPonsClaimCannotAllocateTwiceAfterRestart() public {
+        token.mint(address(this), 11e18);
+        token.approve(address(feeEscrow), 11e18);
+        feeEscrow.creditToken(address(treasury), token, 11e18);
+
+        assertEq(treasury.claimAndDistributePonsToken(token), 11e18);
+        uint256 rewardsAfterFirstRun = token.balanceOf(rewardsVault);
+        vm.expectRevert(BidFlywheelTreasury.NothingToDistribute.selector);
+        treasury.claimAndDistributePonsToken(token);
+
+        assertEq(token.balanceOf(rewardsVault), rewardsAfterFirstRun);
+        assertEq(token.balanceOf(address(treasury)), 0);
+    }
+
+    function testDownstreamFailureRollsBackEntireAllocation() public {
+        RejectNative rejectNative = new RejectNative();
+        treasury.setDestinations(rewardsVault, liquidityVault, address(rejectNative), reserveVault, creatorRewardsVault);
+        vm.deal(address(treasury), 10 ether);
+
+        vm.expectRevert(BidFlywheelTreasury.NativeTransferFailed.selector);
+        treasury.distributeNative();
+
+        assertEq(address(treasury).balance, 10 ether);
+        assertEq(rewardsVault.balance, 0);
+        assertEq(liquidityVault.balance, 0);
+        assertEq(reserveVault.balance, 0);
+        assertEq(creatorRewardsVault.balance, 0);
+    }
+
+    function testClaimReceiptMismatchRevertsBeforeAllocation() public {
+        MockPonsBadEscrow badEscrow = new MockPonsBadEscrow();
+        treasury.setPonsFeeEscrow(address(badEscrow));
+
+        vm.expectRevert(BidFlywheelTreasury.ClaimAmountMismatch.selector);
+        treasury.claimAndDistributePonsToken(token);
     }
 
     function testClaimsPonsNativeThenDistributesExactlyOnce() public {
@@ -400,9 +550,11 @@ contract BidFlywheelTreasuryTest is Test {
         assertEq(treasury.claimPonsNative(), 0);
         treasury.distributeNative();
 
-        assertEq(rewardsVault.balance, 1.4 ether);
-        assertEq(liquidityVault.balance, 0.4 ether);
+        assertEq(rewardsVault.balance, 0.9 ether);
+        assertEq(liquidityVault.balance, 0.6 ether);
+        assertEq(buybackVault.balance, 0.2 ether);
         assertEq(reserveVault.balance, 0.2 ether);
+        assertEq(creatorRewardsVault.balance, 0.1 ether);
     }
 
     function testPermissionlessPonsPoolSweepCallsHookAsTreasury() public {
@@ -442,13 +594,16 @@ contract BidLiquidityVaultTest is Test {
     MockPonsFeeEscrow internal feeEscrow;
     BidFlywheelTreasury internal treasury;
     address internal rewardsVault = makeAddr("rewardsVault");
+    address internal buybackVault = makeAddr("buybackVault");
     address internal reserveVault = makeAddr("reserveVault");
+    address internal creatorRewardsVault = makeAddr("creatorRewardsVault");
     address internal outsider = makeAddr("outsider");
 
     function setUp() public {
         usdg = new MockToken("USDG", "USDG", 6);
         bid = new MockToken("BID", "BID", 18);
-        factory = new BidMarketFactory(usdg, bid, address(this), address(this));
+        factory = new BidMarketFactory(usdg, address(this), address(this), 50_000e6);
+        factory.bindBidToken(bid);
         usdg.mint(address(this), 100_000e6);
         usdg.approve(address(factory), type(uint256).max);
 
@@ -464,7 +619,15 @@ contract BidLiquidityVaultTest is Test {
         usdg.mint(address(vault), 5_000e6);
         feeEscrow = new MockPonsFeeEscrow();
         treasury = new BidFlywheelTreasury(
-            rewardsVault, address(vault), reserveVault, address(0), address(feeEscrow), address(0), address(this)
+            rewardsVault,
+            address(vault),
+            buybackVault,
+            reserveVault,
+            creatorRewardsVault,
+            address(0),
+            address(feeEscrow),
+            address(0),
+            address(this)
         );
     }
 
@@ -497,13 +660,15 @@ contract BidLiquidityVaultTest is Test {
 
         assertEq(treasury.claimPonsToken(address(usdg)), 10_000e6);
         treasury.distributeToken(usdg);
-        assertEq(usdg.balanceOf(rewardsVault), 7_000e6);
-        assertEq(usdg.balanceOf(address(vault)), 7_000e6);
+        assertEq(usdg.balanceOf(rewardsVault), 4_500e6);
+        assertEq(usdg.balanceOf(address(vault)), 8_000e6);
+        assertEq(usdg.balanceOf(buybackVault), 1_000e6);
         assertEq(usdg.balanceOf(reserveVault), 1_000e6);
+        assertEq(usdg.balanceOf(creatorRewardsVault), 500e6);
 
         (uint256 quote,) = market.quoteAddFunding(2_000e6);
         uint256 shares = vault.deployLiquidity(address(market), 2_000e6, quote * 9_950 / 10_000);
         assertEq(market.balanceOf(address(vault)), shares);
-        assertEq(usdg.balanceOf(address(vault)), 5_000e6);
+        assertEq(usdg.balanceOf(address(vault)), 6_000e6);
     }
 }

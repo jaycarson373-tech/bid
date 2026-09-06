@@ -6,6 +6,7 @@ import {
   createWalletClient,
   custom,
   formatUnits,
+  parseAbiItem,
   parseUnits,
   type EIP1193Provider,
   type Hex,
@@ -24,6 +25,16 @@ type Tone = "coral" | "mint" | "violet" | "gold";
 type OrderType = "market" | "limit" | "liquidity";
 type LiquidityAction = "add" | "remove";
 type MarketReadStatus = "awaiting" | "loading" | "ready" | "error";
+
+type FlywheelProof = {
+  gross: bigint;
+  lpRewards: bigint;
+  marketLiquidity: bigint;
+  buybackBurn: bigint;
+  treasury: bigint;
+  creatorRewards: bigint;
+  latestTransaction: string;
+};
 
 declare global {
   interface Window {
@@ -111,6 +122,9 @@ const markets: Market[] = [
 ];
 
 const filters = ["All markets", "Head to head", "5-city fields", "Yes / No"] as const;
+const feeAllocatedEvent = parseAbiItem(
+  "event FeeAllocated(bytes32 indexed allocationVersion,address indexed asset,uint256 grossAmount,uint256 lpRewardsAmount,uint256 marketLiquidityAmount,uint256 buybackBurnAmount,uint256 treasuryAmount,uint256 creatorRewardsAmount)",
+);
 
 function truncateAddress(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
@@ -186,7 +200,7 @@ function SampleBadge({ compact = false }: { compact?: boolean }) {
   return <span className={`sample-badge ${compact ? "compact" : ""}`}>Sample data</span>;
 }
 
-function LockedValue({ children = "Opens at launch" }: { children?: string }) {
+function LockedValue({ children = "Awaiting liquidity" }: { children?: string }) {
   return <strong className="locked-value">{children}</strong>;
 }
 
@@ -256,6 +270,7 @@ export default function Home() {
   const [livePrices, setLivePrices] = useState<Record<string, number[]>>({});
   const [liveCloseDates, setLiveCloseDates] = useState<Record<string, string>>({});
   const [marketReadStatus, setMarketReadStatus] = useState<MarketReadStatus>("awaiting");
+  const [flywheelProof, setFlywheelProof] = useState<FlywheelProof | null>(null);
   const [liveQuote, setLiveQuote] = useState<{
     key: string;
     outcomeTokensOut: bigint;
@@ -275,9 +290,6 @@ export default function Home() {
   } | null>(null);
   const contractAddress = siteConfig.contractAddress;
   const creatorTaxPercent = siteConfig.creatorTaxBps / 100;
-  const rewardsPercent = creatorTaxPercent * siteConfig.predictionRewardsShareBps / 10_000;
-  const liquidityPercent = creatorTaxPercent * siteConfig.liquidityShareBps / 10_000;
-  const reservePercent = creatorTaxPercent * siteConfig.reserveShareBps / 10_000;
   const verifiedPonsLive = isLive && !siteConfig.isTestnet && siteConfig.isPonsVerified;
 
   const selected = markets.find((market) => market.id === selectedId) ?? markets[0];
@@ -315,32 +327,20 @@ export default function Home() {
     const provider = window.ethereum as EventProvider | undefined;
     if (!provider) return;
 
-    const applyWalletState = (accounts: string[], chainHex: string) => {
-      const address = accounts[0] ?? "";
-      const onExpectedChain = chainHex.toLowerCase() === siteConfig.robinhoodChainHex;
-      setWalletAddress(address);
-      setWalletConnected(Boolean(address) && onExpectedChain);
-      if (address && !onExpectedChain) {
-        setNotice(`Wallet network changed. Switch back to ${siteConfig.networkName} before signing.`);
-      }
-    };
     const handleAccountsChanged = (...args: unknown[]) => {
       const accounts = Array.isArray(args[0]) ? args[0] as string[] : [];
-      void provider.request({ method: "eth_chainId" }).then((chain) => {
-        applyWalletState(accounts, String(chain));
-      });
+      const address = accounts[0] ?? "";
+      setWalletAddress(address);
+      if (!address) setWalletConnected(false);
     };
     const handleChainChanged = (...args: unknown[]) => {
       const chainHex = String(args[0] ?? "");
-      void provider.request({ method: "eth_accounts" }).then((accounts) => {
-        applyWalletState(accounts as string[], chainHex);
-      });
+      if (chainHex.toLowerCase() !== siteConfig.robinhoodChainHex) {
+        setWalletConnected(false);
+        setNotice(`Wallet network changed. Switch back to ${siteConfig.networkName} before signing.`);
+      }
     };
 
-    void Promise.all([
-      provider.request({ method: "eth_accounts" }),
-      provider.request({ method: "eth_chainId" }),
-    ]).then(([accounts, chain]) => applyWalletState(accounts as string[], String(chain))).catch(() => undefined);
     provider.on?.("accountsChanged", handleAccountsChanged);
     provider.on?.("chainChanged", handleChainChanged);
     return () => {
@@ -394,6 +394,44 @@ export default function Home() {
   }, [refreshNonce]);
 
   useEffect(() => {
+    const treasuryAddress = configuredAddress(siteConfig.flywheelTreasuryAddress);
+    const collateralAddress = configuredAddress(siteConfig.collateralAddress);
+    if (!treasuryAddress || !collateralAddress || !siteConfig.flywheelDeploymentBlock) return;
+
+    let cancelled = false;
+    void robinhoodPublicClient.getLogs({
+      address: treasuryAddress,
+      event: feeAllocatedEvent,
+      args: { asset: collateralAddress },
+      fromBlock: BigInt(siteConfig.flywheelDeploymentBlock),
+    }).then((logs) => {
+      if (cancelled) return;
+      const proof = logs.reduce<FlywheelProof>((total, log) => ({
+        gross: total.gross + (log.args.grossAmount ?? 0n),
+        lpRewards: total.lpRewards + (log.args.lpRewardsAmount ?? 0n),
+        marketLiquidity: total.marketLiquidity + (log.args.marketLiquidityAmount ?? 0n),
+        buybackBurn: total.buybackBurn + (log.args.buybackBurnAmount ?? 0n),
+        treasury: total.treasury + (log.args.treasuryAmount ?? 0n),
+        creatorRewards: total.creatorRewards + (log.args.creatorRewardsAmount ?? 0n),
+        latestTransaction: log.transactionHash ?? total.latestTransaction,
+      }), {
+        gross: 0n,
+        lpRewards: 0n,
+        marketLiquidity: 0n,
+        buybackBurn: 0n,
+        treasury: 0n,
+        creatorRewards: 0n,
+        latestTransaction: "",
+      });
+      setFlywheelProof(proof);
+    }).catch(() => {
+      if (!cancelled) setFlywheelProof(null);
+    });
+
+    return () => { cancelled = true; };
+  }, [refreshNonce]);
+
+  useEffect(() => {
     let cancelled = false;
     const collateralAmount = Number(amount);
 
@@ -401,7 +439,8 @@ export default function Home() {
       orderType === "liquidity" ||
       !selectedMarketAddress ||
       !Number.isFinite(collateralAmount) ||
-      collateralAmount <= 0
+      collateralAmount <= 0 ||
+      collateralAmount > siteConfig.maxTradeAmount
     ) {
       return;
     }
@@ -610,6 +649,10 @@ export default function Home() {
       setNotice(`Enter a ${siteConfig.collateralSymbol} amount first.`);
       return;
     }
+    if (orderType !== "liquidity" && Number(amount) > siteConfig.maxTradeAmount) {
+      setNotice(`Beta orders are capped at ${siteConfig.maxTradeAmount} ${siteConfig.collateralSymbol}.`);
+      return;
+    }
 
     const priceBps = BigInt(Math.round(Number(limitPrice) * 100));
     if (orderType === "limit" && (priceBps <= 0n || priceBps >= 10_000n)) {
@@ -814,6 +857,7 @@ export default function Home() {
           <a href="#how-it-works">How it works</a>
           <a href="#flywheel">Flywheel</a>
           <a href="/rewards">Rewards</a>
+          <a href="/create">Create</a>
           <a href="/docs">Docs</a>
         </nav>
         <div className="header-actions">
@@ -850,20 +894,15 @@ export default function Home() {
         <div className="hero-shade" aria-hidden="true" />
         <div className="hero-content">
           <div className="hero-copy">
-            <div className="eyebrow"><span>BID</span> RWA HOUSING MARKETS // {siteConfig.networkName.toUpperCase()}</div>
-            <h1 id="hero-title">BID: real estate prediction markets.</h1>
+            <div className="eyebrow"><span>BID</span> HOUSING MARKETS // {siteConfig.networkName.toUpperCase()}</div>
+            <h1 id="hero-title"><span>BID</span>Real estate<br />prediction markets.</h1>
             <p>
-              {siteConfig.collateralSymbol}-backed outcome pools turn housing data into tradable odds.
-              {siteConfig.isTestnet
-                ? "Test $BID activity simulates the rewards and liquidity flywheel before mainnet."
-                : verifiedPonsLive
-                  ? "$BID activity on Pons funds trader rewards and deeper liquidity."
-                  : "The $BID launch targets a verified rewards and liquidity flywheel on Pons."}
+              Trade where cities and home prices go next. Housing prediction markets on Robinhood Chain.
             </p>
           </div>
           <div className="hero-actions">
             <a className="primary-cta" href="#markets">Explore markets <span>↓</span></a>
-            <a className="secondary-cta" href="/docs">Read protocol docs <span>→</span></a>
+            <a className="secondary-cta" href="#how-it-works">How it works <span>→</span></a>
           </div>
         </div>
         <div className="hero-status" aria-label="Protocol highlights">
@@ -872,10 +911,8 @@ export default function Home() {
             : marketContractConfigured && marketReadStatus === "error"
               ? "Onchain read unavailable"
               : `${siteConfig.isTestnet ? "Testnet" : "Mainnet"} prelaunch`}</span>
-          <span>0% genesis market fee</span>
-          <span>{siteConfig.isTestnet
-            ? "2.5% flywheel simulation"
-            : verifiedPonsLive ? "Verified 2.5% Pons creator tax" : "2.5% target creator tax"} → rewards + LP</span>
+          <span>0% prediction market fee for now</span>
+          <span>{creatorTaxPercent}% BID creator fee fuels the flywheel</span>
         </div>
       </section>
 
@@ -885,13 +922,13 @@ export default function Home() {
             <div><SampleBadge /><span>24H VOLUME</span><strong>$6.4M</strong><em>+18.2%</em></div>
             <div><SampleBadge /><span>OPEN INTEREST</span><strong>$12.8M</strong><em>+6.4%</em></div>
             <div><SampleBadge /><span>ACTIVE MARKETS</span><strong>24</strong><em>12 cities</em></div>
-            <div><SampleBadge /><span>PONS CREATOR TAX</span><strong>2.5%</strong><em>rewards + LP</em></div>
+            <div><SampleBadge /><span>BID CREATOR FEE</span><strong>1.5%</strong><em>fuels the flywheel</em></div>
           </>
         ) : (
           <div className="launch-strip">
-            <span>0% BID TRADING FEE</span>
+            <span>0% PREDICTION MARKET FEE FOR NOW</span>
             <strong>{siteConfig.collateralSymbol}-backed finite-outcome pools.</strong>
-            <em>2.5% {siteConfig.isTestnet ? "testnet" : verifiedPonsLive ? "verified Pons" : "target"} flywheel → rewards + deeper LP</em>
+            <em>1.5% BID creator fee → protocol flywheel</em>
           </div>
         )}
       </section>
@@ -944,12 +981,12 @@ export default function Home() {
                         ? <em><SampleBadge compact /> {market.signal}</em>
                         : configuredAddress(market.contractAddress) && marketReadStatus === "error"
                           ? <em>Onchain read unavailable</em>
-                          : <em>Opening soon</em>}
+                          : <em>Prelaunch</em>}
                   </span>
-                  <strong>{market.short}</strong>
+                  <strong>{market.question}</strong>
                   <small>Resolves {liveCloseDates[market.id] ?? market.closes} · {livePrices[market.id]
                     ? "Onchain pool"
-                    : showSampleData ? `Vol ${market.volume}` : "Opening soon"}</small>
+                    : showSampleData ? `Vol ${market.volume}` : "Awaiting liquidity"}</small>
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
                   {livePrices[market.id] || showSampleData ? (
@@ -1019,7 +1056,7 @@ export default function Home() {
             <p className="ticket-note ticket-note-top">
               {orderType === "liquidity"
                 ? `Supply ${siteConfig.collateralSymbol} to deepen every outcome. Withdrawals merge balanced inventory back into ${siteConfig.collateralSymbol}.`
-                : `0% BID protocol fee at launch. Orders use ${siteConfig.collateralSymbol}; network gas still applies.`}
+                : `0% prediction market fee for now. Orders use ${siteConfig.collateralSymbol}; network gas still applies.`}
             </p>
             {orderType !== "liquidity" && (
               <div className={`outcome-picker ${selected.mode === "field" ? "field-picker" : ""}`}>
@@ -1088,6 +1125,7 @@ export default function Home() {
                 id="trade-amount"
                 inputMode="decimal"
                 min="0"
+                max={orderType === "liquidity" ? undefined : siteConfig.maxTradeAmount}
                 value={amount}
                 onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
                 aria-label={orderType === "liquidity" && liquidityAction === "remove"
@@ -1097,7 +1135,7 @@ export default function Home() {
               <em>{orderType === "liquidity" && liquidityAction === "remove" ? "BID-LP" : siteConfig.collateralSymbol}</em>
             </div>
             <div className="quick-amounts">
-              {[25, 100, 250, 500].map((value) => (
+              {(orderType === "liquidity" ? [1, 5, 10, 25] : [0.1, 0.25, 0.5, 1]).map((value) => (
                 <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
               ))}
               {orderType === "liquidity" && liquidityAction === "remove" && currentLpPosition && (
@@ -1110,6 +1148,7 @@ export default function Home() {
                 </button>
               )}
             </div>
+            {orderType !== "liquidity" && <p className="integration-status">CAPPED BETA · MAX {siteConfig.maxTradeAmount} USDG PER ORDER</p>}
 
             {orderType === "liquidity" ? (
               <>
@@ -1159,19 +1198,25 @@ export default function Home() {
               className="review-button"
               type="button"
               onClick={reviewOrder}
-              disabled={transactionPending || (marketContractConfigured && marketReadStatus === "error" && !selectedPrices)}
+              disabled={
+                transactionPending
+                || (!marketContractConfigured && !isDemo)
+                || (marketContractConfigured && marketReadStatus === "error" && !selectedPrices)
+              }
             >
               {transactionPending
                 ? "Waiting for confirmation"
+                : !marketContractConfigured && !isDemo
+                  ? "Market prelaunch"
                 : walletConnected
                   ? orderType === "liquidity"
                     ? liquidityAction === "add" ? "Add liquidity" : "Withdraw liquidity"
-                    : `${orderType === "market" ? "Buy" : "Place limit"} ${outcome.label}`
+                    : orderType === "market" ? "Review order" : `Place ${outcome.label} limit`
                   : "Connect wallet"}
               <span>→</span>
             </button>
             {!marketContractConfigured && (
-              <p className="integration-status">This pool is in prelaunch. Add its deployed address to turn on real quotes and order signing.</p>
+              <p className="integration-status">PRELAUNCH · AWAITING LIQUIDITY</p>
             )}
             {marketContractConfigured && marketReadStatus === "error" && !selectedPrices && (
               <p className="integration-status">This pool is configured, but its onchain state is unavailable. Transactions stay disabled until the read succeeds.</p>
@@ -1188,18 +1233,15 @@ export default function Home() {
         <div className="steps">
           <article>
             <span>01 / PICK</span>
-            <strong>Choose the market</strong>
-            <p>Trade a YES/NO question, a city matchup, or a finite field backed one-for-one by {siteConfig.collateralSymbol}.</p>
+            <strong>Choose a housing market.</strong>
           </article>
           <article>
-            <span>02 / POOL</span>
-            <strong>Price against the LP</strong>
-            <p>A fixed-product market maker turns pooled outcome inventory into live odds and deeper fills.</p>
+            <span>02 / PRICE</span>
+            <strong>Trade your view against available liquidity.</strong>
           </article>
           <article>
             <span>03 / SETTLE</span>
-            <strong>Let the index decide</strong>
-            <p>Public housing data resolves the winner. Winning contracts redeem according to locked market terms.</p>
+            <strong>Published housing data determines the outcome.</strong>
           </article>
         </div>
         <div className="settlement-strip">
@@ -1211,13 +1253,8 @@ export default function Home() {
           <div className="revenue-copy">
             <span className="section-kicker">THE BID FLYWHEEL</span>
             <h3>Volume feeds depth.<br />Depth feeds volume.</h3>
-            <p>
-              {siteConfig.isTestnet
-                ? "tBID mirrors the planned 2.5% Pons creator-tax flywheel for testing. Simulated proceeds follow the same 70/20/10 allocation used by the production contracts."
-                : verifiedPonsLive
-                  ? "$BID is verified on Pons with a creator tax fixed at 2.5%. Creator-tax proceeds route 70% to prediction rewards, 20% to protocol-owned market liquidity, and 10% to protocol reserves."
-                  : "$BID targets a 2.5% Pons creator tax at launch with a 70/20/10 rewards, liquidity, and reserve split. The final CA, tax, fee recipient, and quote asset must pass onchain verification before activation."}
-            </p>
+            <p>BID routes creator fees back through the protocol, rewarding the liquidity behind its markets and continuously strengthening the system.</p>
+            <strong className="flywheel-story">TRADE MARKETS. PROVIDE LIQUIDITY. GET REWARDED.</strong>
             <a
               className="protocol-proof"
               href={siteConfig.isTestnet && siteConfig.marketFactoryAddress
@@ -1233,27 +1270,56 @@ export default function Home() {
                 : siteConfig.ponsFactory ? "Pons v2 factory" : "Factory awaiting publication"} · Chain {siteConfig.robinhoodChainId} ↗
             </a>
           </div>
-          <div className="fee-grid" aria-label={siteConfig.isTestnet ? "Testnet flywheel allocation" : "Pons creator-tax allocation"}>
-            <article className="platform-fee"><strong>{creatorTaxPercent}%</strong><span>{siteConfig.isTestnet
-              ? "Simulated creator tax · testnet only"
-              : verifiedPonsLive ? "Verified Pons creator tax" : "Target creator tax · awaiting launch"}</span></article>
-            <article><strong>{rewardsPercent}%</strong><span>Trade value → prediction-market rewards</span></article>
-            <article><strong>{liquidityPercent}%</strong><span>Trade value → prediction-market LP</span></article>
-            <article><strong>{reservePercent}%</strong><span>Trade value → protocol reserve</span></article>
+          <div className="flywheel-system" aria-label="BID creator-fee allocation">
+            <div className="flywheel-head">
+              <div><strong>{creatorTaxPercent}%</strong><span>BID CREATOR FEE</span></div>
+              <p>Pons may charge separate protocol or base fees.</p>
+            </div>
+            <div className="flywheel-loop" aria-label="Activity feeds BID and BID feeds its markets">
+              {['ACTIVITY', 'FEES', 'REWARDS', 'LIQUIDITY', 'BETTER MARKETS'].map((label, index) => (
+                <span key={label}>{label}{index < 4 && <i>→</i>}</span>
+              ))}
+            </div>
+            <div className="allocation-bar" aria-label="45 percent LP rewards, 30 percent market liquidity, 10 percent buyback and burn, 10 percent treasury, 5 percent creator rewards">
+              <i className="lp" style={{ flexBasis: `${siteConfig.lpRewardsShareBps / 100}%` }} />
+              <i className="liquidity" style={{ flexBasis: `${siteConfig.marketLiquidityShareBps / 100}%` }} />
+              <i className="buyback" style={{ flexBasis: `${siteConfig.buybackBurnShareBps / 100}%` }} />
+              <i className="treasury" style={{ flexBasis: `${siteConfig.treasuryShareBps / 100}%` }} />
+              <i className="creator" style={{ flexBasis: `${siteConfig.creatorRewardsShareBps / 100}%` }} />
+            </div>
+            <div className="allocation-key">
+              <span><i className="lp" /><strong>45%</strong> LP REWARDS <em>RESERVE</em></span>
+              <span><i className="liquidity" /><strong>30%</strong> MARKET LIQUIDITY <em>AUTO-DEPLOY READY</em></span>
+              <span><i className="buyback" /><strong>10%</strong> BUYBACK + BURN <em>RESERVE BUILDING</em></span>
+              <span><i className="treasury" /><strong>10%</strong> TREASURY</span>
+              <span><i className="creator" /><strong>5%</strong> CREATOR REWARDS <em>RESERVE</em></span>
+            </div>
+            <div className="flywheel-proof">
+              <span><small>TOTAL BID CREATOR FEES CLAIMED</small><strong>{flywheelProof ? `${displayTokenAmount(flywheelProof.gross, 6)} USDG` : "AWAITING PUBLICATION"}</strong></span>
+              <span><small>LP REWARDS ALLOCATED</small><strong>{flywheelProof ? `${displayTokenAmount(flywheelProof.lpRewards, 6)} USDG` : "AWAITING PUBLICATION"}</strong></span>
+              <span><small>LIQUIDITY ALLOCATED</small><strong>{flywheelProof ? `${displayTokenAmount(flywheelProof.marketLiquidity, 6)} USDG` : "AWAITING PUBLICATION"}</strong></span>
+              <span><small>BUYBACK RESERVE</small><strong>{flywheelProof ? `${displayTokenAmount(flywheelProof.buybackBurn, 6)} USDG` : "AWAITING PUBLICATION"}</strong></span>
+              <span><small>BID BURNED</small><strong>NOT ACTIVE</strong></span>
+              <span><small>TREASURY</small><strong>{flywheelProof ? `${displayTokenAmount(flywheelProof.treasury, 6)} USDG` : "AWAITING PUBLICATION"}</strong></span>
+              <span><small>CREATOR REWARDS RESERVE</small><strong>{flywheelProof ? `${displayTokenAmount(flywheelProof.creatorRewards, 6)} USDG` : "AWAITING PUBLICATION"}</strong></span>
+              {flywheelProof?.latestTransaction && (
+                <a href={`${siteConfig.explorerUrl}/tx/${flywheelProof.latestTransaction}`} target="_blank" rel="noreferrer">LATEST ALLOCATION TX ↗</a>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
       <section className="portfolio-tease" id="creator-markets">
-        <span>ROADMAP / TOKEN-GATED CREATION</span>
+        <span>COMING SOON / TOKEN-GATED CREATION</span>
         <h2>Hold. Burn.<br />Own the market.</h2>
-        <p>Community launchers will hold a minimum $BID balance, burn a small launch amount, and earn a capped creator royalty from the markets they originate.</p>
+        <p>BID will open market creation to the community. Hold the required $BID, burn to launch, create a housing market, and earn a capped share of the activity it generates.</p>
         <div className="creator-roadmap" aria-label="Future creator market mechanics">
           <span><strong>01</strong> Hold $BID</span>
           <span><strong>02</strong> Burn to launch</span>
           <span><strong>03</strong> Earn royalties</span>
         </div>
-        <button type="button" disabled>Creator markets · coming later</button>
+        <a className="creator-link" href="/create">Create a market · coming soon</a>
       </section>
 
       <footer>

@@ -18,7 +18,9 @@ contract DeployBidTestnet is Script {
     BidTestToken private bidToken;
     BidTestVault private rewardsVault;
     BidTestVault private liquidityVault;
+    BidTestVault private buybackVault;
     BidTestVault private reserveVault;
+    BidTestVault private creatorRewardsVault;
     BidFlywheelTreasury private flywheelTreasury;
     BidMarketFactory private factory;
     address private miamiTampa;
@@ -45,17 +47,22 @@ contract DeployBidTestnet is Script {
         bidToken = new BidTestToken("BID Test Token", "tBID", 18, deployer, 1_000_000_000e18, false);
         rewardsVault = new BidTestVault(deployer);
         liquidityVault = new BidTestVault(deployer);
+        buybackVault = new BidTestVault(deployer);
         reserveVault = new BidTestVault(deployer);
+        creatorRewardsVault = new BidTestVault(deployer);
         flywheelTreasury = new BidFlywheelTreasury(
             address(rewardsVault),
             address(liquidityVault),
+            address(buybackVault),
             address(reserveVault),
+            address(creatorRewardsVault),
             address(0),
             address(0),
             address(0),
             deployer
         );
-        factory = new BidMarketFactory(collateral, bidToken, deployer, deployer);
+        factory = new BidMarketFactory(collateral, deployer, deployer, 50_000e6);
+        factory.bindBidToken(bidToken);
 
         collateral.approve(address(factory), liquidityPerMarket * 3);
     }
@@ -100,7 +107,9 @@ contract DeployBidTestnet is Script {
         console2.log("NEXT_PUBLIC_BID_FLYWHEEL_TREASURY=%s", address(flywheelTreasury));
         console2.log("NEXT_PUBLIC_BID_REWARDS_VAULT=%s", address(rewardsVault));
         console2.log("NEXT_PUBLIC_BID_LIQUIDITY_VAULT=%s", address(liquidityVault));
-        console2.log("NEXT_PUBLIC_BID_RESERVE_VAULT=%s", address(reserveVault));
+        console2.log("NEXT_PUBLIC_BID_BUYBACK_VAULT=%s", address(buybackVault));
+        console2.log("NEXT_PUBLIC_BID_PROTOCOL_TREASURY=%s", address(reserveVault));
+        console2.log("NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT=%s", address(creatorRewardsVault));
         console2.log("NEXT_PUBLIC_BID_MARKET_MIA_TPA=%s", miamiTampa);
         console2.log("NEXT_PUBLIC_BID_MARKET_CITY_FIELD=%s", cityField);
         console2.log("NEXT_PUBLIC_BID_MARKET_AUSTIN=%s", austin);

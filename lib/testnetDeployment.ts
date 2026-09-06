@@ -5,7 +5,9 @@ export const testnetDeployment = {
   flywheelTreasuryAddress: "",
   rewardsVaultAddress: "",
   liquidityVaultAddress: "",
-  reserveVaultAddress: "",
+  buybackVaultAddress: "",
+  creatorRewardsVaultAddress: "",
+  protocolTreasuryAddress: "",
   marketAddresses: {
     miamiTampa: "",
     cityField: "",

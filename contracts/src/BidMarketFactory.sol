@@ -18,6 +18,9 @@ contract BidMarketFactory is Ownable {
     error InvalidCommunityFee();
     error InvalidAddress();
     error ZeroInitialLiquidity();
+    error BidTokenNotBound();
+    error BidTokenAlreadyBound();
+    error InvalidTradeLimit();
 
     event MarketCreated(
         address indexed market,
@@ -29,10 +32,12 @@ contract BidMarketFactory is Ownable {
     event CommunityCreationConfigured(
         bool enabled, uint256 minimumBidBalance, uint256 bidBurnAmount, uint16 creatorRoyaltyBps
     );
+    event BidTokenBound(address indexed bidToken);
 
     IERC20 public immutable collateral;
-    IERC20 public immutable bidToken;
+    IERC20 public bidToken;
     address public immutable resolutionOracle;
+    uint256 public immutable maxTradeAmount;
 
     bool public communityCreationEnabled;
     uint256 public minimumBidBalance;
@@ -42,15 +47,23 @@ contract BidMarketFactory is Ownable {
     address[] private _markets;
     mapping(address => bool) public isBidMarket;
 
-    constructor(IERC20 collateral_, IERC20 bidToken_, address resolutionOracle_, address initialOwner)
+    constructor(IERC20 collateral_, address resolutionOracle_, address initialOwner, uint256 maxTradeAmount_)
         Ownable(initialOwner)
     {
-        if (address(collateral_) == address(0) || address(bidToken_) == address(0) || resolutionOracle_ == address(0)) {
+        if (address(collateral_) == address(0) || resolutionOracle_ == address(0)) {
             revert InvalidAddress();
         }
+        if (maxTradeAmount_ == 0) revert InvalidTradeLimit();
         collateral = collateral_;
-        bidToken = bidToken_;
         resolutionOracle = resolutionOracle_;
+        maxTradeAmount = maxTradeAmount_;
+    }
+
+    function bindBidToken(IERC20 bidToken_) external onlyOwner {
+        if (address(bidToken) != address(0)) revert BidTokenAlreadyBound();
+        if (address(bidToken_) == address(0) || address(bidToken_).code.length == 0) revert InvalidAddress();
+        bidToken = bidToken_;
+        emit BidTokenBound(address(bidToken_));
     }
 
     function marketCount() external view returns (uint256) {
@@ -92,9 +105,11 @@ contract BidMarketFactory is Ownable {
         uint256 initialLiquidity
     ) external returns (address market) {
         if (!communityCreationEnabled) revert CommunityCreationDisabled();
-        if (bidToken.balanceOf(msg.sender) < minimumBidBalance) revert TokenGateNotMet();
+        IERC20 token = bidToken;
+        if (address(token) == address(0)) revert BidTokenNotBound();
+        if (token.balanceOf(msg.sender) < minimumBidBalance) revert TokenGateNotMet();
         if (bidBurnAmount > 0) {
-            bidToken.safeTransferFrom(msg.sender, BURN_ADDRESS, bidBurnAmount);
+            token.safeTransferFrom(msg.sender, BURN_ADDRESS, bidBurnAmount);
         }
 
         market = _createMarket(
@@ -111,6 +126,7 @@ contract BidMarketFactory is Ownable {
         if (creatorRoyaltyBps_ > MAX_COMMUNITY_CREATOR_FEE_BPS) {
             revert InvalidCommunityFee();
         }
+        if (enabled && address(bidToken) == address(0)) revert BidTokenNotBound();
         communityCreationEnabled = enabled;
         minimumBidBalance = minimumBidBalance_;
         bidBurnAmount = bidBurnAmount_;
@@ -130,9 +146,16 @@ contract BidMarketFactory is Ownable {
     ) private returns (address marketAddress) {
         if (initialLiquidity == 0) revert ZeroInitialLiquidity();
 
-        BidMarket market = new BidMarket(
-            collateral, address(this), resolutionOracle, creator, closesAt, creatorFeeBps, question, outcomes
-        );
+        BidMarket.MarketConfig memory config = BidMarket.MarketConfig({
+            collateral: collateral,
+            factory: address(this),
+            oracle: resolutionOracle,
+            marketCreator: creator,
+            closesAt: closesAt,
+            creatorFeeBps: creatorFeeBps,
+            maxTradeAmount: maxTradeAmount
+        });
+        BidMarket market = new BidMarket(config, question, outcomes);
         marketAddress = address(market);
         isBidMarket[marketAddress] = true;
         _markets.push(marketAddress);

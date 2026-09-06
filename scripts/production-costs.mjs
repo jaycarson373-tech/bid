@@ -9,6 +9,8 @@ import {
   parseAbi,
 } from "viem";
 
+import { bidFeePolicy } from "../config/bid-fee-policy.mjs";
+
 const DEFAULT_RPC_URL = "https://rpc.mainnet.chain.robinhood.com";
 const DEFAULT_PONS_FACTORY = "0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e";
 const EXPECTED_CHAIN_ID = Number(process.env.BID_EXPECTED_CHAIN_ID || "4663");
@@ -70,7 +72,9 @@ try {
     throw new Error(`no contract bytecode at Pons factory ${ponsFactory}`);
   }
   if (!pairApproved) throw new Error(`Pons factory has not approved pair token ${pairToken}`);
-  if (maxTax < 250) throw new Error(`Pons creator-tax cap is ${maxTax} bps; BID requires 250 bps`);
+  if (maxTax < bidFeePolicy.creatorFeeBps) {
+    throw new Error(`Pons creator-fee cap is ${maxTax} bps; BID requires ${bidFeePolicy.creatorFeeBps} bps`);
+  }
   if (!isAddressEqual(escrow, expectedEscrow)) throw new Error(`Pons escrow mismatch: factory returned ${escrow}`);
   if (!isAddressEqual(hook, expectedHook)) throw new Error(`Pons hook mismatch: factory returned ${hook}`);
 
@@ -92,7 +96,7 @@ try {
   console.log(`Pons fee escrow verified: ${escrow}`);
   console.log(`Pons fee hook verified: ${hook}`);
   console.log(`Pons launch economics (config ${launchConfigId}): ${economics}`);
-  console.log(`BID 2.5% creator tax allowed: yes (factory cap ${maxTax} bps)`);
+  console.log(`BID 1.5% creator fee allowed: yes (factory cap ${maxTax} bps)`);
   console.log(`Deployer eligible now: ${canLaunch === null ? "pending BID_DEPLOYER" : "yes"}`);
   console.log(`Pons launch fee now: ${formatEther(launchFee)} ETH`);
   console.log(`Gas price now: ${formatGwei(gasPrice)} gwei`);
@@ -101,9 +105,9 @@ try {
     console.log(`  ${gasUnits.toLocaleString("en-US")} gas = ${formatEther(gasUnits * gasPrice)} ETH`);
   }
   console.log(`Keeper minimum configured reserve: ${formatEther(keeperReserve)} ETH`);
-  console.log("Genesis liquidity capital (not a fee):");
-  console.log("  Lean: 30,000 USDG total (10,000 per market)");
-  console.log("  Recommended: 75,000 USDG total (25,000 per market)");
+console.log("Genesis liquidity capital (not a fee):");
+console.log("  Capped beta: 25 USDG for one market");
+console.log("  Immutable beta order cap: 1 USDG per order");
   if (configuredPerMarket) {
     const perMarket = BigInt(configuredPerMarket);
     console.log(`  Configured: ${formatUnits(perMarket * 3n, collateralDecimals)} USDG total (${formatUnits(perMarket, collateralDecimals)} per market)`);

@@ -8,11 +8,13 @@ This package contains the Robinhood Chain prediction-market MVP:
   caller-provided minimums; imbalanced withdrawal inventory remains available
   to the LP as outcome balances.
 - `BidMarketFactory`: owner-created launch markets plus a disabled-by-default
-  community path with $BID holding, burn, and creator-royalty settings.
+  community path with $BID holding, burn, and creator-royalty settings. Genesis
+  markets can be deployed before the BID token exists; the token can be bound
+  once by the owner after its verified Pons launch.
 - `BidFlywheelTreasury`: claims its configured Pons escrow balance and splits
-  native or ERC-20 balances 70/20/10 between rewards, protocol-owned liquidity,
-  and the protocol reserve.
-- `BidRewardsDistributor`: holds the 70% allocation in funded immutable Merkle
+  native or ERC-20 balances 45/30/10/10/5 between LP rewards, protocol-owned
+  liquidity, buyback and burn, protocol treasury, and creator rewards.
+- `BidRewardsDistributor`: holds the 45% LP-rewards allocation in funded immutable Merkle
   epochs, prevents duplicate claims, and pays each proof to its entitled wallet.
 - `BidLiquidityVault`: holds the liquidity allocation and lets a dedicated
   operator add it only to owner-approved BID markets while the owner retains
@@ -58,7 +60,7 @@ forge script script/DeployBidTestnet.s.sol:DeployBidTestnet \
 
 Copy the emitted `NEXT_PUBLIC_*` addresses into `lib/testnetDeployment.ts`,
 then run the signed smoke test. It executes a buy, LP deposit and withdrawal,
-resting limit creation and cancellation, and a 70/20/10 tBID treasury split.
+resting limit creation and cancellation, and a 45/30/10/10/5 tBID treasury split.
 
 ```bash
 export NEXT_PUBLIC_BID_CONTRACT_ADDRESS=0x...
@@ -86,7 +88,9 @@ export BID_TREASURY_OWNER=0x...
 export BID_REWARDS_OWNER=0x...
 export BID_COLLATERAL_TOKEN=0x...
 export PONS_FACTORY=0x...
-export BID_RESERVE_VAULT=0x...
+export BID_BUYBACK_VAULT=0x...
+export BID_PROTOCOL_TREASURY=0x...
+export BID_CREATOR_REWARDS_VAULT=0x...
 export BID_LIQUIDITY_OPERATOR=0x...
 export PONS_FEE_ESCROW=0x...
 export PONS_FEE_HOOK=0x...
@@ -99,12 +103,38 @@ forge script script/DeployBidTreasury.s.sol:DeployBidTreasury \
 
 This deployment prints `NEXT_PUBLIC_BID_REWARDS_VAULT` for the new rewards
 distributor. Use that output everywhere the frontend or verifier asks for the
-rewards vault; do not substitute a personal wallet.
+LP rewards reserve; do not substitute a personal wallet.
+
+Before the token launch, deploy the market factory without a BID token address,
+then seed the three USDG genesis markets. The factory stays temporarily owned by
+the deployer so the final token can be bound once after launch.
+
+```bash
+export BID_RESOLUTION_ORACLE=0x...
+export BID_MAX_TRADE_AMOUNT=1000000
+forge script script/DeployBidMarkets.s.sol:DeployBidMarkets \
+  --rpc-url "$RH_RPC_URL" \
+  --keystore /path/to/deployer-keystore \
+  --password-file /path/to/password-file \
+  --broadcast
+
+export BID_MARKET_FACTORY=0x...
+export BID_LIQUIDITY_VAULT=0x...
+export BID_LIQUIDITY_VAULT_OWNER=0x...
+export BID_MARKET_CLOSE_TIME=1798761599
+export BID_GENESIS_MARKET_COUNT=1
+export BID_INITIAL_LIQUIDITY=25000000
+forge script script/CreateGenesisMarkets.s.sol:CreateGenesisMarkets \
+  --rpc-url "$RH_RPC_URL" \
+  --keystore /path/to/deployer-keystore \
+  --password-file /path/to/password-file \
+  --broadcast
+```
 
 Launch BID through Pons only after recording the deployed treasury. The script
 pins the current economics, requires an approved USDG pair, checks launcher
 eligibility and tax limits, forces the treasury to be the fee recipient, fixes
-the creator tax at 2.5%, and keeps Pons buyback disabled.
+the creator fee at 1.5%, and keeps Pons buyback disabled.
 
 ```bash
 export BID_FLYWHEEL_TREASURY=0x...
@@ -126,9 +156,9 @@ forge script script/LaunchBidOnPons.s.sol:LaunchBidOnPons \
 ```
 
 The launch output is the final BID CA and Pons curve address. The deployment
-wallet temporarily owns the treasury so it can bind that curve, then the same
-script transfers treasury ownership to `BID_TREASURY_OWNER` before the market
-factory is deployed:
+wallet temporarily owns the treasury and market factory. The binding script
+verifies the Pons record, binds the curve and final BID token once, then transfers
+ownership to `BID_TREASURY_OWNER` and `BID_FACTORY_OWNER`:
 
 ```bash
 export BID_TOKEN_ADDRESS=0x...
@@ -140,54 +170,21 @@ forge script script/BindBidPonsCurve.s.sol:BindBidPonsCurve \
   --broadcast
 ```
 
-Once `BindBidPonsCurve` confirms the CA, binds the curve, and hands the treasury
-to its final owner, deploy the factory. `BID_COLLATERAL_TOKEN` must be the
-verified collateral address and `BID_TOKEN_ADDRESS` is the final CA.
-
-```bash
-export BID_COLLATERAL_TOKEN=0x...
-export BID_TOKEN_ADDRESS=0x...
-export BID_FLYWHEEL_TREASURY=0x...
-export PONS_FACTORY=0x...
-export PONS_CURVE_ADDRESS=0x...
-export BID_RESOLUTION_ORACLE=0x...
-forge script script/DeployBidMarkets.s.sol:DeployBidMarkets \
-  --rpc-url "$RH_RPC_URL" \
-  --keystore /path/to/deployer-keystore \
-  --password-file /path/to/password-file \
-  --broadcast
-```
-
-After the factory owner has funded the deployment wallet with USDG, create and
-seed the three launch markets. `BID_MARKET_CLOSE_TIME` is a Unix timestamp and
-`BID_INITIAL_LIQUIDITY` uses the collateral token's smallest unit.
-
-```bash
-export BID_MARKET_FACTORY=0x...
-export BID_LIQUIDITY_VAULT=0x...
-export BID_LIQUIDITY_VAULT_OWNER=0x...
-export BID_MARKET_CLOSE_TIME=1798761599
-export BID_INITIAL_LIQUIDITY=25000000000
-forge script script/CreateGenesisMarkets.s.sol:CreateGenesisMarkets \
-  --rpc-url "$RH_RPC_URL" \
-  --keystore /path/to/deployer-keystore \
-  --password-file /path/to/password-file \
-  --broadcast
-```
-
 Production deployment requires an independent contract review, a finalized
 resolution policy, verified treasury/oracle ownership, and enough USDG to seed
 each genesis market. The deployed `BidFlywheelTreasury` address must be set as
-the Pons v2 creator-fee recipient when $BID launches. The 2.5% creator-tax rate
+the Pons v2 creator-fee recipient when $BID launches. The 1.5% creator-fee rate
 is fixed at token creation; Pons v2 can redirect future creator earnings to a
 new recipient, so production operations must monitor that setting.
-The example seeds 25,000 USDG per market, requiring 75,000 USDG total. Initial
+The capped beta example seeds one market with 25 USDG and enforces a 1 USDG
+maximum order in the market contract. Initial
 BID-LP shares are minted to the liquidity vault rather than the deployer.
 
 ## Reward epochs
 
-Pons fees claimed by the treasury are split immediately. The 70% share funds
-`BidRewardsDistributor`; funding alone does not assign rewards. Generate a
+Pons fees claimed by the treasury are allocated immediately and atomically. The
+45% LP-rewards share funds `BidRewardsDistributor`; funding alone does not assign
+rewards. Generate a
 reviewable Merkle epoch from an approved JSON allocation. The input contains
 `epochId`, `asset`, `decimals`, and a `rewards` array of EVM `account` and
 decimal `amount` records.
@@ -203,3 +200,6 @@ uncommitted balance. A user or relayer calls
 `claim(epochId, account, amount, proof)`; payment always goes to `account`, so a
 relayer cannot redirect it. Publish the unchanged proof JSON at the rewards
 manifest URL after the onchain root is confirmed.
+
+Do not publish an LP reward epoch until the time-weighted liquidity and
+anti-snapshot eligibility policy has been implemented and independently reviewed.

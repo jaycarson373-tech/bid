@@ -133,16 +133,14 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             </p>
             <h3>Genesis funding</h3>
             <table>
-              <thead><tr><th>Depth per market</th><th>Three-market total</th><th>Use</th></tr></thead>
+              <thead><tr><th>Initial seed</th><th>Order cap</th><th>Use</th></tr></thead>
               <tbody>
-                <tr><td>5,000 USDG</td><td>15,000 USDG</td><td>Thin beta; $500 orders materially move five-way odds</td></tr>
-                <tr><td>10,000 USDG</td><td>30,000 USDG</td><td>Lean public launch</td></tr>
-                <tr><td>25,000 USDG</td><td>75,000 USDG</td><td>Recommended launch target</td></tr>
+                <tr><td>25 USDG</td><td>1 USDG</td><td>Capped one-market beta</td></tr>
               </tbody>
             </table>
             <p className={styles.note}>
-              USDG uses six decimals. For 25,000 USDG per pool, set <code>BID_INITIAL_LIQUIDITY=25000000000</code>.
-              The deployment wallet supplies 75,000 USDG, while every genesis BID-LP share is minted directly to the protocol liquidity vault.
+              USDG uses six decimals. Set <code>BID_INITIAL_LIQUIDITY=25000000</code>, <code>BID_MAX_TRADE_AMOUNT=1000000</code>, and <code>BID_GENESIS_MARKET_COUNT=1</code>.
+              Zero liquidity cannot produce a quote. The 25 USDG seed remains protocol-owned and every genesis BID-LP share is minted directly to the liquidity vault.
             </p>
           </section>
 
@@ -178,19 +176,27 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <span className={styles.sectionNumber}>06</span>
             <h2>The BID flywheel</h2>
             <p>
-              {siteConfig.isTestnet
-                ? "Testnet uses tBID to exercise the same 2.5% flywheel economics without representing a live Pons token."
-                : siteConfig.isPonsVerified
-                  ? "The verified 2.5% Pons v2 creator tax applies to $BID token trading, not to genesis prediction-market orders."
-                  : "The production launch targets a 2.5% Pons v2 creator tax, subject to final onchain verification."}
-              {" "}Claimed creator-tax proceeds route through the flywheel treasury with an immutable 70/20/10 allocation.
+              BID&apos;s creator-fee layer is 1.5%. Pons may charge separate protocol or base fees, so BID does not publish an all-in fee until the production Pons contracts are verified. Only realized, claimed fees are allocated under <code>BID_FEE_POLICY_V1</code>.
             </p>
             <div className={styles.split}>
-              <div><strong>1.75%</strong><span>Trading rewards</span></div>
-              <div><strong>0.50%</strong><span>Protocol-owned LP</span></div>
-              <div><strong>0.25%</strong><span>Protocol reserve</span></div>
+              <div><strong>45%</strong><span>LP rewards</span></div>
+              <div><strong>30%</strong><span>Market liquidity</span></div>
+              <div><strong>10%</strong><span>Buyback + burn</span></div>
+              <div><strong>10%</strong><span>Treasury</span></div>
+              <div><strong>5%</strong><span>Market creator rewards</span></div>
             </div>
-            <p className={styles.note}>Genesis BID markets charge a 0% protocol fee. Network gas still applies.</p>
+            <h3>Allocation status</h3>
+            <table>
+              <thead><tr><th>Allocation</th><th>Status</th><th>Behavior</th></tr></thead>
+              <tbody>
+                <tr><td>LP rewards</td><td>RESERVE ONLY</td><td>Accrues to the funded rewards distributor. No LP payout is published until time-weighted eligibility and anti-snapshot rules are approved.</td></tr>
+                <tr><td>Market liquidity</td><td>AUTOMATION READY</td><td>The keeper allocates by actual depth deficit across approved, open markets once explicitly enabled.</td></tr>
+                <tr><td>Buyback + burn</td><td>RESERVE ONLY</td><td>Accrues without blind buying. No buyback or burn executes until quoting, slippage, simulation, and burn controls are deployed.</td></tr>
+                <tr><td>Treasury</td><td>LIVE WITH CLAIMING</td><td>Routes directly to the configured secure treasury address in the same allocation transaction.</td></tr>
+                <tr><td>Market creator rewards</td><td>RESERVE ONLY</td><td>Accrues until community markets and anti-wash reward rules are active.</td></tr>
+              </tbody>
+            </table>
+            <p className={styles.note}>Smallest-unit rounding always accrues to treasury so the five allocations equal 100% of every fee event. Genesis BID markets charge a 0% prediction-market fee for now; network gas still applies.</p>
           </section>
 
           <section id="community">
@@ -209,7 +215,8 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <div className={styles.statusList}>
               <div><Status>TESTED</Status><span>AMM buys, sells, LP deposits and withdrawals</span></div>
               <div><Status>TESTED</Status><span>Escrowed limits, cancellation, resolution and redemption</span></div>
-              <div><Status>TESTED</Status><span>Token gate, burn, creator royalties and 70/20/10 treasury split</span></div>
+              <div><Status>TESTED</Status><span>One-time BID token binding, token gate, burn and creator royalties</span></div>
+              <div><Status>TESTED</Status><span>Versioned 45/30/10/10/5 fee allocation with deterministic rounding</span></div>
               <div><Status>TESTED</Status><span>Operator-managed deployment into protocol-owned market LP</span></div>
               <div><Status>TESTED</Status><span>Funded Merkle reward epochs with one-time wallet claims</span></div>
               <div><Status tone="pending">PENDING</Status><span>Independent audit and mainnet deployment</span></div>
@@ -224,7 +231,9 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><dt>Flywheel treasury</dt><dd><code>{siteConfig.flywheelTreasuryAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Rewards distributor</dt><dd><code>{siteConfig.rewardsVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Liquidity vault</dt><dd><code>{siteConfig.liquidityVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
-              <div><dt>Reserve vault</dt><dd><code>{siteConfig.reserveVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Buyback + burn reserve</dt><dd><code>{siteConfig.buybackVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Protocol treasury</dt><dd><code>{siteConfig.protocolTreasuryAddress || "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Creator rewards reserve</dt><dd><code>{siteConfig.creatorRewardsVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Genesis markets</dt><dd><code>{marketsConfigured ? "Configured" : "AWAITING PUBLICATION"}</code></dd></div>
             </dl>
 
@@ -232,15 +241,15 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <table>
               <thead><tr><th>Role</th><th>Configuration</th><th>Purpose</th></tr></thead>
               <tbody>
-                <tr><td>Pons creator recipient</td><td><code>BID_FLYWHEEL_TREASURY</code></td><td>Claims Pons fees and enforces 70/20/10</td></tr>
-                <tr><td>Rewards owner</td><td><code>BID_REWARDS_OWNER</code></td><td>Safe that publishes reviewed, funded reward epochs</td></tr>
-                <tr><td>LP operator</td><td><code>BID_LIQUIDITY_OPERATOR</code></td><td>Railway keeper that deploys the 20% allocation</td></tr>
+                <tr><td>Pons creator recipient</td><td><code>BID_FLYWHEEL_TREASURY</code></td><td>Contract that atomically claims and enforces 45/30/10/10/5</td></tr>
+                <tr><td>LP rewards owner</td><td><code>BID_REWARDS_OWNER</code></td><td>Safe that may publish reviewed, funded LP reward epochs</td></tr>
+                <tr><td>LP operator</td><td><code>BID_LIQUIDITY_OPERATOR</code></td><td>Railway keeper that deploys the 30% allocation</td></tr>
                 <tr><td>LP owner</td><td><code>BID_LIQUIDITY_VAULT_OWNER</code></td><td>Multisig that approves markets and controls withdrawals</td></tr>
                 <tr><td>Deployment payer</td><td><code>BID_DEPLOYER</code></td><td>Supplies the initial USDG and pays deployment gas</td></tr>
               </tbody>
             </table>
             <p className={styles.note}>
-              The Pons recipient is the treasury contract, not a personal wallet. Updating rewards or reserve wallets uses the treasury owner&apos;s
+              The Pons recipient is the treasury contract, not a personal wallet and has no private key. Updating reserve destinations uses the treasury owner&apos;s
               <code> setDestinations</code> call; replacing the treasury uses <code>transferPonsCreatorFeeRecipient</code> after existing escrow balances are claimed.
             </p>
           </section>
@@ -257,8 +266,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <tbody>
                 <tr><td>Pons launch</td><td>Read live from the factory</td><td>Pons v2 launch transaction</td></tr>
                 <tr><td>Deployment + keeper gas</td><td>Variable ETH</td><td>Robinhood Chain validators</td></tr>
-                <tr><td>Lean market depth</td><td>30,000 USDG</td><td>Three protocol-owned pools</td></tr>
-                <tr><td>Recommended market depth</td><td>75,000 USDG</td><td>Three protocol-owned pools</td></tr>
+                <tr><td>Capped beta seed</td><td>25 USDG</td><td>One protocol-owned pool</td></tr>
                 <tr><td>Keeper reserve</td><td>0.01 ETH minimum configured</td><td>Keeper wallet; spent only on transactions</td></tr>
               </tbody>
             </table>
@@ -274,24 +282,23 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <h2>Production operator flow</h2>
             <ol>
               <li>Deploy the rewards distributor, treasury and liquidity vault with multisig owners and the Railway keeper&apos;s public operator address.</li>
-              <li>Run <code>LaunchBidOnPons.s.sol</code> from an encrypted keystore with a 250 bps creator tax, buyback disabled, USDG pair asset, and the treasury contract as creator recipient.</li>
-              <li>Run <code>BindBidPonsCurve.s.sol</code> from the deployer; it binds the curve and hands treasury ownership to the final multisig before verification.</li>
-              <li>Deploy the market factory and three genesis markets, supplying 10,000 to 25,000 USDG per market from the deployment wallet.</li>
+              <li>Deploy the market factory and one capped genesis market before the token CA exists, supplying 25 USDG with a 1 USDG immutable order cap. The factory keeps community creation locked.</li>
+              <li>Run <code>LaunchBidOnPons.s.sol</code> from an encrypted local Foundry keystore with a 150 bps creator fee, buyback disabled, USDG pair asset, and the treasury contract as creator recipient.</li>
+              <li>Run <code>BindBidPonsCurve.s.sol</code> from the deployer; it verifies the launch, binds the final token and curve once, and hands factory and treasury ownership to their final multisigs.</li>
               <li>Put the public addresses in Vercel and Railway; put the keeper signer only in Railway&apos;s secret manager.</li>
-              <li>Enable one keeper replica. It fills executable limits, claims Pons fees, applies 70/20/10, and deploys eligible LP funds into approved open markets.</li>
+              <li>Enable one keeper replica. It fills executable limits, atomically claims and allocates Pons fees, and deploys eligible liquidity funds into approved open markets.</li>
             </ol>
             <h3>How the market maker works</h3>
             <p>
               The deployment wallet pays the initial USDG, but the factory mints every genesis LP share directly to the protocol liquidity vault.
-              The keeper can allocate the vault&apos;s 20% fee share only to owner-approved, open BID markets. It waits until at least 100 USDG is available per
-              eligible market, divides the available collateral evenly, and uses each market&apos;s minimum-share protection. The multisig owner controls approvals
+              The keeper can allocate the vault&apos;s 30% fee share only to owner-approved, open BID markets. It prioritizes markets below <code>LP_TARGET_DEPTH</code>
+              by real outcome-pool depth deficit, leaves sub-minimum amounts reserved, and uses each market&apos;s minimum-share protection. The multisig owner controls approvals
               and withdrawals; the keeper never owns the LP shares.
             </p>
             <div className={`${styles.callout} ${styles.warning}`}>
-              <strong>Rewards status</strong>
+              <strong>LP rewards status</strong>
               <p>
-                Treasury claiming, the exact 70/20/10 split, immutable funded reward epochs and duplicate-safe wallet claims are implemented and tested.
-                Trader scoring and anti-wash eligibility remain an operating-policy blocker before the first real allocation is published.
+                Treasury claiming, exact allocation, immutable funded reward epochs and duplicate-safe wallet claims are implemented and tested. The 45% share remains a reserve until time-weighted LP scoring and anti-snapshot eligibility are implemented and approved.
               </p>
             </div>
           </section>
@@ -301,11 +308,11 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <h2>Production requirements</h2>
             <ol>
               <li>Independent smart-contract audit and remediation.</li>
-              <li>Final $BID token address and verified 2.5% Pons v2 tax, recipient, quote asset, and escrow configuration.</li>
+              <li>Final $BID token address and verified 1.5% Pons v2 creator fee, recipient, quote asset, and escrow configuration.</li>
               <li>Documented housing index, edge-case policy, and production resolution oracle.</li>
               <li>Multisig ownership for the factory, oracle operations, and flywheel treasury.</li>
               <li>Funded single-replica keeper, indexer, production RPC, alerting, and transaction monitoring.</li>
-              <li>Approved reward-scoring and anti-wash policy for the tested 70% Merkle claim system.</li>
+              <li>Time-weighted LP reward scoring and anti-snapshot/anti-wash policy before the first 45% LP reward epoch.</li>
               <li>Sufficient {siteConfig.collateralSymbol} to seed every genesis pool and test real execution depth.</li>
               <li>Legal review for market availability, disclosures, and jurisdiction controls.</li>
             </ol>

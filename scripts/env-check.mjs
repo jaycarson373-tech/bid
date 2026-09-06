@@ -1,5 +1,7 @@
 import { isAddress } from "viem";
 
+import { bidFeePolicy } from "../config/bid-fee-policy.mjs";
+
 const PLACEHOLDER = /(<[^>]+>|\b(?:undefined|null|nan|test_token|testnet_address)\b|required|printed|your-project)/i;
 const ADDRESS_KEYS = [
   "NEXT_PUBLIC_PONS_FACTORY",
@@ -9,7 +11,9 @@ const ADDRESS_KEYS = [
   "NEXT_PUBLIC_BID_FLYWHEEL_TREASURY",
   "NEXT_PUBLIC_BID_REWARDS_VAULT",
   "NEXT_PUBLIC_BID_LIQUIDITY_VAULT",
-  "NEXT_PUBLIC_BID_RESERVE_VAULT",
+  "NEXT_PUBLIC_BID_BUYBACK_VAULT",
+  "NEXT_PUBLIC_BID_PROTOCOL_TREASURY",
+  "NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT",
   "NEXT_PUBLIC_BID_MARKET_MIA_TPA",
   "NEXT_PUBLIC_BID_MARKET_CITY_FIELD",
   "NEXT_PUBLIC_BID_MARKET_AUSTIN",
@@ -28,7 +32,9 @@ const ADDRESS_KEYS = [
   "BID_TREASURY_OWNER",
   "BID_REWARDS_OWNER",
   "BID_REWARDS_VAULT",
-  "BID_RESERVE_VAULT",
+  "BID_BUYBACK_VAULT",
+  "BID_PROTOCOL_TREASURY",
+  "BID_CREATOR_REWARDS_VAULT",
   "BID_LIQUIDITY_VAULT",
   "BID_LIQUIDITY_OPERATOR",
   "BID_LIQUIDITY_VAULT_OWNER",
@@ -42,9 +48,12 @@ const LIVE_KEYS = [
   "NEXT_PUBLIC_BID_COLLATERAL_ADDRESS",
   "NEXT_PUBLIC_BID_MARKET_FACTORY",
   "NEXT_PUBLIC_BID_FLYWHEEL_TREASURY",
+  "NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK",
   "NEXT_PUBLIC_BID_REWARDS_VAULT",
   "NEXT_PUBLIC_BID_LIQUIDITY_VAULT",
-  "NEXT_PUBLIC_BID_RESERVE_VAULT",
+  "NEXT_PUBLIC_BID_BUYBACK_VAULT",
+  "NEXT_PUBLIC_BID_PROTOCOL_TREASURY",
+  "NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT",
   "NEXT_PUBLIC_BID_MARKET_MIA_TPA",
   "NEXT_PUBLIC_BID_MARKET_CITY_FIELD",
   "NEXT_PUBLIC_BID_MARKET_AUSTIN",
@@ -67,6 +76,18 @@ const warnings = [];
 const value = (key) => process.env[key]?.trim() ?? "";
 const launchState = value("NEXT_PUBLIC_LAUNCH_STATE") || "prelaunch";
 const network = value("NEXT_PUBLIC_BID_NETWORK") || "mainnet";
+
+for (const key of ["BID_INITIAL_LIQUIDITY", "BID_MAX_TRADE_AMOUNT"]) {
+  if (!value(key)) continue;
+  try {
+    if (BigInt(value(key)) <= 0n) errors.push(`${key} must be a positive collateral base-unit amount`);
+  } catch {
+    errors.push(`${key} must be an integer in collateral base units`);
+  }
+}
+if (value("BID_GENESIS_MARKET_COUNT") && !/^[1-3]$/.test(value("BID_GENESIS_MARKET_COUNT"))) {
+  errors.push("BID_GENESIS_MARKET_COUNT must be 1, 2, or 3");
+}
 
 if (!["prelaunch", "demo", "live"].includes(launchState)) {
   errors.push("NEXT_PUBLIC_LAUNCH_STATE must be prelaunch, demo, or live");
@@ -93,11 +114,24 @@ for (const key of ADDRESS_KEYS) {
   }
 }
 
-if (value("NEXT_PUBLIC_CREATOR_TAX_BPS") && value("NEXT_PUBLIC_CREATOR_TAX_BPS") !== "250") {
-  errors.push("NEXT_PUBLIC_CREATOR_TAX_BPS must be 250 for the published BID flywheel");
+if (
+  value("NEXT_PUBLIC_CREATOR_TAX_BPS")
+  && value("NEXT_PUBLIC_CREATOR_TAX_BPS") !== String(bidFeePolicy.creatorFeeBps)
+) {
+  errors.push(`NEXT_PUBLIC_CREATOR_TAX_BPS must be ${bidFeePolicy.creatorFeeBps} for ${bidFeePolicy.version}`);
 }
 if (value("PONS_PROTOCOL_VERSION") && value("PONS_PROTOCOL_VERSION") !== "v2") {
-  errors.push("PONS_PROTOCOL_VERSION must be v2 for creator-tax verification");
+  errors.push("PONS_PROTOCOL_VERSION must be v2 for creator-fee verification");
+}
+
+if (value("NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK")) {
+  try {
+    if (BigInt(value("NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK")) < 0n) {
+      errors.push("NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK cannot be negative");
+    }
+  } catch {
+    errors.push("NEXT_PUBLIC_BID_DEPLOYMENT_BLOCK must be an integer block number");
+  }
 }
 
 if (launchState === "live") {
@@ -137,7 +171,7 @@ if (value("LP_DEPLOYMENT_ENABLED") === "true") {
   if (value("KEEPER_EXECUTION_ENABLED") !== "true") {
     errors.push("LP_DEPLOYMENT_ENABLED requires KEEPER_EXECUTION_ENABLED=true");
   }
-  for (const key of ["NEXT_PUBLIC_BID_COLLATERAL_ADDRESS", "NEXT_PUBLIC_BID_LIQUIDITY_VAULT"]) {
+  for (const key of ["NEXT_PUBLIC_BID_COLLATERAL_ADDRESS", "NEXT_PUBLIC_BID_LIQUIDITY_VAULT", "LP_TARGET_DEPTH"]) {
     if (!value(key)) errors.push(`${key} is required when LP deployment is enabled`);
   }
   try {
@@ -146,6 +180,13 @@ if (value("LP_DEPLOYMENT_ENABLED") === "true") {
     }
   } catch {
     errors.push("LP_MIN_DEPLOY_AMOUNT must be an integer in collateral base units");
+  }
+  try {
+    if (BigInt(value("LP_TARGET_DEPTH") || "0") <= 0n) {
+      errors.push("LP_TARGET_DEPTH must be a positive collateral base-unit amount");
+    }
+  } catch {
+    errors.push("LP_TARGET_DEPTH must be an integer in collateral base units");
   }
 }
 

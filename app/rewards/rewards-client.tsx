@@ -279,13 +279,13 @@ export default function RewardsClient() {
           <p className={styles.lead}>Published reward files are checked against the immutable epoch root before any wallet transaction is prepared.</p>
 
           <div className={styles.flow} aria-label="Reward flow">
-            <span>Pons fees</span><b>→</b><span>70% rewards</span><b>→</b><span>Published epoch</span><b>→</b><span>Wallet claim</span>
+            <span>Pons fees</span><b>→</b><span>45% LP rewards reserve</span><b>→</b><span>Reviewed epoch</span><b>→</b><span>Wallet claim</span>
           </div>
 
           <div className={styles.claimPanel}>
             <div className={styles.panelHeader}><span>LATEST EPOCH</span><strong>{manifest?.epochId ?? "AWAITING PUBLICATION"}</strong></div>
             {!configured ? (
-              <div className={styles.empty}><strong>Rewards begin after launch</strong><p>The distributor and first verified epoch have not been published yet.</p></div>
+              <div className={styles.empty}><strong>LP rewards are reserve only</strong><p>The distributor and first time-weighted, verified LP epoch have not been published yet.</p></div>
             ) : loading ? (
               <div className={styles.empty}><strong>Verifying epoch</strong><p>Matching the proof manifest to Robinhood Chain.</p></div>
             ) : !wallet ? (

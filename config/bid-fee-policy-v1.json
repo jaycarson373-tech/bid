@@ -1,0 +1,12 @@
+{
+  "version": "BID_FEE_POLICY_V1",
+  "creatorFeeBps": 150,
+  "basisPoints": 10000,
+  "allocations": {
+    "lpRewards": 4500,
+    "marketLiquidity": 3000,
+    "buybackBurn": 1000,
+    "treasury": 1000,
+    "creatorRewards": 500
+  }
+}

@@ -44,21 +44,29 @@ contract SmokeTestBidTestnet is Script {
     }
 
     function _testFlywheel(BidFlywheelTreasury flywheel, IERC20 bidToken) private {
-        address rewardsVault = flywheel.rewardsVault();
+        address rewardsVault = flywheel.lpRewardsReserve();
         address liquidityVault = flywheel.liquidityVault();
-        address reserveVault = flywheel.reserveVault();
+        address buybackVault = flywheel.buybackBurnReserve();
+        address reserveVault = flywheel.protocolTreasury();
+        address creatorRewardsVault = flywheel.creatorRewardsReserve();
         uint256 rewardsBefore = bidToken.balanceOf(rewardsVault);
         uint256 liquidityBefore = bidToken.balanceOf(liquidityVault);
+        uint256 buybackBefore = bidToken.balanceOf(buybackVault);
         uint256 reserveBefore = bidToken.balanceOf(reserveVault);
+        uint256 creatorRewardsBefore = bidToken.balanceOf(creatorRewardsVault);
 
         bidToken.transfer(address(flywheel), 10_000e18);
         flywheel.distributeToken(bidToken);
 
-        require(bidToken.balanceOf(rewardsVault) - rewardsBefore == 7_000e18, "BAD_REWARDS_SPLIT");
-        require(bidToken.balanceOf(liquidityVault) - liquidityBefore == 2_000e18, "BAD_LIQUIDITY_SPLIT");
+        require(bidToken.balanceOf(rewardsVault) - rewardsBefore == 4_500e18, "BAD_REWARDS_SPLIT");
+        require(bidToken.balanceOf(liquidityVault) - liquidityBefore == 3_000e18, "BAD_LIQUIDITY_SPLIT");
+        require(bidToken.balanceOf(buybackVault) - buybackBefore == 1_000e18, "BAD_BUYBACK_SPLIT");
         require(bidToken.balanceOf(reserveVault) - reserveBefore == 1_000e18, "BAD_RESERVE_SPLIT");
-        console2.log("SMOKE_FLYWHEEL_REWARDS_TBID=%s", uint256(7_000e18));
-        console2.log("SMOKE_FLYWHEEL_LIQUIDITY_TBID=%s", uint256(2_000e18));
+        require(bidToken.balanceOf(creatorRewardsVault) - creatorRewardsBefore == 500e18, "BAD_CREATOR_REWARDS_SPLIT");
+        console2.log("SMOKE_FLYWHEEL_LP_REWARDS_TBID=%s", uint256(4_500e18));
+        console2.log("SMOKE_FLYWHEEL_MARKET_LIQUIDITY_TBID=%s", uint256(3_000e18));
+        console2.log("SMOKE_FLYWHEEL_BUYBACK_TBID=%s", uint256(1_000e18));
         console2.log("SMOKE_FLYWHEEL_RESERVE_TBID=%s", uint256(1_000e18));
+        console2.log("SMOKE_FLYWHEEL_CREATOR_REWARDS_TBID=%s", uint256(500e18));
     }
 }

@@ -6,6 +6,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import {BidFeePolicy} from "./BidFeePolicy.sol";
+
 interface IPonsFeeEscrow {
     function claim() external returns (uint256 amount);
     function claimToken(address token) external returns (uint256 amount);
@@ -26,10 +28,13 @@ interface IPonsCreatorControls {
 contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 public constant REWARDS_SHARE_BPS = 7_000;
-    uint256 public constant LIQUIDITY_SHARE_BPS = 2_000;
-    uint256 public constant RESERVE_SHARE_BPS = 1_000;
-    uint256 public constant BPS = 10_000;
+    bytes32 public constant ALLOCATION_VERSION = BidFeePolicy.VERSION;
+    uint256 public constant LP_REWARDS_BPS = BidFeePolicy.LP_REWARDS_BPS;
+    uint256 public constant MARKET_LIQUIDITY_BPS = BidFeePolicy.MARKET_LIQUIDITY_BPS;
+    uint256 public constant BUYBACK_BURN_BPS = BidFeePolicy.BUYBACK_BURN_BPS;
+    uint256 public constant TREASURY_BPS = BidFeePolicy.TREASURY_BPS;
+    uint256 public constant CREATOR_REWARDS_BPS = BidFeePolicy.CREATOR_REWARDS_BPS;
+    uint256 public constant BPS = BidFeePolicy.BPS;
 
     error InvalidDestination();
     error InvalidFeeEscrow();
@@ -38,9 +43,14 @@ contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
     error InvalidPonsCurve();
     error NothingToDistribute();
     error NativeTransferFailed();
+    error ClaimAmountMismatch();
 
     event DestinationsUpdated(
-        address indexed rewardsVault, address indexed liquidityVault, address indexed reserveVault
+        address indexed lpRewardsReserve,
+        address indexed liquidityVault,
+        address indexed buybackBurnReserve,
+        address protocolTreasury,
+        address creatorRewardsReserve
     );
     event PonsFeeEscrowUpdated(address indexed feeEscrow);
     event PonsFeeHookUpdated(address indexed feeHook);
@@ -49,29 +59,42 @@ contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
     event PonsCurveFeesSwept(address indexed curve);
     event PonsPoolFeesSwept(bytes32 indexed poolId);
     event PonsFeesClaimed(address indexed token, uint256 amount);
-    event NativeDistributed(uint256 rewardsAmount, uint256 liquidityAmount, uint256 reserveAmount);
-    event TokenDistributed(
-        address indexed token, uint256 rewardsAmount, uint256 liquidityAmount, uint256 reserveAmount
+    event FeeAllocated(
+        bytes32 indexed allocationVersion,
+        address indexed asset,
+        uint256 grossAmount,
+        uint256 lpRewardsAmount,
+        uint256 marketLiquidityAmount,
+        uint256 buybackBurnAmount,
+        uint256 treasuryAmount,
+        uint256 creatorRewardsAmount
     );
 
-    address public rewardsVault;
+    address public lpRewardsReserve;
     address public liquidityVault;
-    address public reserveVault;
+    address public buybackBurnReserve;
+    address public protocolTreasury;
+    address public creatorRewardsReserve;
     IPonsFeeEscrow public ponsFeeEscrow;
     IPonsFeeHook public ponsFeeHook;
     IPonsCreatorControls public immutable ponsFactory;
     IPonsCurve public ponsCurve;
 
     constructor(
-        address rewardsVault_,
+        address lpRewardsReserve_,
         address liquidityVault_,
-        address reserveVault_,
+        address buybackBurnReserve_,
+        address protocolTreasury_,
+        address creatorRewardsReserve_,
         address ponsFactory_,
         address ponsFeeEscrow_,
         address ponsFeeHook_,
         address initialOwner
     ) Ownable(initialOwner) {
-        _setDestinations(rewardsVault_, liquidityVault_, reserveVault_);
+        BidFeePolicy.validate();
+        _setDestinations(
+            lpRewardsReserve_, liquidityVault_, buybackBurnReserve_, protocolTreasury_, creatorRewardsReserve_
+        );
         if (ponsFactory_ != address(0) && ponsFactory_.code.length == 0) revert InvalidPonsFactory();
         ponsFactory = IPonsCreatorControls(ponsFactory_);
         if (ponsFeeEscrow_ != address(0)) _setPonsFeeEscrow(ponsFeeEscrow_);
@@ -80,8 +103,16 @@ contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
 
     receive() external payable {}
 
-    function setDestinations(address rewardsVault_, address liquidityVault_, address reserveVault_) external onlyOwner {
-        _setDestinations(rewardsVault_, liquidityVault_, reserveVault_);
+    function setDestinations(
+        address lpRewardsReserve_,
+        address liquidityVault_,
+        address buybackBurnReserve_,
+        address protocolTreasury_,
+        address creatorRewardsReserve_
+    ) external onlyOwner {
+        _setDestinations(
+            lpRewardsReserve_, liquidityVault_, buybackBurnReserve_, protocolTreasury_, creatorRewardsReserve_
+        );
     }
 
     function setPonsFeeEscrow(address feeEscrow_) external onlyOwner {
@@ -125,78 +156,179 @@ contract BidFlywheelTreasury is Ownable, ReentrancyGuard {
     }
 
     function claimPonsNative() external nonReentrant returns (uint256 amount) {
-        IPonsFeeEscrow feeEscrow = ponsFeeEscrow;
-        if (address(feeEscrow) == address(0)) revert InvalidFeeEscrow();
-        amount = feeEscrow.claim();
-        emit PonsFeesClaimed(address(0), amount);
+        amount = _claimPonsNative();
     }
 
     function claimPonsToken(address token) external nonReentrant returns (uint256 amount) {
-        IPonsFeeEscrow feeEscrow = ponsFeeEscrow;
-        if (address(feeEscrow) == address(0) || token == address(0)) revert InvalidFeeEscrow();
-        amount = feeEscrow.claimToken(token);
-        emit PonsFeesClaimed(token, amount);
+        amount = _claimPonsToken(token);
+    }
+
+    function claimAndDistributePonsNative() external nonReentrant returns (uint256 amount) {
+        amount = _claimPonsNative();
+        if (amount == 0) revert NothingToDistribute();
+        _distributeNative(amount);
+    }
+
+    function claimAndDistributePonsToken(IERC20 token) external nonReentrant returns (uint256 amount) {
+        amount = _claimPonsToken(address(token));
+        if (amount == 0) revert NothingToDistribute();
+        _distributeToken(token, amount);
     }
 
     function distributeNative() external nonReentrant {
-        uint256 total = address(this).balance;
-        if (total == 0) revert NothingToDistribute();
-        (uint256 rewardsAmount, uint256 liquidityAmount, uint256 reserveAmount) = _split(total);
-
-        (bool rewardsSent,) = rewardsVault.call{value: rewardsAmount}("");
-        if (!rewardsSent) revert NativeTransferFailed();
-        (bool liquiditySent,) = liquidityVault.call{value: liquidityAmount}("");
-        if (!liquiditySent) revert NativeTransferFailed();
-        (bool reserveSent,) = reserveVault.call{value: reserveAmount}("");
-        if (!reserveSent) revert NativeTransferFailed();
-
-        emit NativeDistributed(rewardsAmount, liquidityAmount, reserveAmount);
+        uint256 amount = address(this).balance;
+        if (amount == 0) revert NothingToDistribute();
+        _distributeNative(amount);
     }
 
     function distributeToken(IERC20 token) external nonReentrant {
-        uint256 total = token.balanceOf(address(this));
-        if (total == 0) revert NothingToDistribute();
-        (uint256 rewardsAmount, uint256 liquidityAmount, uint256 reserveAmount) = _split(total);
-
-        token.safeTransfer(rewardsVault, rewardsAmount);
-        token.safeTransfer(liquidityVault, liquidityAmount);
-        token.safeTransfer(reserveVault, reserveAmount);
-        emit TokenDistributed(address(token), rewardsAmount, liquidityAmount, reserveAmount);
+        uint256 amount = token.balanceOf(address(this));
+        if (amount == 0) revert NothingToDistribute();
+        _distributeToken(token, amount);
     }
 
-    function _split(uint256 total)
+    function previewAllocation(uint256 grossAmount)
+        external
+        pure
+        returns (
+            uint256 lpRewardsAmount,
+            uint256 marketLiquidityAmount,
+            uint256 buybackBurnAmount,
+            uint256 treasuryAmount,
+            uint256 creatorRewardsAmount
+        )
+    {
+        return _split(grossAmount);
+    }
+
+    function _claimPonsNative() private returns (uint256 amount) {
+        IPonsFeeEscrow feeEscrow = ponsFeeEscrow;
+        if (address(feeEscrow) == address(0)) revert InvalidFeeEscrow();
+        uint256 balanceBefore = address(this).balance;
+        uint256 reportedAmount = feeEscrow.claim();
+        amount = address(this).balance - balanceBefore;
+        if (amount != reportedAmount) revert ClaimAmountMismatch();
+        emit PonsFeesClaimed(address(0), amount);
+    }
+
+    function _claimPonsToken(address token) private returns (uint256 amount) {
+        IPonsFeeEscrow feeEscrow = ponsFeeEscrow;
+        if (address(feeEscrow) == address(0) || token == address(0)) revert InvalidFeeEscrow();
+        IERC20 feeToken = IERC20(token);
+        uint256 balanceBefore = feeToken.balanceOf(address(this));
+        uint256 reportedAmount = feeEscrow.claimToken(token);
+        amount = feeToken.balanceOf(address(this)) - balanceBefore;
+        if (amount != reportedAmount) revert ClaimAmountMismatch();
+        emit PonsFeesClaimed(token, amount);
+    }
+
+    function _distributeNative(uint256 amount) private {
+        (
+            uint256 lpRewardsAmount,
+            uint256 marketLiquidityAmount,
+            uint256 buybackBurnAmount,
+            uint256 treasuryAmount,
+            uint256 creatorRewardsAmount
+        ) = _split(amount);
+
+        _sendNative(lpRewardsReserve, lpRewardsAmount);
+        _sendNative(liquidityVault, marketLiquidityAmount);
+        _sendNative(buybackBurnReserve, buybackBurnAmount);
+        _sendNative(protocolTreasury, treasuryAmount);
+        _sendNative(creatorRewardsReserve, creatorRewardsAmount);
+        emit FeeAllocated(
+            ALLOCATION_VERSION,
+            address(0),
+            amount,
+            lpRewardsAmount,
+            marketLiquidityAmount,
+            buybackBurnAmount,
+            treasuryAmount,
+            creatorRewardsAmount
+        );
+    }
+
+    function _distributeToken(IERC20 token, uint256 amount) private {
+        (
+            uint256 lpRewardsAmount,
+            uint256 marketLiquidityAmount,
+            uint256 buybackBurnAmount,
+            uint256 treasuryAmount,
+            uint256 creatorRewardsAmount
+        ) = _split(amount);
+
+        token.safeTransfer(lpRewardsReserve, lpRewardsAmount);
+        token.safeTransfer(liquidityVault, marketLiquidityAmount);
+        token.safeTransfer(buybackBurnReserve, buybackBurnAmount);
+        token.safeTransfer(protocolTreasury, treasuryAmount);
+        token.safeTransfer(creatorRewardsReserve, creatorRewardsAmount);
+        emit FeeAllocated(
+            ALLOCATION_VERSION,
+            address(token),
+            amount,
+            lpRewardsAmount,
+            marketLiquidityAmount,
+            buybackBurnAmount,
+            treasuryAmount,
+            creatorRewardsAmount
+        );
+    }
+
+    function _split(uint256 grossAmount)
         private
         pure
-        returns (uint256 rewardsAmount, uint256 liquidityAmount, uint256 reserveAmount)
+        returns (
+            uint256 lpRewardsAmount,
+            uint256 marketLiquidityAmount,
+            uint256 buybackBurnAmount,
+            uint256 treasuryAmount,
+            uint256 creatorRewardsAmount
+        )
     {
-        rewardsAmount = total * REWARDS_SHARE_BPS / BPS;
-        liquidityAmount = total * LIQUIDITY_SHARE_BPS / BPS;
-        reserveAmount = total - rewardsAmount - liquidityAmount;
+        lpRewardsAmount = grossAmount * LP_REWARDS_BPS / BPS;
+        marketLiquidityAmount = grossAmount * MARKET_LIQUIDITY_BPS / BPS;
+        buybackBurnAmount = grossAmount * BUYBACK_BURN_BPS / BPS;
+        creatorRewardsAmount = grossAmount * CREATOR_REWARDS_BPS / BPS;
+        treasuryAmount =
+            grossAmount - lpRewardsAmount - marketLiquidityAmount - buybackBurnAmount - creatorRewardsAmount;
     }
 
-    function _setDestinations(address rewardsVault_, address liquidityVault_, address reserveVault_) private {
-        if (rewardsVault_ == address(0) || liquidityVault_ == address(0) || reserveVault_ == address(0)) {
-            revert InvalidDestination();
-        }
-        rewardsVault = rewardsVault_;
+    function _setDestinations(
+        address lpRewardsReserve_,
+        address liquidityVault_,
+        address buybackBurnReserve_,
+        address protocolTreasury_,
+        address creatorRewardsReserve_
+    ) private {
+        if (
+            lpRewardsReserve_ == address(0) || liquidityVault_ == address(0) || buybackBurnReserve_ == address(0)
+                || protocolTreasury_ == address(0) || creatorRewardsReserve_ == address(0)
+        ) revert InvalidDestination();
+
+        lpRewardsReserve = lpRewardsReserve_;
         liquidityVault = liquidityVault_;
-        reserveVault = reserveVault_;
-        emit DestinationsUpdated(rewardsVault_, liquidityVault_, reserveVault_);
+        buybackBurnReserve = buybackBurnReserve_;
+        protocolTreasury = protocolTreasury_;
+        creatorRewardsReserve = creatorRewardsReserve_;
+        emit DestinationsUpdated(
+            lpRewardsReserve_, liquidityVault_, buybackBurnReserve_, protocolTreasury_, creatorRewardsReserve_
+        );
     }
 
     function _setPonsFeeEscrow(address feeEscrow_) private {
-        if (feeEscrow_ == address(0) || feeEscrow_.code.length == 0) {
-            revert InvalidFeeEscrow();
-        }
+        if (feeEscrow_ == address(0) || feeEscrow_.code.length == 0) revert InvalidFeeEscrow();
         ponsFeeEscrow = IPonsFeeEscrow(feeEscrow_);
         emit PonsFeeEscrowUpdated(feeEscrow_);
     }
 
     function _setPonsFeeHook(address feeHook_) private {
-        if (feeHook_ == address(0) || feeHook_.code.length == 0) {
-            revert InvalidFeeHook();
-        }
+        if (feeHook_ == address(0) || feeHook_.code.length == 0) revert InvalidFeeHook();
         ponsFeeHook = IPonsFeeHook(feeHook_);
         emit PonsFeeHookUpdated(feeHook_);
+    }
+
+    function _sendNative(address recipient, uint256 amount) private {
+        (bool sent,) = recipient.call{value: amount}("");
+        if (!sent) revert NativeTransferFailed();
     }
 }

@@ -16,6 +16,20 @@ interface IPonsInfrastructure {
 }
 
 contract DeployBidTreasury is Script {
+    struct DeploymentConfig {
+        address deployer;
+        address treasuryOwner;
+        address rewardsOwner;
+        address liquidityOperator;
+        address buybackVault;
+        address protocolTreasury;
+        address creatorRewardsVault;
+        IERC20 collateral;
+        IPonsInfrastructure ponsFactory;
+        address feeEscrow;
+        address feeHook;
+    }
+
     function run()
         external
         returns (
@@ -25,46 +39,64 @@ contract DeployBidTreasury is Script {
         )
     {
         uint256 expectedChainId = vm.envUint("BID_EXPECTED_CHAIN_ID");
-        address deployer = vm.envAddress("BID_DEPLOYER");
-        address treasuryOwner = vm.envAddress("BID_TREASURY_OWNER");
-        address rewardsOwner = vm.envAddress("BID_REWARDS_OWNER");
-        address liquidityOperator = vm.envAddress("BID_LIQUIDITY_OPERATOR");
-        address reserveVault = vm.envAddress("BID_RESERVE_VAULT");
-        IERC20 collateral = IERC20(vm.envAddress("BID_COLLATERAL_TOKEN"));
-        IPonsInfrastructure ponsFactory = IPonsInfrastructure(vm.envAddress("PONS_FACTORY"));
-        address feeEscrow = vm.envAddress("PONS_FEE_ESCROW");
-        address feeHook = vm.envAddress("PONS_FEE_HOOK");
+        DeploymentConfig memory config = DeploymentConfig({
+            deployer: vm.envAddress("BID_DEPLOYER"),
+            treasuryOwner: vm.envAddress("BID_TREASURY_OWNER"),
+            rewardsOwner: vm.envAddress("BID_REWARDS_OWNER"),
+            liquidityOperator: vm.envAddress("BID_LIQUIDITY_OPERATOR"),
+            buybackVault: vm.envAddress("BID_BUYBACK_VAULT"),
+            protocolTreasury: vm.envAddress("BID_PROTOCOL_TREASURY"),
+            creatorRewardsVault: vm.envAddress("BID_CREATOR_REWARDS_VAULT"),
+            collateral: IERC20(vm.envAddress("BID_COLLATERAL_TOKEN")),
+            ponsFactory: IPonsInfrastructure(vm.envAddress("PONS_FACTORY")),
+            feeEscrow: vm.envAddress("PONS_FEE_ESCROW"),
+            feeHook: vm.envAddress("PONS_FEE_HOOK")
+        });
 
         require(block.chainid == expectedChainId, "unexpected chain");
-        require(deployer != address(0) && treasuryOwner != address(0) && rewardsOwner != address(0), "zero owner");
-        require(liquidityOperator != address(0), "zero operator");
-        require(reserveVault != address(0), "zero vault");
-        require(address(collateral).code.length > 0, "collateral has no code");
-        require(address(ponsFactory).code.length > 0, "Pons factory has no code");
-        require(feeEscrow.code.length > 0, "Pons escrow has no code");
-        require(feeHook.code.length > 0, "Pons hook has no code");
-        require(ponsFactory.feeEscrow() == feeEscrow, "Pons escrow mismatch");
-        require(ponsFactory.memeHook() == feeHook, "Pons hook mismatch");
-        require(ponsFactory.approvedPairTokens(address(collateral)), "collateral is not an approved Pons pair");
+        require(
+            config.deployer != address(0) && config.treasuryOwner != address(0) && config.rewardsOwner != address(0),
+            "zero owner"
+        );
+        require(config.liquidityOperator != address(0), "zero operator");
+        require(
+            config.buybackVault != address(0) && config.protocolTreasury != address(0)
+                && config.creatorRewardsVault != address(0),
+            "zero destination"
+        );
+        require(address(config.collateral).code.length > 0, "collateral has no code");
+        require(address(config.ponsFactory).code.length > 0, "Pons factory has no code");
+        require(config.feeEscrow.code.length > 0, "Pons escrow has no code");
+        require(config.feeHook.code.length > 0, "Pons hook has no code");
+        require(config.ponsFactory.feeEscrow() == config.feeEscrow, "Pons escrow mismatch");
+        require(config.ponsFactory.memeHook() == config.feeHook, "Pons hook mismatch");
+        require(
+            config.ponsFactory.approvedPairTokens(address(config.collateral)), "collateral is not an approved Pons pair"
+        );
 
-        vm.startBroadcast(deployer);
-        rewardsDistributor = new BidRewardsDistributor(rewardsOwner);
-        liquidityVault = new BidLiquidityVault(collateral, liquidityOperator, deployer);
+        vm.startBroadcast(config.deployer);
+        rewardsDistributor = new BidRewardsDistributor(config.rewardsOwner);
+        liquidityVault = new BidLiquidityVault(config.collateral, config.liquidityOperator, config.deployer);
         treasury = new BidFlywheelTreasury(
             address(rewardsDistributor),
             address(liquidityVault),
-            reserveVault,
-            address(ponsFactory),
-            feeEscrow,
-            feeHook,
-            deployer
+            config.buybackVault,
+            config.protocolTreasury,
+            config.creatorRewardsVault,
+            address(config.ponsFactory),
+            config.feeEscrow,
+            config.feeHook,
+            config.deployer
         );
         vm.stopBroadcast();
 
         console2.log("NEXT_PUBLIC_BID_FLYWHEEL_TREASURY=%s", address(treasury));
         console2.log("NEXT_PUBLIC_BID_REWARDS_VAULT=%s", address(rewardsDistributor));
         console2.log("NEXT_PUBLIC_BID_LIQUIDITY_VAULT=%s", address(liquidityVault));
+        console2.log("NEXT_PUBLIC_BID_BUYBACK_VAULT=%s", config.buybackVault);
+        console2.log("NEXT_PUBLIC_BID_PROTOCOL_TREASURY=%s", config.protocolTreasury);
+        console2.log("NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT=%s", config.creatorRewardsVault);
         console2.log("Set the Pons creator fee recipient to treasury=%s", address(treasury));
-        console2.log("Final treasury owner after curve binding=%s", treasuryOwner);
+        console2.log("Final treasury owner after curve binding=%s", config.treasuryOwner);
     }
 }

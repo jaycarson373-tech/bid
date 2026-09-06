@@ -19,13 +19,8 @@ const productionHost =
     : process.env.NODE_ENV === "production"
       ? "https://bid-markets.sufficientlev.chatgpt.site"
       : "http://localhost:3000");
-const isVerifiedLive =
-  process.env.NEXT_PUBLIC_LAUNCH_STATE === "live" &&
-  process.env.NEXT_PUBLIC_BID_NETWORK === "mainnet" &&
-  process.env.NEXT_PUBLIC_PONS_VERIFIED === "true";
-const description = isVerifiedLive
-  ? "Trade collateral-backed real estate outcomes on Robinhood Chain, with the verified BID flywheel on Pons."
-  : "Collateral-backed real estate prediction markets preparing for launch on Robinhood Chain.";
+const description =
+  "Housing prediction markets on Robinhood Chain. Trade views on city performance, home-price direction, and housing outcomes settled against published data.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(productionHost),

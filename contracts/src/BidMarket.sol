@@ -11,6 +11,16 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 contract BidMarket is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    struct MarketConfig {
+        IERC20 collateral;
+        address factory;
+        address oracle;
+        address marketCreator;
+        uint64 closesAt;
+        uint16 creatorFeeBps;
+        uint256 maxTradeAmount;
+    }
+
     uint256 public constant BPS = 10_000;
     uint256 public constant PAYOUT_SCALE = 1e18;
     uint256 public constant MAX_OUTCOMES = 8;
@@ -45,6 +55,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
     error NotOrderOwner();
     error OrderNotActive();
     error CreatorFeeTooHigh();
+    error TradeAmountExceeded();
 
     event FundingAdded(address indexed provider, uint256 collateralIn, uint256 sharesMinted);
     event FundingRemoved(address indexed provider, uint256 sharesBurned, uint256[] outcomeTokensOut);
@@ -79,6 +90,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
     address public immutable marketCreator;
     uint64 public immutable closesAt;
     uint16 public immutable creatorFeeBps;
+    uint256 public immutable maxTradeAmount;
     uint8 private immutable _collateralDecimals;
     string public question;
 
@@ -97,29 +109,24 @@ contract BidMarket is ERC20, ReentrancyGuard {
         _;
     }
 
-    constructor(
-        IERC20 collateral_,
-        address factory_,
-        address oracle_,
-        address marketCreator_,
-        uint64 closesAt_,
-        uint16 creatorFeeBps_,
-        string memory question_,
-        string[] memory outcomeLabels_
-    ) ERC20("BID Market LP", "BID-LP") {
+    constructor(MarketConfig memory config_, string memory question_, string[] memory outcomeLabels_)
+        ERC20("BID Market LP", "BID-LP")
+    {
         if (outcomeLabels_.length < 2 || outcomeLabels_.length > MAX_OUTCOMES) {
             revert InvalidOutcomeCount();
         }
-        if (creatorFeeBps_ > MAX_CREATOR_FEE_BPS) revert CreatorFeeTooHigh();
-        if (closesAt_ <= block.timestamp) revert MarketNotClosed();
+        if (config_.creatorFeeBps > MAX_CREATOR_FEE_BPS) revert CreatorFeeTooHigh();
+        if (config_.maxTradeAmount == 0) revert ZeroAmount();
+        if (config_.closesAt <= block.timestamp) revert MarketNotClosed();
 
-        collateral = collateral_;
-        factory = factory_;
-        oracle = oracle_;
-        marketCreator = marketCreator_;
-        closesAt = closesAt_;
-        creatorFeeBps = creatorFeeBps_;
-        _collateralDecimals = IERC20Metadata(address(collateral_)).decimals();
+        collateral = config_.collateral;
+        factory = config_.factory;
+        oracle = config_.oracle;
+        marketCreator = config_.marketCreator;
+        closesAt = config_.closesAt;
+        creatorFeeBps = config_.creatorFeeBps;
+        maxTradeAmount = config_.maxTradeAmount;
+        _collateralDecimals = IERC20Metadata(address(config_.collateral)).decimals();
         question = question_;
         _outcomeLabels = outcomeLabels_;
         _poolBalances = new uint256[](outcomeLabels_.length);
@@ -295,6 +302,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
     {
         _requireOutcome(outcomeIndex);
         if (collateralIn == 0 || totalSupply() == 0) revert ZeroAmount();
+        if (collateralIn > maxTradeAmount) revert TradeAmountExceeded();
 
         creatorFee = Math.mulDiv(collateralIn, creatorFeeBps, BPS);
         uint256 netInvestment = collateralIn - creatorFee;
@@ -327,6 +335,7 @@ contract BidMarket is ERC20, ReentrancyGuard {
     {
         _requireOutcome(outcomeIndex);
         if (collateralOut == 0 || totalSupply() == 0) revert ZeroAmount();
+        if (collateralOut > maxTradeAmount) revert TradeAmountExceeded();
 
         uint256 grossReturn = Math.mulDiv(collateralOut, BPS, BPS - creatorFeeBps, Math.Rounding.Ceil);
         creatorFee = grossReturn - collateralOut;
