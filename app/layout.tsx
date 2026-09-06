@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   title: "BID — BID the Block",
   description,
   icons: {
-    icon: "/favicon.svg",
+    icon: "/favicon.jpg",
     apple: "/brand/bid-logo.jpg",
   },
   alternates: {

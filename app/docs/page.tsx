@@ -38,7 +38,7 @@ export default function DocsPage() {
       <header className={styles.header}>
         <Link className={styles.brand} href="/" aria-label="BID markets home" prefetch={false}>
           <Image src="/brand/bid-logo.jpg" alt="" width={34} height={34} priority />
-          <span>BID</span><small>Docs</small>
+          <small>Docs</small>
         </Link>
         <nav aria-label="Documentation utilities">
           <Link href="/rewards" prefetch={false}>Rewards</Link>

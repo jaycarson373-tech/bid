@@ -850,7 +850,7 @@ export default function Home() {
     <main className="site-shell">
       <header className="topbar">
         <a className="brand" href="#top" aria-label="BID home">
-          <BrandMark /><span>BID</span><small>beta</small>
+          <BrandMark /><small>beta</small>
         </a>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <a className="active" href="#markets">Markets</a>

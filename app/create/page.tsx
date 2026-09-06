@@ -24,7 +24,6 @@ export default function CreateMarketPage() {
           <span className="brand-mark brand-mark-image" aria-hidden="true">
             <Image src="/brand/bid-logo.jpg" alt="" width={36} height={36} priority />
           </span>
-          <span>BID</span>
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <Link href="/#markets">Markets</Link>

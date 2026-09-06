@@ -259,7 +259,7 @@ export default function RewardsClient() {
       <header className={styles.header}>
         <Link className={styles.brand} href="/">
           <Image src="/brand/bid-logo.jpg" alt="" width={34} height={34} priority />
-          <strong>BID</strong><span>Rewards</span>
+          <span>Rewards</span>
         </Link>
         <nav><Link href="/">Markets</Link><Link href="/docs">Docs</Link></nav>
       </header>
