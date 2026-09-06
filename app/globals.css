@@ -244,6 +244,27 @@ a {
   filter: none;
 }
 
+.wallet-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wallet-disconnect {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(233, 255, 0, 0.45);
+  background: transparent;
+  color: var(--lime);
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.wallet-disconnect:hover {
+  border-color: var(--lime);
+  background: rgba(233, 255, 0, 0.08);
+}
+
 .hero {
   position: relative;
   display: grid;
@@ -2325,6 +2346,17 @@ footer > small {
   border-color: var(--lime);
 }
 
+.wallet-choice:disabled {
+  border-color: rgba(255, 255, 255, 0.07);
+  color: #686e65;
+  cursor: default;
+  opacity: 0.72;
+}
+
+.wallet-choice:disabled:hover {
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
 .wallet-icon {
   display: grid;
   width: 28px;
@@ -2336,6 +2368,9 @@ footer > small {
 }
 
 .robinhood-dot { background: var(--chain-gradient); color: var(--ink); }
+.wallet-icon-metamask { background: #f6851b; color: #111; }
+.wallet-icon-rabby { background: #8697ff; color: #090a08; }
+.wallet-icon-phantom { background: #ab9ff2; color: #090a08; }
 
 .wallet-choice strong {
   font-size: 13px;
@@ -2356,6 +2391,24 @@ footer > small {
   color: #5f655c;
   font-size: 9px;
   line-height: 1.5;
+}
+
+.wallet-modal-disconnect {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: #c9cec5;
+  cursor: pointer;
+  font-family: var(--font-geist-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.wallet-modal-disconnect:hover {
+  border-color: #ff6472;
+  color: #ff8791;
 }
 
 .toast {
@@ -2462,6 +2515,19 @@ footer > small {
   .desktop-nav,
   .network-pill {
     display: none;
+  }
+
+  .wallet-button.connected {
+    max-width: 154px;
+    padding: 0 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .wallet-disconnect {
+    width: 34px;
+    height: 34px;
   }
 
   .pons-button {

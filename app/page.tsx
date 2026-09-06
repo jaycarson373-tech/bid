@@ -182,7 +182,30 @@ function providerErrorCode(error: unknown) {
 type EventProvider = EIP1193Provider & {
   on?: (event: string, listener: (...args: unknown[]) => void) => void;
   removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+  providers?: EventProvider[];
+  isMetaMask?: boolean;
+  isRabby?: boolean;
+  isPhantom?: boolean;
 };
+
+type WalletOption = {
+  id: string;
+  name: "MetaMask" | "Rabby" | "Phantom" | "Browser wallet";
+  provider: EventProvider;
+};
+
+type Eip6963Detail = {
+  info: { uuid: string; name: string; rdns: string };
+  provider: EventProvider;
+};
+
+function walletName(provider: EventProvider, announcedName = "", rdns = ""): WalletOption["name"] {
+  const identity = `${announcedName} ${rdns}`.toLowerCase();
+  if (provider.isRabby || identity.includes("rabby")) return "Rabby";
+  if (provider.isPhantom || identity.includes("phantom")) return "Phantom";
+  if (provider.isMetaMask || identity.includes("metamask")) return "MetaMask";
+  return "Browser wallet";
+}
 
 async function selectRobinhoodChain(provider: EIP1193Provider) {
   try {
@@ -293,6 +316,9 @@ export default function Home() {
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
+  const [walletOptions, setWalletOptions] = useState<WalletOption[]>([]);
+  const [activeProvider, setActiveProvider] = useState<EventProvider | null>(null);
+  const [activeWalletName, setActiveWalletName] = useState<WalletOption["name"] | "">("");
   const [notice, setNotice] = useState("");
   const [lastTransaction, setLastTransaction] = useState<Hex | "">("");
   const [transactionPending, setTransactionPending] = useState(false);
@@ -374,6 +400,8 @@ export default function Home() {
   const disconnectWallet = () => {
     setWalletConnected(false);
     setWalletAddress("");
+    setActiveProvider(null);
+    setActiveWalletName("");
     setWalletOpen(false);
     setLastTransaction("");
     setLpPosition(null);
@@ -382,14 +410,43 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const provider = window.ethereum as EventProvider | undefined;
+    const discovered = new Set<EventProvider>();
+    const addProvider = (provider: EventProvider, id: string, announcedName = "", rdns = "") => {
+      if (discovered.has(provider)) return;
+      discovered.add(provider);
+      setWalletOptions((current) => [...current, {
+        id,
+        name: walletName(provider, announcedName, rdns),
+        provider,
+      }]);
+    };
+    const handleAnnouncement = (event: Event) => {
+      const detail = (event as CustomEvent<Eip6963Detail>).detail;
+      if (detail?.provider && detail.info) {
+        addProvider(detail.provider, detail.info.uuid, detail.info.name, detail.info.rdns);
+      }
+    };
+
+    window.addEventListener("eip6963:announceProvider", handleAnnouncement);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+
+    const injected = window.ethereum as EventProvider | undefined;
+    for (const [index, provider] of (injected?.providers ?? (injected ? [injected] : [])).entries()) {
+      addProvider(provider, `injected-${index}`);
+    }
+
+    return () => window.removeEventListener("eip6963:announceProvider", handleAnnouncement);
+  }, []);
+
+  useEffect(() => {
+    const provider = activeProvider;
     if (!provider) return;
 
     const handleAccountsChanged = (...args: unknown[]) => {
       const accounts = Array.isArray(args[0]) ? args[0] as string[] : [];
       const address = accounts[0] ?? "";
       setWalletAddress(address);
-      if (!address) setWalletConnected(false);
+      setWalletConnected(Boolean(address));
     };
     const handleChainChanged = (...args: unknown[]) => {
       const chainHex = String(args[0] ?? "");
@@ -405,7 +462,7 @@ export default function Home() {
       provider.removeListener?.("accountsChanged", handleAccountsChanged);
       provider.removeListener?.("chainChanged", handleChainChanged);
     };
-  }, []);
+  }, [activeProvider]);
 
   useEffect(() => {
     let cancelled = false;
@@ -803,15 +860,18 @@ export default function Home() {
     setSelectedOutcome(0);
   };
 
-  const connectWallet = async () => {
-    const provider = window.ethereum;
-
-    if (!provider) {
-      setNotice("No EVM browser wallet was detected. Install or unlock one, then try again.");
-      return;
-    }
-
+  const connectWallet = async (option: WalletOption) => {
+    const provider = option.provider;
     try {
+      if (walletConnected && activeProvider === provider) {
+        try {
+          await provider.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
+        } catch (error) {
+          if (providerErrorCode(error) === 4001) throw error;
+          // Some EVM wallets do not implement permission re-selection. Their
+          // normal account request and accountsChanged event remain available.
+        }
+      }
       const accounts = await provider.request({ method: "eth_requestAccounts" }) as string[];
       const address = accounts[0] ?? "";
 
@@ -822,10 +882,12 @@ export default function Home() {
 
       await selectRobinhoodChain(provider);
 
+      setActiveProvider(provider);
+      setActiveWalletName(option.name);
       setWalletConnected(true);
       setWalletAddress(address);
       setWalletOpen(false);
-      setNotice(`Wallet connected: ${truncateAddress(address)}. Robinhood Chain selected; no signature requested.`);
+      setNotice(`${option.name} connected: ${truncateAddress(address)}. Robinhood Chain selected; no signature requested.`);
     } catch {
       setNotice("Wallet connection or network switching was cancelled.");
     }
@@ -843,9 +905,23 @@ export default function Home() {
     }
 
     const account = configuredAddress(walletAddress);
-    const provider = window.ethereum;
+    const provider = activeProvider;
     if (!selectedMarketAddress || !account || !provider) {
       setNotice("Wallet connected. This market is not deployed yet, so no transaction was built.");
+      return;
+    }
+
+    let providerAccounts: string[];
+    try {
+      providerAccounts = await provider.request({ method: "eth_accounts" }) as string[];
+    } catch {
+      setNotice("Could not verify the selected wallet. Disconnect and choose it again.");
+      return;
+    }
+    if (providerAccounts[0]?.toLowerCase() !== account.toLowerCase()) {
+      setWalletAddress(providerAccounts[0] ?? "");
+      setWalletConnected(Boolean(providerAccounts[0]));
+      setNotice("The selected wallet account changed. Review the updated account, then submit again.");
       return;
     }
 
@@ -1026,7 +1102,7 @@ export default function Home() {
 
   const redeemPosition = async () => {
     const account = configuredAddress(walletAddress);
-    const provider = window.ethereum;
+    const provider = activeProvider;
     if (!selectedMarketAddress || !account || !provider || !hasRedeemablePosition) return;
 
     setTransactionPending(true);
@@ -1059,7 +1135,7 @@ export default function Home() {
 
     const account = configuredAddress(walletAddress);
     const collateralAddress = configuredAddress(siteConfig.collateralAddress);
-    const provider = window.ethereum;
+    const provider = activeProvider;
     if (!siteConfig.isTestnet || !account || !collateralAddress || !provider) {
       setNotice("The test-collateral faucet will activate after the testnet deployment is connected.");
       return;
@@ -1114,15 +1190,19 @@ export default function Home() {
           <a className="pons-button" href={siteConfig.ponsUrl} target="_blank" rel="noreferrer">
             Pons ↗
           </a>
-          <button
-            className={`wallet-button ${walletConnected ? "connected" : ""}`}
-            type="button"
-            onClick={walletConnected ? disconnectWallet : () => setWalletOpen(true)}
-            aria-label={walletConnected ? `Disconnect ${walletAddress}` : "Connect wallet"}
-            title={walletConnected ? "Disconnect wallet" : undefined}
-          >
-            {walletConnected ? `Disconnect ${truncateAddress(walletAddress)}` : "Connect wallet"}
-          </button>
+          <span className="wallet-controls">
+            <button
+              className={`wallet-button ${walletConnected ? "connected" : ""}`}
+              type="button"
+              onClick={() => setWalletOpen(true)}
+              aria-label={walletConnected ? `Switch wallet from ${walletAddress}` : "Connect wallet"}
+            >
+              {walletConnected ? `${activeWalletName} ${truncateAddress(walletAddress)} · Switch` : "Connect wallet"}
+            </button>
+            {walletConnected && (
+              <button className="wallet-disconnect" type="button" onClick={disconnectWallet} aria-label="Disconnect wallet" title="Disconnect wallet">×</button>
+            )}
+          </span>
         </div>
       </header>
 
@@ -1718,11 +1798,27 @@ export default function Home() {
               <button type="button" onClick={() => setWalletOpen(false)} aria-label="Close wallet dialog">×</button>
             </div>
             <span className="modal-kicker">ROBINHOOD CHAIN WALLET</span>
-            <h2 id="wallet-title">Connect your wallet</h2>
-            <p>BID supports injected EVM wallets and will switch or add {siteConfig.networkName} after you approve the connection.</p>
-            <button className="wallet-choice" type="button" onClick={connectWallet}>
-              <span className="wallet-icon robinhood-dot">RH</span><strong>Browser wallet</strong><em>Connect</em>
-            </button>
+            <h2 id="wallet-title">{walletConnected ? "Switch wallet" : "Connect your wallet"}</h2>
+            <p>Choose MetaMask, Rabby, or Phantom. BID uses only the provider you select and will switch or add {siteConfig.networkName} after approval.</p>
+            {(["MetaMask", "Rabby", "Phantom"] as const).map((name) => {
+              const option = walletOptions.find((candidate) => candidate.name === name);
+              const isCurrent = walletConnected && activeProvider === option?.provider;
+              return (
+                <button className="wallet-choice" type="button" key={name} onClick={option ? () => connectWallet(option) : undefined} disabled={!option}>
+                  <span className={`wallet-icon wallet-icon-${name.toLowerCase()}`}>{name.slice(0, 2).toUpperCase()}</span>
+                  <strong>{name}</strong>
+                  <em>{isCurrent ? "Switch account" : option ? "Connect" : "Not detected"}</em>
+                </button>
+              );
+            })}
+            {walletOptions.filter((option) => option.name === "Browser wallet").map((option) => (
+              <button className="wallet-choice" type="button" key={option.id} onClick={() => connectWallet(option)}>
+                <span className="wallet-icon robinhood-dot">EV</span><strong>Other EVM wallet</strong><em>{walletConnected && activeProvider === option.provider ? "Switch account" : "Connect"}</em>
+              </button>
+            ))}
+            {walletConnected && (
+              <button className="wallet-modal-disconnect" type="button" onClick={disconnectWallet}>Disconnect {activeWalletName} · {truncateAddress(walletAddress)}</button>
+            )}
             <small>No private keys. No seed phrases. Orders only activate for deployed and funded BID pools.</small>
           </div>
         </div>

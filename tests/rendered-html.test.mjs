@@ -139,6 +139,12 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /BETA ACTIVITY LEADERBOARD/);
   assert.match(page, /Activity points are a beta score, not a reward entitlement/);
   assert.match(page, /Disconnect wallet/);
+  assert.match(page, /eip6963:requestProvider/);
+  assert.match(page, /MetaMask/);
+  assert.match(page, /Rabby/);
+  assert.match(page, /Phantom/);
+  assert.match(page, /wallet_requestPermissions/);
+  assert.match(page, /const provider = activeProvider/);
   assert.match(page, /marketDeploymentBlocks/);
   assert.doesNotMatch(page, /href="\/create">Create<\/a>/);
   assert.match(page, /\/docs/);
