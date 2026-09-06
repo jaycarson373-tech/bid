@@ -37,7 +37,7 @@ function publicValue(name: keyof typeof publicEnvironment, fallback = "") {
 
 const isTestnet = publicValue("NEXT_PUBLIC_BID_NETWORK", "mainnet") === "testnet";
 const isPonsVerified = publicValue("NEXT_PUBLIC_PONS_VERIFIED") === "true";
-const isTradingEnabled = publicValue("NEXT_PUBLIC_BID_TRADING_ENABLED", "false") === "true";
+const isTradingEnabled = publicValue("NEXT_PUBLIC_BID_TRADING_ENABLED", isTestnet ? "false" : "true") === "true";
 // The beta UI starts with this public range; the factory owner can update the
 // onchain ceiling and a matching UI release can follow.
 const maxTradeAmount = 5;
@@ -75,7 +75,7 @@ export const siteConfig = {
   buybackBurnShareBps: feePolicy.allocations.buybackBurn,
   treasuryShareBps: feePolicy.allocations.treasury,
   creatorRewardsShareBps: feePolicy.allocations.creatorRewards,
-  minTradeAmount: 1,
+  minTradeAmount: 5,
   maxTradeAmount,
   nextMinTradeAmount: 5,
   nextMaxTradeAmount: 50,

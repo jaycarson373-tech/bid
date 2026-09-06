@@ -8,8 +8,8 @@ export const mainnetDeployment = {
   protocolTreasuryAddress: "0xdBcEd84ab44431639FC06Dc9913C7A1473646AD6",
   creatorRewardsVaultAddress: "0xef98453f686F1A92578EaEC2dF5a7DfF2fEdb361",
   marketAddresses: {
-    miamiTampa: "",
-    cityField: "0x99E8D451E0c936010f0F5d30A7f7b8e773BD8D5B",
+    miamiTampa: "0xb5693d5C6c944Bea96c1c62B66c736D5C69AAd32",
+    cityField: "",
     austinPositive: "",
   },
 } as const;

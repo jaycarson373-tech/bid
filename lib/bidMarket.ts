@@ -55,6 +55,30 @@ export const bidMarketAbi = [
   },
   {
     type: "function",
+    name: "outcomeBalanceOf",
+    stateMutability: "view",
+    inputs: [
+      { name: "account", type: "address" },
+      { name: "outcomeIndex", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "resolved",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "redeem",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [{ name: "collateralOut", type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "decimals",
     stateMutability: "view",
     inputs: [],

@@ -32,21 +32,20 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.match(html, /<title>BID — BID the Block<\/title>/i);
   assert.match(html, /<link rel="canonical" href="https:\/\/www\.bidrh\.com"/i);
   assert.match(html, /Real estate/);
-  assert.match(html, /Which city posts the highest home-price growth from September 2026 to March 2027/);
+  assert.match(html, /Will Miami(?:&#x27;|')s home-price index rise by September 30/);
   assert.match(html, /Coming soon/);
   assert.match(html, /Beta/);
   assert.match(html, /Mar 5, 2027/);
-  assert.match(html, /Which city will post the larger home-price increase by year-end/);
+  assert.match(html, /Which city posts the highest home-price growth from September 2026 to March 2027/);
   assert.match(html, /Will Austin home prices finish 2026 positive year over year/);
   assert.match(html, /Connect wallet/);
   assert.doesNotMatch(html, /CA AWAITING LAUNCH|class="ca-pill"/i);
   assert.match(html, /0% BID market fee/i);
   assert.match(html, /USDG-BACKED MARKETS/);
-  assert.match(html, /preparing shorter UP \/ DOWN markets/i);
+  assert.match(html, /One live beta market/i);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
   assert.match(html, /Liquidity/);
-  assert.match(html, /Beta rebuild in progress/i);
   assert.match(html, /1\.5%/);
   assert.match(html, /45%/);
   assert.match(html, /30%/);
@@ -54,13 +53,12 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.match(html, /CREATOR REWARDS/);
   assert.doesNotMatch(html, /Solana|pump\.fun/i);
   assert.match(html, /HOUSING MARKETS/);
-  assert.match(html, /TRADING PAUSED/);
   assert.match(html, /MARKETS LIVE/);
-  assert.match(html, /RECOVERY QUOTE/);
-  assert.match(html, /NEXT ORDER RANGE/);
+  assert.match(html, /ONE MARKET LIVE/);
+  assert.match(html, /25 USDG INITIAL LIQUIDITY/);
   assert.match(html, /LOCKED · COMING SOON/);
-  assert.match(html, /\$5 MINIMUM · \$50 MAXIMUM TARGET/);
-  assert.match(html, /SHORTER CITY MARKETS/);
+  assert.match(html, /\$5 per order/i);
+  assert.match(html, /Parcl ID 5352987/);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
@@ -76,7 +74,7 @@ test("server-renders professional protocol documentation with honest deployment 
   assert.match(html, /Keeper required/);
   assert.match(html, /creator-fee layer is 1\.5%/i);
   assert.match(html, /RESERVE ONLY/);
-  assert.match(html, /final token CA and Pons launch record are awaiting verification/i);
+  assert.match(html, /BID token and Pons launch are separate from the live prediction market/i);
   assert.match(html, /Production requirements/);
   assert.match(html, /Funded Merkle reward epochs/);
   assert.match(html, /0xD9da3C6F2272760a6AFcd6F2D95114231dF5D186/);
@@ -116,7 +114,6 @@ test("keeps the finished product free of starter-preview code", async () => {
     readFile(new URL("../config/bid-fee-policy-v1.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /mode: "head-to-head"/);
   assert.match(page, /mode: "field"/);
   assert.match(page, /mode: "yes-no"/);
   assert.match(page, /no signature requested/i);
@@ -133,7 +130,7 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /Robinhood Chain/);
   assert.match(page, /Pons/);
   assert.match(page, /Sample data/);
-  assert.match(page, /RECOVERY PREPARED/i);
+  assert.match(page, /Winning position redeemed/i);
   assert.match(page, /\/docs/);
   assert.match(layout, /title: "BID — BID the Block"/);
   assert.match(launchState, /: "live"/);

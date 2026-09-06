@@ -66,20 +66,20 @@ type Market = {
 
 const markets: Market[] = [
   {
-    id: "miami-tampa-eoy",
+    id: "miami-up-sep30",
     contractAddress: siteConfig.marketAddresses.miamiTampa,
-    code: "MIA / TPA",
-    mode: "head-to-head",
-    question: "Which city will post the larger home-price increase by year-end?",
-    short: "Florida home-price growth showdown",
+    code: "MIA / SEP 30",
+    mode: "yes-no",
+    question: "Will Miami's home-price index rise by September 30?",
+    short: "Miami monthly home-price direction",
     outcomes: [
-      { label: "Miami", code: "MIA", price: 0.61, tone: "coral" },
-      { label: "Tampa", code: "TPA", price: 0.39, tone: "mint" },
+      { label: "Yes", code: "YES", price: 0.5, tone: "mint" },
+      { label: "No", code: "NO", price: 0.5, tone: "coral" },
     ],
-    volume: "$1.84M",
-    liquidity: "$482K",
-    closes: "Dec 31, 2026",
-    signal: "MIA +4.8% · TPA +2.9%",
+    volume: "—",
+    liquidity: "25 USDG",
+    closes: "Sep 30, 2026",
+    signal: "Parcl ID 5352987",
     chart: [28, 31, 29, 35, 38, 36, 43, 41, 47, 52, 49, 55, 59, 57, 63, 68, 65, 71, 74, 72, 78, 82, 79, 86],
   },
   {
@@ -122,7 +122,7 @@ const markets: Market[] = [
 ];
 
 const filters = ["All markets", "Head to head", "5-city fields", "Yes / No"] as const;
-const betaMarketId = "city-field-eoy";
+const betaMarketId = "miami-up-sep30";
 const feeAllocatedEvent = parseAbiItem(
   "event FeeAllocated(bytes32 indexed allocationVersion,address indexed asset,uint256 grossAmount,uint256 lpRewardsAmount,uint256 marketLiquidityAmount,uint256 buybackBurnAmount,uint256 treasuryAmount,uint256 creatorRewardsAmount)",
 );
@@ -256,7 +256,7 @@ function matchesFilter(market: Market, filter: (typeof filters)[number]) {
 }
 
 export default function Home() {
-  const [selectedId, setSelectedId] = useState("city-field-eoy");
+  const [selectedId, setSelectedId] = useState(betaMarketId);
   const [filter, setFilter] = useState<(typeof filters)[number]>("All markets");
   const [selectedOutcome, setSelectedOutcome] = useState(0);
   const [amount, setAmount] = useState(isDemo ? "250" : "");
@@ -267,6 +267,7 @@ export default function Home() {
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [notice, setNotice] = useState("");
+  const [lastTransaction, setLastTransaction] = useState<Hex | "">("");
   const [transactionPending, setTransactionPending] = useState(false);
   const [faucetPending, setFaucetPending] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -284,6 +285,13 @@ export default function Home() {
     key: string;
     balance: bigint;
     decimals: number;
+  } | null>(null);
+  const [walletMarketState, setWalletMarketState] = useState<{
+    key: string;
+    collateralBalance: bigint;
+    outcomeBalances: bigint[];
+    decimals: number;
+    resolved: boolean;
   } | null>(null);
   const [liquidityQuote, setLiquidityQuote] = useState<{
     key: string;
@@ -313,7 +321,13 @@ export default function Home() {
   const liquidityQuoteKey = `${selected.id}:${liquidityAction}:${amount}:${walletAddress}`;
   const currentLiquidityQuote = liquidityQuote?.key === liquidityQuoteKey ? liquidityQuote : null;
   const lpPositionKey = `${selected.id}:${walletAddress}`;
+  const walletMarketKey = `${selected.id}:${walletAddress}`;
   const currentLpPosition = lpPosition?.key === lpPositionKey ? lpPosition : null;
+  const currentWalletMarket = walletMarketState?.key === walletMarketKey ? walletMarketState : null;
+  const selectedOutcomeBalance = currentWalletMarket?.outcomeBalances[selectedOutcome] ?? 0n;
+  const hasRedeemablePosition = Boolean(
+    currentWalletMarket?.resolved && currentWalletMarket.outcomeBalances.some((balance) => balance > 0n),
+  );
   const lpBalanceDisplay = currentLpPosition
     ? displayTokenAmount(currentLpPosition.balance, currentLpPosition.decimals, 4)
     : walletConnected ? "—" : "Connect wallet";
@@ -517,6 +531,50 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
+    const account = configuredAddress(walletAddress);
+
+    if (!selectedMarketAddress || !account || !walletConnected) {
+      return;
+    }
+
+    async function loadWalletMarketState() {
+      try {
+        const collateral = await robinhoodPublicClient.readContract({
+          address: selectedMarketAddress!,
+          abi: bidMarketAbi,
+          functionName: "collateral",
+        });
+        const [decimals, collateralBalance, resolved, ...outcomeBalances] = await Promise.all([
+          robinhoodPublicClient.readContract({ address: collateral, abi: erc20TradeAbi, functionName: "decimals" }),
+          robinhoodPublicClient.readContract({ address: collateral, abi: erc20TradeAbi, functionName: "balanceOf", args: [account!] }),
+          robinhoodPublicClient.readContract({ address: selectedMarketAddress!, abi: bidMarketAbi, functionName: "resolved" }),
+          ...selected.outcomes.map((_, index) => robinhoodPublicClient.readContract({
+            address: selectedMarketAddress!,
+            abi: bidMarketAbi,
+            functionName: "outcomeBalanceOf",
+            args: [account!, BigInt(index)],
+          })),
+        ]);
+        if (!cancelled) {
+          setWalletMarketState({
+            key: walletMarketKey,
+            collateralBalance,
+            outcomeBalances,
+            decimals,
+            resolved,
+          });
+        }
+      } catch {
+        if (!cancelled) setWalletMarketState(null);
+      }
+    }
+
+    void loadWalletMarketState();
+    return () => { cancelled = true; };
+  }, [refreshNonce, selected.outcomes, selectedMarketAddress, walletAddress, walletConnected, walletMarketKey]);
+
+  useEffect(() => {
+    let cancelled = false;
     const numericAmount = Number(amount);
     const account = configuredAddress(walletAddress);
 
@@ -606,7 +664,7 @@ export default function Home() {
 
   const chooseMarket = (market: Market) => {
     if (market.id !== betaMarketId) {
-      setNotice(`${market.short} is coming soon. The five-city housing outlook is the only beta market.`);
+      setNotice(`${market.short} is coming soon. The Miami YES / NO market is the only live beta market.`);
       return;
     }
     setSelectedId(market.id);
@@ -819,6 +877,7 @@ export default function Home() {
         throw new Error("The market transaction reverted. No order was placed.");
       }
       setRefreshNonce((value) => value + 1);
+      setLastTransaction(transactionHash);
       const actionLabel = orderType === "liquidity"
         ? `Liquidity ${liquidityAction === "add" ? "added" : "withdrawn"}`
         : orderType === "market" ? "Market order filled" : "Limit order placed";
@@ -828,6 +887,33 @@ export default function Home() {
         ? ("shortMessage" in error ? String(error.shortMessage) : error.message)
         : "The transaction was cancelled or reverted.";
       setNotice(message);
+    } finally {
+      setTransactionPending(false);
+    }
+  };
+
+  const redeemPosition = async () => {
+    const account = configuredAddress(walletAddress);
+    const provider = window.ethereum;
+    if (!selectedMarketAddress || !account || !provider || !hasRedeemablePosition) return;
+
+    setTransactionPending(true);
+    try {
+      await selectRobinhoodChain(provider);
+      const walletClient = createWalletClient({ account, chain: robinhoodChain, transport: custom(provider) });
+      setNotice("Confirm redemption in your wallet.");
+      const transactionHash = await walletClient.writeContract({
+        address: selectedMarketAddress,
+        abi: bidMarketAbi,
+        functionName: "redeem",
+      });
+      const receipt = await robinhoodPublicClient.waitForTransactionReceipt({ hash: transactionHash });
+      if (receipt.status !== "success") throw new Error("Redemption reverted.");
+      setLastTransaction(transactionHash);
+      setRefreshNonce((value) => value + 1);
+      setNotice(`Winning position redeemed. Transaction ${truncateAddress(transactionHash)} confirmed.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Redemption was cancelled or reverted.");
     } finally {
       setTransactionPending(false);
     }
@@ -932,7 +1018,7 @@ export default function Home() {
         </div>
         <div className="hero-status" aria-label="Protocol highlights">
           <span><i /> {!siteConfig.isTradingEnabled
-            ? "Beta rebuild in progress"
+            ? "Trading paused"
             : selectedPrices
             ? "AMM connected"
             : marketContractConfigured && marketReadStatus === "error"
@@ -966,21 +1052,21 @@ export default function Home() {
             <span className="section-kicker">THE BOARD</span>
             <h2>Price the city.</h2>
           </div>
-          <p>The first beta pool is being retired while BID prepares shorter, more useful housing markets.</p>
+          <p>One live beta market. Published Parcl housing data determines the outcome.</p>
         </div>
 
         <div className="market-stats" aria-label="Live market statistics">
-          <div><span>MARKETS LIVE</span><strong>0</strong></div>
-          <div><span>NEXT FORMAT</span><strong>UP / DOWN</strong></div>
-          <div><span>RECOVERY QUOTE</span><strong>25 <small>USDG</small></strong></div>
-          <div><span>NEXT ORDER RANGE</span><strong>$5–$50</strong></div>
+          <div><span>MARKETS LIVE</span><strong>1</strong></div>
+          <div><span>FORMAT</span><strong>YES / NO</strong></div>
+          <div><span>LIQUIDITY</span><strong>25 <small>USDG</small></strong></div>
+          <div><span>ORDER SIZE</span><strong>$5</strong></div>
         </div>
 
         <div className="beta-market-banner" aria-label="Beta market availability">
-          <span><i />TRADING PAUSED</span>
-          <strong>NEXT BETA IN DEVELOPMENT</strong>
-          <small>$5 MINIMUM · $50 MAXIMUM TARGET</small>
-          <em>SHORTER CITY MARKETS</em>
+          <span><i />ONE MARKET LIVE</span>
+          <strong>MIAMI HOME-PRICE DIRECTION</strong>
+          <small>$5 ORDERS · 25 USDG INITIAL LIQUIDITY</small>
+          <em>PUBLIC BETA</em>
         </div>
 
         <div className="filter-row" role="group" aria-label="Filter markets">
@@ -1034,12 +1120,12 @@ export default function Home() {
                   <strong>{market.question}</strong>
                   <small>{isBetaMarket
                     ? siteConfig.isTradingEnabled
-                      ? `Resolves ${liveCloseDates[market.id] ?? market.closes} · $1–$5 per order`
-                      : "Original beta · liquidity recovery prepared"
+                      ? `Resolves ${liveCloseDates[market.id] ?? market.closes} · $5 per order · Parcl ID 5352987`
+                      : "Trading paused"
                     : `Resolves ${market.closes} · Pool coming soon`}</small>
                   {!isMarketEnabled && (
                     <span className="market-lock">
-                      {isBetaMarket ? "TRADING PAUSED · RECOVERY PREPARED" : "LOCKED · COMING SOON"}
+                      {isBetaMarket ? "TRADING PAUSED" : "LOCKED · COMING SOON"}
                     </span>
                   )}
                 </span>
@@ -1082,6 +1168,11 @@ export default function Home() {
                 <h3>{selected.question}</h3>
               </div>
             </div>
+            {selected.id === betaMarketId && (
+              <p className="ticket-resolution">
+                <strong>RESOLUTION</strong> Parcl Labs Miami City Sales Price Index · Parcl ID 5352987 · YES if Sep 30 is above Sep 6; otherwise NO.
+              </p>
+            )}
 
             {siteConfig.isTestnet && (
               <button
@@ -1101,11 +1192,14 @@ export default function Home() {
                   className={orderType === type ? "active" : ""}
                   key={type}
                   type="button"
+                  disabled={!isDemo && type !== "market"}
                   onClick={() => setOrderType(type)}
                 >
                   <span>{type === "market" ? "Market" : type === "limit" ? "Limit" : "Liquidity"}</span>
                   <small>
-                    {type === "market"
+                    {!isDemo && type !== "market"
+                      ? "Coming soon"
+                      : type === "market"
                       ? "Fill from pool"
                       : type === "limit" ? "Set max price" : "Earn LP share"}
                   </small>
@@ -1192,7 +1286,11 @@ export default function Home() {
                   : "Trade amount"}
               </span>
               <small>
-                {orderType === "liquidity" ? `BID-LP ${lpBalanceDisplay}` : walletConnected ? truncateAddress(walletAddress) : "Connect wallet"}
+                {orderType === "liquidity"
+                  ? `BID-LP ${lpBalanceDisplay}`
+                  : currentWalletMarket
+                    ? `${displayTokenAmount(currentWalletMarket.collateralBalance, currentWalletMarket.decimals, 4)} ${siteConfig.collateralSymbol} · ${truncateAddress(walletAddress)}`
+                    : walletConnected ? truncateAddress(walletAddress) : "Connect wallet"}
               </small>
             </label>
             <div className="amount-input">
@@ -1211,7 +1309,7 @@ export default function Home() {
               <em>{orderType === "liquidity" && liquidityAction === "remove" ? "BID-LP" : siteConfig.collateralSymbol}</em>
             </div>
             <div className="quick-amounts">
-              {(orderType === "liquidity" ? [1, 5, 10, 25] : siteConfig.isTradingEnabled ? [1, 2, 3, 5] : [5, 10, 25, 50]).map((value) => (
+              {(orderType === "liquidity" ? [1, 5, 10, 25] : [5]).map((value) => (
                 <button key={value} type="button" onClick={() => setAmount(String(value))}>${value}</button>
               ))}
               {orderType === "liquidity" && liquidityAction === "remove" && currentLpPosition && (
@@ -1227,7 +1325,7 @@ export default function Home() {
             {orderType !== "liquidity" && (
               <p className="integration-status">
                 {siteConfig.isTradingEnabled
-                  ? `ONE OPEN BETA MARKET · ${siteConfig.minTradeAmount}–${siteConfig.maxTradeAmount} USDG PER ORDER`
+                  ? `ONE OPEN BETA MARKET · $${siteConfig.maxTradeAmount} ORDERS`
                   : `NEXT BETA TARGET · ${siteConfig.nextMinTradeAmount}–${siteConfig.nextMaxTradeAmount} USDG PER ORDER`}
               </p>
             )}
@@ -1256,6 +1354,7 @@ export default function Home() {
                   <p><span>{orderType === "market" ? `${outcome.label} pool price` : "Limit price"}</span>{showSelectedPricing || orderType === "limit" ? <strong>{Math.round(quote.price * 10000) / 100}¢</strong> : <LockedValue />}</p>
                   <p><span>Protocol fee</span><strong>0.00%</strong></p>
                   <p><span>Est. contracts</span>{showSelectedPricing || orderType === "limit" ? <strong>{quote.contracts.toFixed(2)}</strong> : <LockedValue />}</p>
+                  <p><span>Your {outcome.code} position</span><strong>{currentWalletMarket ? displayTokenAmount(selectedOutcomeBalance, currentWalletMarket.decimals, 4) : "—"}</strong></p>
                   <p><span>Network</span><strong>{siteConfig.networkName}</strong></p>
                 </div>
 
@@ -1300,6 +1399,16 @@ export default function Home() {
                   : "Connect wallet"}
               <span>→</span>
             </button>
+            {hasRedeemablePosition && (
+              <button className="redeem-button" type="button" onClick={redeemPosition} disabled={transactionPending}>
+                Redeem winning position <span>→</span>
+              </button>
+            )}
+            {lastTransaction && (
+              <a className="ticket-tx-proof" href={`${siteConfig.explorerUrl}/tx/${lastTransaction}`} target="_blank" rel="noreferrer">
+                View confirmed transaction ↗
+              </a>
+            )}
             {!marketContractConfigured && (
               <p className="integration-status">LIVE MARKET · QUOTE UPDATING</p>
             )}

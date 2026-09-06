@@ -76,12 +76,12 @@ export default function DocsPage() {
             <div className={styles.callout}>
               <strong>Current status</strong>
               <p>
-                The contracts and interface are functional prototypes with automated tests.
+                One mainnet market is deployed and funded. Its complete contract path has been verified with a separate real-USDG lifecycle test covering funding, trading, position accounting, close, resolution, redemption and LP recovery.
                 {siteConfig.isTestnet
                   ? " This build targets public testnet and remains unaudited."
                   : siteConfig.isPonsVerified
                     ? " The published Pons launch record is configured for onchain verification."
-                    : " The final token CA and Pons launch record are awaiting verification."}
+                    : " The BID token and Pons launch are separate from the live prediction market and remain unbound."}
               </p>
             </div>
           </section>
@@ -90,9 +90,9 @@ export default function DocsPage() {
             <span className={styles.sectionNumber}>01</span>
             <h2>Market model</h2>
             <p>
-              The first beta is a single five-city market: Miami, Tampa, New York, Dallas and Phoenix.
-              Trading closes March 5, 2027 at 23:59:59 UTC. Initial funding is 25 USDG,
-              with a 5 USDG initial per-order cap controlled by the factory owner. Other markets are coming soon.
+              The first public beta is one YES / NO market on Miami City&apos;s Parcl Labs home-price index.
+              Trading closes September 30, 2026 at 23:59:59 UTC. Initial funding is 25 USDG,
+              with a 5 USDG per-order minimum and cap. The cap is controlled by the factory owner. Other markets are coming soon.
               The final BID token address is not required to deploy this pool.
             </p>
             <p>
@@ -143,16 +143,16 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               inventory directly back into {siteConfig.collateralSymbol}, and leaves only the imbalance as redeemable outcome
               positions. A minimum-collateral check protects the transaction from pool movement.
             </p>
-            <h3>Original beta funding</h3>
+            <h3>Public beta funding</h3>
             <table>
               <thead><tr><th>Initial seed</th><th>Order cap</th><th>Use</th></tr></thead>
               <tbody>
-                <tr><td>25 USDG</td><td>5 USDG</td><td>Trading paused; full recovery prepared</td></tr>
+                <tr><td>25 USDG</td><td>5 USDG</td><td>Live in the Miami YES / NO pool</td></tr>
               </tbody>
             </table>
             <p className={styles.note}>
-              USDG uses six decimals. The original field beta accepted orders from 1 to 5 USDG and is now paused before liquidity recovery.
-              Its 25 USDG seed remains protocol-owned, with every BID-LP share held by the liquidity vault. The next beta targets 5 to 50 USDG orders in shorter binary city markets.
+              USDG uses six decimals. The retired field beta&apos;s 25 USDG was recovered in full before this replacement was deployed.
+              The replacement&apos;s 25 USDG seed is protocol-owned, with every BID-LP share held by the liquidity vault.
             </p>
           </section>
 
@@ -182,14 +182,14 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               After close, the oracle submits a payout vector totaling 1e18. Traders redeem their outcome
               balances against that vector.
             </p>
-            <h3>Five-city beta rules</h3>
+            <h3>Miami public beta rules</h3>
             <p>
-              The beta compares each city&apos;s September 30, 2026 to March 31, 2027 Parcl Labs Price Feed.
-              Exact Census place GEOIDs identify Miami, Tampa, New York, Dallas and Phoenix. The highest
-              full-precision percentage change wins. Trading closes before the end observation; settlement follows
-              the first eligible Parcl API response containing every required observation.
-              Exact ties split the payout, and a documented invalid-market fallback applies if a series remains
-              unavailable. The versioned rule document&apos;s SHA-256 is embedded in the onchain market question.
+              The market uses the Parcl Labs daily Sales Price Feed for Miami City, Parcl ID 5352987.
+              The baseline observation is September 6, 2026 and the final observation is September 30, 2026.
+              YES wins only when the final value is strictly greater than the baseline; otherwise NO wins.
+              If a date is unavailable, the latest published observation on or before that date is used. Revisions
+              published through October 10, 2026 at 23:59:59 America/New_York are included. The rule document&apos;s
+              SHA-256, e01624ec2668ac46b589909c8fb57c846146792b8d9906a785a593badef756b6, is embedded in the onchain question.
             </p>
           </section>
 
@@ -240,8 +240,9 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><Status>TESTED</Status><span>Versioned 45/30/10/10/5 fee allocation with deterministic rounding</span></div>
               <div><Status>TESTED</Status><span>Operator-managed deployment into protocol-owned market LP</span></div>
               <div><Status>TESTED</Status><span>Funded Merkle reward epochs with one-time wallet claims</span></div>
-              <div><Status>LIVE BETA</Status><span>Mainnet five-city market with 25 USDG protocol-owned liquidity</span></div>
-              <div><Status>LIVE</Status><span>Single-replica Railway keeper on Robinhood Chain</span></div>
+              <div><Status>LIVE BETA</Status><span>Mainnet Miami YES / NO market with 25 USDG protocol-owned liquidity</span></div>
+              <div><Status>TESTED</Status><span>Real mainnet $5 trade, close, resolution, redemption and complete USDG reconciliation</span></div>
+              <div><Status>READ ONLY</Status><span>Railway service connected to Robinhood Chain; automated financial actions disabled</span></div>
               <div><Status tone="pending">PENDING</Status><span>Independent audit, event indexer and production monitoring</span></div>
             </div>
 
@@ -304,7 +305,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <h2>Production operator flow</h2>
             <ol>
               <li>Deploy the rewards distributor, treasury and liquidity vault with multisig owners and the Railway keeper&apos;s public operator address.</li>
-              <li>Deploy the market factory and one capped genesis market before the token CA exists, supplying 25 USDG with a 5 USDG initial order cap. The factory owner can update that cap; community creation stays locked.</li>
+              <li>Keep the deployed Miami YES / NO genesis market funded with 25 USDG and a 5 USDG order cap. The factory owner can update that cap; community creation stays locked.</li>
               <li>Run <code>LaunchBidOnPons.s.sol</code> from an encrypted local Foundry keystore with a 150 bps creator fee, buyback disabled, USDG pair asset, and the treasury contract as creator recipient.</li>
               <li>Run <code>BindBidPonsCurve.s.sol</code> from the deployer; it verifies the launch, binds the final token and curve once, and hands factory and treasury ownership to their final multisigs.</li>
               <li>Put the public addresses in Vercel and Railway; put the keeper signer only in Railway&apos;s secret manager.</li>

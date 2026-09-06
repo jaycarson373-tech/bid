@@ -24,8 +24,9 @@ const configuredMarketAddresses = (env("KEEPER_MARKETS") || [
   env("NEXT_PUBLIC_BID_MARKET_AUSTIN"),
 ].filter(Boolean).join(",")).split(",").map((item) => item.trim()).filter(Boolean);
 const retiredMarketAddresses = new Set([
-  // Original six-month field beta. Recovery is prepared and this address must never be refilled.
+  // Recovered field beta and drained lifecycle test; neither may be refilled.
   "0x99e8d451e0c936010f0f5d30a7f7b8e773bd8d5b",
+  "0x8d9a7d0e8ccddd7baebba3173a0afc3e24fdb606",
   ...env("KEEPER_RETIRED_MARKETS").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean),
 ]);
 const marketAddresses = configuredMarketAddresses.filter((address) => !retiredMarketAddresses.has(address.toLowerCase()));
