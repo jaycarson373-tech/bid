@@ -55,6 +55,9 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.doesNotMatch(html, /Solana|pump\.fun/i);
   assert.match(html, /HOUSING MARKETS/);
   assert.match(html, /1 MARKET ACTIVATING/);
+  assert.match(html, /MARKETS LIVE/);
+  assert.match(html, /INITIAL LIQUIDITY/);
+  assert.match(html, /LOCKED · COMING SOON/);
   assert.match(html, /\$1 MINIMUM · \$5 MAXIMUM PER ORDER/);
   assert.match(html, /OTHER POOLS COMING SOON/);
   assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
@@ -122,6 +125,7 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(page, /removeFundingToCollateral/);
   assert.match(page, /Add liquidity/);
   assert.match(page, /Withdraw liquidity/);
+  assert.match(page, /disabled={!isBetaMarket}/);
   assert.match(page, /waitForTransactionReceipt/);
   assert.match(page, /0% BID market fee/i);
   assert.match(page, /BID CREATOR FEE/);

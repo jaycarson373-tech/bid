@@ -688,6 +688,28 @@ export default function Home() {
       const inputAmount = parseUnits(amount, decimals);
       const needsCollateralApproval = orderType !== "liquidity" || liquidityAction === "add";
 
+      if (needsCollateralApproval) {
+        const collateralBalance = await robinhoodPublicClient.readContract({
+          address: collateral,
+          abi: erc20TradeAbi,
+          functionName: "balanceOf",
+          args: [account],
+        });
+        if (collateralBalance < inputAmount) {
+          setNotice(
+            `Insufficient ${siteConfig.collateralSymbol}. This order needs ${amount} ${siteConfig.collateralSymbol}; `
+            + `your wallet has ${formatUnits(collateralBalance, decimals)} ${siteConfig.collateralSymbol}.`,
+          );
+          return;
+        }
+
+        const nativeBalance = await robinhoodPublicClient.getBalance({ address: account });
+        if (nativeBalance === 0n) {
+          setNotice(`This wallet needs ETH on ${siteConfig.networkName} to pay transaction gas.`);
+          return;
+        }
+      }
+
       if (orderType === "liquidity" && liquidityAction === "remove") {
         const lpBalance = await robinhoodPublicClient.readContract({
           address: selectedMarketAddress,
@@ -717,7 +739,11 @@ export default function Home() {
             functionName: "approve",
             args: [selectedMarketAddress, inputAmount],
           });
-          await robinhoodPublicClient.waitForTransactionReceipt({ hash: approvalHash });
+          const approvalReceipt = await robinhoodPublicClient.waitForTransactionReceipt({ hash: approvalHash });
+          if (approvalReceipt.status !== "success") {
+            throw new Error(`${siteConfig.collateralSymbol} approval reverted.`);
+          }
+          setNotice(`${siteConfig.collateralSymbol} approved. Confirm the market action in your wallet.`);
         }
       }
 
@@ -781,15 +807,18 @@ export default function Home() {
         });
       }
 
-      await robinhoodPublicClient.waitForTransactionReceipt({ hash: transactionHash });
+      const transactionReceipt = await robinhoodPublicClient.waitForTransactionReceipt({ hash: transactionHash });
+      if (transactionReceipt.status !== "success") {
+        throw new Error("The market transaction reverted. No order was placed.");
+      }
       setRefreshNonce((value) => value + 1);
       const actionLabel = orderType === "liquidity"
         ? `Liquidity ${liquidityAction === "add" ? "added" : "withdrawn"}`
         : orderType === "market" ? "Market order filled" : "Limit order placed";
       setNotice(`${actionLabel}. Transaction ${truncateAddress(transactionHash)} confirmed.`);
     } catch (error) {
-      const message = typeof error === "object" && error !== null && "shortMessage" in error
-        ? String((error as { shortMessage: unknown }).shortMessage)
+      const message = error instanceof Error
+        ? ("shortMessage" in error ? String(error.shortMessage) : error.message)
         : "The transaction was cancelled or reverted.";
       setNotice(message);
     } finally {
@@ -931,6 +960,13 @@ export default function Home() {
           <p>One five-city market opens first. Head-to-head and YES/NO pools are coming soon.</p>
         </div>
 
+        <div className="market-stats" aria-label="Live market statistics">
+          <div><span>MARKETS LIVE</span><strong>1</strong></div>
+          <div><span>LIVE OUTCOMES</span><strong>5</strong></div>
+          <div><span>INITIAL LIQUIDITY</span><strong>25 <small>USDG</small></strong></div>
+          <div><span>ORDER RANGE</span><strong>$1–$5</strong></div>
+        </div>
+
         <div className="beta-market-banner" aria-label="Beta market availability">
           <span><i />{betaMarketOpen ? "1 MARKET OPEN" : "1 MARKET ACTIVATING"}</span>
           <strong>FIVE-CITY HOUSING OUTLOOK</strong>
@@ -961,7 +997,8 @@ export default function Home() {
                 className={`market-card ${isBetaMarket ? "beta-market" : "coming-soon"} ${selectedId === market.id ? "selected" : ""}`}
                 key={market.id}
                 type="button"
-                onClick={() => chooseMarket(market)}
+                onClick={isBetaMarket ? () => chooseMarket(market) : undefined}
+                disabled={!isBetaMarket}
                 aria-pressed={selectedId === market.id}
                 aria-disabled={!isBetaMarket}
               >
@@ -986,6 +1023,7 @@ export default function Home() {
                   <small>{isBetaMarket
                     ? `Resolves ${liveCloseDates[market.id] ?? market.closes} · $1–$5 per order`
                     : `Resolves ${market.closes} · Pool coming soon`}</small>
+                  {!isBetaMarket && <span className="market-lock">LOCKED · COMING SOON</span>}
                 </span>
                 <span className={`market-odds ${market.mode === "field" ? "field-odds" : ""}`}>
                   {livePrices[market.id] || showSampleData ? (
@@ -999,7 +1037,7 @@ export default function Home() {
                   )}
                   {market.mode === "field" && <small>+2 more cities</small>}
                 </span>
-                <span className="select-arrow">↗</span>
+                <span className="select-arrow">{isBetaMarket ? "↗" : "LOCKED"}</span>
               </button>
               );
             })}
@@ -1067,11 +1105,25 @@ export default function Home() {
                     type="button"
                     onClick={() => setSelectedOutcome(index)}
                   >
-                    <span>{selected.mode === "yes-no" ? `Buy ${item.label}` : item.label}</span>
+                    <span className="outcome-name">
+                      {selected.mode === "field" && <small>{item.code}</small>}
+                      {selected.mode === "yes-no" ? `Buy ${item.label}` : item.label}
+                    </span>
                     {showSelectedPricing
-                      ? <strong>{Math.round((selectedPrices?.[index] ?? item.price * 10_000) / 100)}¢</strong>
+                      ? (
+                        <strong>
+                          {Math.round((selectedPrices?.[index] ?? item.price * 10_000) / 100)}¢
+                          {selected.mode === "field" && (
+                            <em>{Math.round((selectedPrices?.[index] ?? item.price * 10_000) / 100)}%</em>
+                          )}
+                        </strong>
+                      )
                       : <LockedValue />}
-                    {selected.mode === "field" && <small>{item.code}</small>}
+                    {selected.mode === "field" && showSelectedPricing && (
+                      <span className="outcome-meter">
+                        <i style={{ width: `${Math.round((selectedPrices?.[index] ?? item.price * 10_000) / 100)}%` }} />
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
