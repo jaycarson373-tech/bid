@@ -20,7 +20,9 @@ These public values are required before the first treasury deployment:
 | `BID_LIQUIDITY_OPERATOR` | Public address derived from the Railway keeper signer |
 | `BID_RESOLUTION_ORACLE` | Dedicated production oracle address |
 | `BID_MARKET_CLOSE_TIME` | Approved future Unix timestamp |
-| `BID_INITIAL_LIQUIDITY` | USDG base units per market |
+| `BID_GENESIS_MARKET_COUNT` | `1` for the capped beta |
+| `BID_INITIAL_LIQUIDITY` | `25000000` for the 25 USDG seed |
+| `BID_MAX_TRADE_AMOUNT` | `1000000` for the immutable 1 USDG order cap |
 
 The final BID CA and Pons curve are outputs of `LaunchBidOnPons`, not inputs to
 the first deployment. `BID_REWARDS_VAULT` is the distributor address printed by
@@ -52,8 +54,8 @@ creator-fee recipient.
    multisig addresses. The deployer temporarily owns the treasury and liquidity
    vault until the scripted curve binding and genesis setup hand them to their
    final owners. Record all three addresses.
-5. Deploy `BidMarketFactory` without a BID token, then create and fund the three
-   USDG genesis markets. Community creation remains disabled. The deployer keeps
+5. Deploy `BidMarketFactory` without a BID token, then create and fund the one
+   capped USDG beta market. Community creation remains disabled. The deployer keeps
    temporary factory ownership only until the final token bind.
 6. Keep the website in `prelaunch` and the Railway keeper in read-only mode.
 
@@ -179,6 +181,7 @@ NEXT_PUBLIC_BID_CREATOR_REWARDS_VAULT
 NEXT_PUBLIC_BID_MARKET_MIA_TPA
 NEXT_PUBLIC_BID_MARKET_CITY_FIELD
 NEXT_PUBLIC_BID_MARKET_AUSTIN
+NEXT_PUBLIC_BID_MAX_TRADE_AMOUNT
 ```
 
 Build with `npm ci` and `npm run build`. Attach the production domain, apply the
