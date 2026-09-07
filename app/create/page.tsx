@@ -4,14 +4,14 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Create a Market | BID",
-  description: "Preview BID's future token-gated housing market creation workflow.",
+  description: "Preview BID's future token-gated stock-market creation workflow.",
 };
 
 const fields = [
-  ["QUESTION", "Which city will lead home-price growth?"],
+  ["QUESTION", "Will an index finish above a published level?"],
   ["MARKET TYPE", "Head to head"],
-  ["LOCATION", "Select locations"],
-  ["RESOLUTION SOURCE", "Published housing data"],
+  ["SYMBOLS", "Select stocks or indices"],
+  ["RESOLUTION SOURCE", "Official exchange or issuer data"],
   ["RESOLUTION DATE", "Select date"],
   ["INITIAL LIQUIDITY", "USDG amount"],
 ] as const;
@@ -37,7 +37,7 @@ export default function CreateMarketPage() {
         <span className="section-kicker">COMING SOON / TOKEN-GATED</span>
         <h1>Create a market.</h1>
         <p>
-          Hold the required $BID, burn to launch and seed your market in USDG. Approved creators will earn a capped royalty from legitimate activity in the pool they create, bringing more housing views and deeper markets to BID.
+          Hold the required $BID, burn to launch and seed an approved stock-outcome market in USDG. Approved creators will earn a capped royalty from legitimate activity in the pool they create, bringing more tradable views and deeper markets to BID.
         </p>
       </section>
 

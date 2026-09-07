@@ -1,20 +1,20 @@
 # BID
 
-BID is a Robinhood Chain real-estate prediction market prototype designed to
+BID is a Robinhood Chain stock prediction-market prototype designed to
 connect a $BID token launched through Pons v2 with:
 
-- binary YES/NO housing questions
-- city-vs-city matchups
-- finite multi-city winner markets
+- binary YES/NO stock and index questions
+- security-vs-security relative-performance markets
+- finite multi-stock winner markets
 - USDG-backed fixed-product liquidity pools
 - market buys in the interface and onchain market buys/sells plus escrowed limit orders
 - slippage-protected LP deposits and USDG-first liquidity withdrawals
 - funded Merkle reward epochs with duplicate-safe wallet claims
 - a future hold-and-burn gate for community market creators
 
-The deployed mainnet beta addresses are versioned in the application. The app
-reads live AMM prices, requests USDG allowance when needed, and submits
-Robinhood Chain transactions.
+The retired housing beta addresses remain versioned for audit history, and its
+50 USDG LP backing has been recovered. The stock-market release is prelaunch;
+no stock contract or production stock-data oracle is currently published.
 
 Protocol mechanics, deployment status, and production requirements are
 documented at `/docs` in the running application. `/rewards` verifies published
@@ -90,7 +90,7 @@ pre-graduation curve sweeps, post-graduation hook sweeps, escrow claims, treasur
 deployment of the 30% collateral allocation into approved protocol-owned LP by
 actual depth deficit. It does not yet implement time-weighted LP reward scoring,
 buyback execution, creator-reward scoring, an indexer/history database, or the
-production housing oracle policy. Those allocations remain reserves. The funded
+production stock-market oracle policy. Those allocations remain reserves. The funded
 reward epoch and wallet claim path is implemented. See `docs/PRODUCTION_RUNBOOK.md`.
 
 ## Contracts

@@ -7,7 +7,7 @@ import styles from "./docs.module.css";
 
 export const metadata: Metadata = {
   title: "BID Protocol Docs",
-  description: "Technical documentation for BID housing prediction markets on Robinhood Chain.",
+  description: "Technical documentation for BID stock prediction markets on Robinhood Chain.",
 };
 
 const navigation = [
@@ -30,9 +30,6 @@ function Status({ children, tone = "ready" }: { children: ReactNode; tone?: "rea
 }
 
 export default function DocsPage() {
-  const marketAddresses = Object.values(siteConfig.marketAddresses);
-  const marketsConfigured = marketAddresses.some(Boolean);
-
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
@@ -67,21 +64,21 @@ export default function DocsPage() {
           <div className={styles.breadcrumbs}>BID / PROTOCOL / OVERVIEW</div>
           <section className={styles.intro} id="overview">
             <span className={styles.eyebrow}>Protocol documentation</span>
-            <h1>Housing markets,<br />priced onchain.</h1>
+            <h1>Stock outcomes,<br />priced onchain.</h1>
             <p>
-              BID is a {siteConfig.collateralSymbol}-collateralized prediction-market protocol for finite real-estate outcomes.
+              BID is a {siteConfig.collateralSymbol}-collateralized prediction-market protocol for finite stock-market outcomes.
               It runs on Robinhood Chain and uses a fixed-product pool so every market can quote a price
               before a natural counterparty arrives.
             </p>
             <div className={styles.callout}>
               <strong>Current status</strong>
               <p>
-                One mainnet market is deployed and funded. Its complete contract path has been verified with a separate real-USDG lifecycle test covering funding, trading, position accounting, close, resolution, redemption and LP recovery.
+                The original housing beta is retired and its 50 USDG liquidity was recovered. BID&apos;s stock-market release is prelaunch: no stock contract or stock-data oracle is currently published. The underlying contract path has been verified with a separate real-USDG lifecycle test covering funding, trading, position accounting, close, resolution, redemption and LP recovery.
                 {siteConfig.isTestnet
                   ? " This build targets public testnet and remains unaudited."
                   : siteConfig.isPonsVerified
                     ? " The published Pons launch record is configured for onchain verification."
-                    : " The BID token and Pons launch are separate from the live prediction market and remain unbound."}
+                    : " The BID token and Pons launch are separate from the stock-market deployment and remain unbound."}
               </p>
             </div>
           </section>
@@ -90,14 +87,14 @@ export default function DocsPage() {
             <span className={styles.sectionNumber}>01</span>
             <h2>Market model</h2>
             <p>
-              The first public beta is one YES / NO market on Miami City&apos;s Parcl Labs home-price index.
-              Trading closes September 30, 2026 at 23:59:59 UTC. Initial funding is 25 USDG,
-              with a 5 USDG per-order minimum and cap. The cap is controlled by the factory owner. Other markets are coming soon.
-              The final BID token address is not required to deploy this pool.
+              The first stock-market release will use one tightly specified YES / NO question with a named
+              benchmark, official publication source, observation window and deterministic edge-case policy.
+              Funding and order limits will be published with the deployment. The final BID token address is not
+              required to deploy the market pool.
             </p>
             <p>
               Settlement is not automatic: the designated oracle submits the payout after data publication.
-              The exact housing series, observation dates, tie rules and missing-data treatment must be
+              The exact market-data series, observation dates, corporate-action rules and missing-data treatment must be
               published before accepting public trades. A closing date is not a guaranteed payout date.
               Fee claiming and automatic reserve spending remain disabled for the initial deployment.
             </p>
@@ -107,9 +104,9 @@ export default function DocsPage() {
               is always worth one unit of collateral because the payout vector must sum to 1.
             </p>
             <div className={styles.featureGrid}>
-              <div><strong>YES / NO</strong><p>Binary questions with one winning side.</p></div>
-              <div><strong>HEAD TO HEAD</strong><p>Two locations compete under one metric.</p></div>
-              <div><strong>FINITE FIELD</strong><p>One winner across three to eight locations.</p></div>
+              <div><strong>YES / NO</strong><p>Indices, earnings and milestones with one winning side.</p></div>
+              <div><strong>HEAD TO HEAD</strong><p>Two securities compete under one return metric.</p></div>
+              <div><strong>FINITE FIELD</strong><p>One winner across three to eight named securities.</p></div>
             </div>
           </section>
 
@@ -143,17 +140,16 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               inventory directly back into {siteConfig.collateralSymbol}, and leaves only the imbalance as redeemable outcome
               positions. A minimum-collateral check protects the transaction from pool movement.
             </p>
-            <h3>Public beta funding</h3>
+            <h3>First stock-market funding</h3>
             <table>
               <thead><tr><th>Initial seed</th><th>Order cap</th><th>Use</th></tr></thead>
               <tbody>
-                <tr><td>25 USDG</td><td>5 USDG</td><td>Live in the Miami YES / NO pool</td></tr>
+                <tr><td>Not funded</td><td>Not active</td><td>Published only after contract and oracle verification</td></tr>
               </tbody>
             </table>
             <p className={styles.note}>
-              USDG uses six decimals. The retired field beta&apos;s 25 USDG was recovered in full before this replacement was deployed.
-              The replacement&apos;s original 25 USDG seed is protocol-owned, with those BID-LP shares held by the liquidity vault.
-              A second 25 USDG operator top-up brought live backing to 50 USDG. Public liquidity controls are disabled for the beta.
+              USDG uses six decimals. The retired housing beta&apos;s full 50 USDG LP backing was recovered to its owner.
+              The stock-market release has no funded public pool yet. Public liquidity controls remain disabled.
             </p>
             <h3>Depth policy</h3>
             <p>
@@ -162,8 +158,8 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               Supporting 50 USDG orders at the same depth ratio requires approximately 1,000 USDG of initial funding.
             </p>
             <p className={styles.note}>
-              The live 50 USDG-backed beta remains intentionally conservative: a 5 USDG buy moves the ending spot price to approximately 54.75%.
-              Add protocol-controlled USDG liquidity before raising the order cap. The active market does not accept USDT collateral.
+              The first public stock market must be simulated at its final depth and order cap before funding.
+              Add protocol-controlled USDG liquidity before raising limits. BID markets do not accept USDT collateral.
             </p>
           </section>
 
@@ -194,14 +190,11 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               After close, the oracle submits a payout vector totaling 1e18. Traders redeem their outcome
               balances against that vector.
             </p>
-            <h3>Miami public beta rules</h3>
+            <h3>Stock-market resolution policy</h3>
             <p>
-              The market uses the Parcl Labs daily Sales Price Feed for Miami City, Parcl ID 5352987.
-              The baseline observation is September 6, 2026 and the final observation is September 30, 2026.
-              YES wins only when the final value is strictly greater than the baseline; otherwise NO wins.
-              If a date is unavailable, the latest published observation on or before that date is used. Revisions
-              published through October 10, 2026 at 23:59:59 America/New_York are included. The rule document&apos;s
-              SHA-256, e01624ec2668ac46b589909c8fb57c846146792b8d9906a785a593badef756b6, is embedded in the onchain question.
+              Every stock market must name its security or index, primary publication source, opening and final
+              observation, market calendar, corporate-action treatment and fallback rule. The final rule document
+              and its SHA-256 hash must be published before funding. BID does not currently claim a live stock-data feed.
             </p>
           </section>
 
@@ -260,7 +253,8 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><Status>TESTED</Status><span>Versioned 45/30/10/10/5 fee allocation with deterministic rounding</span></div>
               <div><Status>TESTED</Status><span>Operator-managed deployment into protocol-owned market LP</span></div>
               <div><Status>TESTED</Status><span>Funded Merkle reward epochs with one-time wallet claims</span></div>
-              <div><Status>LIVE BETA</Status><span>Mainnet Miami YES / NO market with 50 USDG backing</span></div>
+              <div><Status>RECOVERED</Status><span>Retired housing beta with all 50 USDG LP backing returned</span></div>
+              <div><Status tone="pending">PRELAUNCH</Status><span>First stock market, stock-data source and oracle publication</span></div>
               <div><Status>TESTED</Status><span>Real mainnet $5 trade, close, resolution, redemption and complete USDG reconciliation</span></div>
               <div><Status>READ ONLY</Status><span>Railway service connected to Robinhood Chain; automated financial actions disabled</span></div>
               <div><Status tone="pending">PENDING</Status><span>Independent audit, event indexer and production monitoring</span></div>
@@ -277,7 +271,8 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
               <div><dt>Buyback + burn reserve</dt><dd><code>{siteConfig.buybackVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Protocol treasury</dt><dd><code>{siteConfig.protocolTreasuryAddress || "AWAITING PUBLICATION"}</code></dd></div>
               <div><dt>Creator rewards reserve</dt><dd><code>{siteConfig.creatorRewardsVaultAddress || "AWAITING PUBLICATION"}</code></dd></div>
-              <div><dt>Genesis markets</dt><dd><code>{marketsConfigured ? "Configured" : "AWAITING PUBLICATION"}</code></dd></div>
+              <div><dt>Archived housing beta</dt><dd><code>{siteConfig.marketAddresses.miamiTampa || "UNAVAILABLE"}</code></dd></div>
+              <div><dt>Stock markets</dt><dd><code>AWAITING PUBLICATION</code></dd></div>
             </dl>
 
             <h3>Production operator map</h3>
@@ -325,7 +320,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <h2>Production operator flow</h2>
             <ol>
               <li>Deploy the rewards distributor, treasury and liquidity vault with multisig owners and the Railway keeper&apos;s public operator address.</li>
-              <li>Keep the deployed Miami YES / NO genesis market funded with 25 USDG and a 5 USDG order cap. The factory owner can update that cap; community creation stays locked.</li>
+              <li>Publish the first stock market&apos;s exact data source, rule hash, oracle, seed amount and order cap. Community creation stays locked.</li>
               <li>Run <code>LaunchBidOnPons.s.sol</code> from an encrypted local Foundry keystore with a 150 bps creator fee, buyback disabled, USDG pair asset, and the treasury contract as creator recipient.</li>
               <li>Run <code>BindBidPonsCurve.s.sol</code> from the deployer; it verifies the launch, binds the final token and curve once, and hands factory and treasury ownership to their final multisigs.</li>
               <li>Put the public addresses in Vercel and Railway; put the keeper signer only in Railway&apos;s secret manager.</li>
@@ -352,7 +347,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
             <ol>
               <li>Independent smart-contract audit and remediation.</li>
               <li>Final $BID token address and verified 1.5% Pons v2 creator fee, recipient, quote asset, and escrow configuration.</li>
-              <li>Documented housing index, edge-case policy, and production resolution oracle.</li>
+              <li>Documented stock or index data source, corporate-action policy, edge-case policy, and production resolution oracle.</li>
               <li>Multisig ownership for the factory, oracle operations, and flywheel treasury.</li>
               <li>Funded single-replica keeper, indexer, production RPC, alerting, and transaction monitoring.</li>
               <li>Time-weighted LP reward scoring and anti-snapshot/anti-wash policy before the first 45% LP reward epoch.</li>
@@ -373,7 +368,7 @@ pᵢ = (1 / bᵢ) ÷ Σ(1 / bⱼ)
           <div>
             <strong>Build status</strong>
             <span><i /> Contracts tested</span>
-            <span><i /> One-market beta live</span>
+            <span><i /> Stock-market beta pending</span>
           </div>
         </aside>
       </div>

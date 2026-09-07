@@ -730,7 +730,7 @@ a {
   background:
     linear-gradient(180deg, rgba(5, 6, 7, 0.2) 0, rgba(5, 6, 7, 0.72) 340px, #050607 820px),
     repeating-linear-gradient(0deg, transparent 0 84px, rgba(255, 255, 255, 0.018) 84px 85px),
-    url("/brand/bid-market-skyline.jpg") top center / max(1440px, 100%) auto no-repeat,
+    url("/brand/bid-stocks-banner.jpg") top center / max(1440px, 100%) auto no-repeat,
     var(--paper);
   color: #f5f8f3;
 }
@@ -1126,9 +1126,8 @@ a {
   padding: 7px;
   background:
     linear-gradient(180deg, var(--city-tint), rgba(3, 5, 2, 0.82)),
-    url("/brand/bid-market-skyline.jpg");
-  background-position: 4% center;
-  background-size: auto 125%;
+    repeating-linear-gradient(0deg, transparent 0 13px, rgba(255, 255, 255, 0.12) 13px 14px),
+    repeating-linear-gradient(90deg, transparent 0 17px, rgba(255, 255, 255, 0.08) 17px 18px);
   color: #f4ff82;
   isolation: isolate;
   text-shadow: 0 1px 5px #000;
@@ -2678,11 +2677,16 @@ footer > small {
   }
 
   .filter-row {
-    overflow-x: auto;
+    justify-content: space-between;
+    overflow-x: hidden;
   }
 
   .filter-row button {
-    flex: 0 0 auto;
+    min-width: 0;
+    flex: 0 1 auto;
+    gap: 4px;
+    padding: 12px 6px 14px;
+    font-size: 7px;
   }
 
   .market-card {

@@ -18,7 +18,7 @@ const productionHost =
     ? "https://www.bidrh.com"
     : "http://localhost:3000");
 const description =
-  "Housing prediction markets on Robinhood Chain. Trade views on city performance, home-price direction, and housing outcomes settled against published data.";
+  "Stock prediction markets on Robinhood Chain. Trade views on earnings, benchmarks, relative performance, and market milestones settled against published data.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(productionHost),
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-robinhood.jpg",
+        url: "/brand/bid-stocks-banner.jpg",
         width: 1280,
         height: 426,
         alt: "BID — BID the Block",

@@ -91,63 +91,63 @@ type Market = {
 
 const markets: Market[] = [
   {
-    id: "miami-up-sep30",
-    contractAddress: siteConfig.marketAddresses.miamiTampa,
-    code: "MIA / SEP 30",
+    id: "spx-2026-up",
+    contractAddress: "",
+    code: "SPX / DEC 31",
     mode: "yes-no",
-    question: "Will Miami's home-price index rise by September 30?",
-    short: "Miami monthly home-price direction",
+    question: "Will the S&P 500 finish 2026 above its 2025 close?",
+    short: "S&P 500 year-end direction",
     outcomes: [
       { label: "Yes", code: "YES", price: 0.5, tone: "mint" },
       { label: "No", code: "NO", price: 0.5, tone: "coral" },
     ],
     volume: "—",
-    liquidity: "50 USDG",
-    closes: "Sep 30, 2026",
-    signal: "Parcl ID 5352987",
+    liquidity: "—",
+    closes: "Dec 31, 2026",
+    signal: "Official index close",
     chart: [28, 31, 29, 35, 38, 36, 43, 41, 47, 52, 49, 55, 59, 57, 63, 68, 65, 71, 74, 72, 78, 82, 79, 86],
   },
   {
-    id: "city-field-eoy",
-    contractAddress: siteConfig.marketAddresses.cityField,
-    code: "CITY / 6 MONTHS",
-    mode: "field",
-    question: "Which city posts the highest home-price growth from September 2026 to March 2027?",
-    short: "Five-city housing outlook",
+    id: "nvda-amd-q4",
+    contractAddress: "",
+    code: "NVDA / AMD",
+    mode: "head-to-head",
+    question: "Which stock delivers the higher return in Q4 2026?",
+    short: "Nvidia versus AMD",
     outcomes: [
-      { label: "Miami", code: "MIA", price: 0.31, tone: "coral" },
-      { label: "Tampa", code: "TPA", price: 0.24, tone: "mint" },
-      { label: "New York", code: "NYC", price: 0.18, tone: "violet" },
-      { label: "Dallas", code: "DAL", price: 0.15, tone: "gold" },
-      { label: "Phoenix", code: "PHX", price: 0.12, tone: "coral" },
+      { label: "Nvidia", code: "NVDA", price: 0.5, tone: "mint" },
+      { label: "AMD", code: "AMD", price: 0.5, tone: "gold" },
     ],
-    volume: "$2.42M",
-    liquidity: "$618K",
-    closes: "Mar 5, 2027",
-    signal: "5 cities · winner takes $1",
+    volume: "—",
+    liquidity: "—",
+    closes: "Dec 31, 2026",
+    signal: "Adjusted close-to-close return",
     chart: [35, 39, 37, 42, 45, 49, 47, 51, 55, 53, 58, 61, 59, 64, 67, 65, 70, 73, 71, 75, 79, 77, 82, 84],
   },
   {
-    id: "austin-positive",
-    contractAddress: siteConfig.marketAddresses.austinPositive,
-    code: "AUS / YOY",
-    mode: "yes-no",
-    question: "Will Austin home prices finish 2026 positive year over year?",
-    short: "Austin turns positive by year-end",
+    id: "megacap-q4",
+    contractAddress: "",
+    code: "MEGACAP / Q4",
+    mode: "field",
+    question: "Which megacap stock leads Q4 2026?",
+    short: "Megacap quarterly performance",
     outcomes: [
-      { label: "Yes", code: "YES", price: 0.43, tone: "mint" },
-      { label: "No", code: "NO", price: 0.57, tone: "coral" },
+      { label: "Apple", code: "AAPL", price: 0.2, tone: "coral" },
+      { label: "Microsoft", code: "MSFT", price: 0.2, tone: "mint" },
+      { label: "Nvidia", code: "NVDA", price: 0.2, tone: "violet" },
+      { label: "Amazon", code: "AMZN", price: 0.2, tone: "gold" },
+      { label: "Alphabet", code: "GOOGL", price: 0.2, tone: "coral" },
     ],
-    volume: "$713K",
-    liquidity: "$198K",
+    volume: "—",
+    liquidity: "—",
     closes: "Dec 31, 2026",
-    signal: "Current YoY -2.3%",
+    signal: "Adjusted close-to-close return",
     chart: [76, 73, 75, 69, 71, 66, 63, 65, 60, 57, 59, 54, 50, 53, 48, 45, 49, 43, 40, 44, 38, 41, 39, 42],
   },
 ];
 
-const filters = ["All markets", "Head to head", "5-city fields", "Yes / No"] as const;
-const betaMarketId = "miami-up-sep30";
+const filters = ["All markets", "Head to head", "Stock fields", "Yes / No"] as const;
+const betaMarketId = "spx-2026-up";
 const feeAllocatedEvent = parseAbiItem(
   "event FeeAllocated(bytes32 indexed allocationVersion,address indexed asset,uint256 grossAmount,uint256 lpRewardsAmount,uint256 marketLiquidityAmount,uint256 buybackBurnAmount,uint256 treasuryAmount,uint256 creatorRewardsAmount)",
 );
@@ -255,7 +255,7 @@ function SampleBadge({ compact = false }: { compact?: boolean }) {
 }
 
 function LockedValue({
-  children = siteConfig.isTradingEnabled ? "Awaiting liquidity" : "Trading paused",
+  children = siteConfig.isTradingEnabled ? "Awaiting liquidity" : "Coming soon",
 }: { children?: string }) {
   return <strong className="locked-value">{children}</strong>;
 }
@@ -304,7 +304,7 @@ function MarketVisual({
 function matchesFilter(market: Market, filter: (typeof filters)[number]) {
   if (filter === "All markets") return true;
   if (filter === "Head to head") return market.mode === "head-to-head";
-  if (filter === "5-city fields") return market.mode === "field";
+  if (filter === "Stock fields") return market.mode === "field";
   return market.mode === "yes-no";
 }
 
@@ -410,7 +410,6 @@ export default function Home() {
   const displayedMarkets = markets
     .filter((market) => matchesFilter(market, filter))
     .sort((left, right) => Number(right.id === betaMarketId) - Number(left.id === betaMarketId));
-  const betaMarketFunded = Boolean(livePrices[betaMarketId]);
   const showSampleData = isDemo;
   const selectedPrices = livePrices[selected.id];
   const showSelectedPricing = Boolean(selectedPrices) || showSampleData;
@@ -576,6 +575,7 @@ export default function Home() {
   }, [refreshNonce]);
 
   useEffect(() => {
+    if (siteConfig.marketRetired) return;
     const marketAddress = configuredAddress(siteConfig.marketAddresses.miamiTampa);
     const collateralAddress = configuredAddress(siteConfig.collateralAddress);
     const deploymentBlock = siteConfig.marketDeploymentBlocks.miamiTampa;
@@ -971,7 +971,7 @@ export default function Home() {
 
   const chooseMarket = (market: Market) => {
     if (market.id !== betaMarketId) {
-      setNotice(`${market.short} is coming soon. The Miami YES / NO market is the only live beta market.`);
+      setNotice(`${market.short} is coming soon. No stock market is accepting orders yet.`);
       return;
     }
     setSelectedId(market.id);
@@ -1011,7 +1011,7 @@ export default function Home() {
 
   const reviewOrder = async () => {
     if (!siteConfig.isTradingEnabled) {
-      setNotice("Trading is paused while BID prepares the shorter $5–$50 beta market.");
+      setNotice("Trading opens after the first stock market contract and resolution source are published.");
       return;
     }
 
@@ -1351,7 +1351,7 @@ export default function Home() {
     <main className="site-shell">
       <header className="topbar">
         <a className="brand" href="#top" aria-label="BID home">
-          <BrandMark /><small>beta</small>
+          <BrandMark /><small>stocks</small>
         </a>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <a className="active" href="#markets">Markets</a>
@@ -1384,8 +1384,8 @@ export default function Home() {
       <section className="hero" id="top" aria-labelledby="hero-title">
         <Image
           className="hero-banner-image"
-          src="/brand/bid-banner.jpg"
-          alt="BID real estate prediction markets on Robinhood Chain"
+          src="/brand/bid-stocks-banner.jpg"
+          alt="BID stock prediction markets on Robinhood Chain"
           fill
           priority
           sizes="100vw"
@@ -1393,10 +1393,10 @@ export default function Home() {
         <div className="hero-shade" aria-hidden="true" />
         <div className="hero-content">
           <div className="hero-copy">
-            <div className="eyebrow"><span>BID</span> HOUSING MARKETS // {siteConfig.networkName.toUpperCase()}</div>
-            <h1 id="hero-title">Real estate<br />prediction markets.</h1>
+            <div className="eyebrow"><span>BID</span> STOCK MARKETS // {siteConfig.networkName.toUpperCase()}</div>
+            <h1 id="hero-title">Trade the outcome.<br />Not the headline.</h1>
             <p>
-              Trade where cities and home prices go next. Housing prediction markets on Robinhood Chain.
+              Price earnings, benchmarks and market milestones. Stock prediction markets on Robinhood Chain.
             </p>
           </div>
           <div className="hero-actions">
@@ -1406,12 +1406,12 @@ export default function Home() {
         </div>
         <div className="hero-status" aria-label="Protocol highlights">
           <span><i /> {!siteConfig.isTradingEnabled
-            ? "Trading paused"
+            ? "Markets in review"
             : selectedPrices
             ? "AMM connected"
             : marketContractConfigured && marketReadStatus === "error"
               ? "Onchain read unavailable"
-              : `${siteConfig.isTestnet ? "Testnet" : "Mainnet"} beta live`}</span>
+              : `${siteConfig.isTestnet ? "Testnet" : "Mainnet"} market live`}</span>
           <span>0% BID market fee</span>
           <span>{creatorTaxPercent}% BID creator fee fuels the flywheel</span>
         </div>
@@ -1422,12 +1422,12 @@ export default function Home() {
           <>
             <div><SampleBadge /><span>24H VOLUME</span><strong>$6.4M</strong><em>+18.2%</em></div>
             <div><SampleBadge /><span>OPEN INTEREST</span><strong>$12.8M</strong><em>+6.4%</em></div>
-            <div><SampleBadge /><span>ACTIVE MARKETS</span><strong>24</strong><em>12 cities</em></div>
+            <div><SampleBadge /><span>ACTIVE MARKETS</span><strong>24</strong><em>stocks + indices</em></div>
             <div><SampleBadge /><span>BID CREATOR FEE</span><strong>1.5%</strong><em>fuels the flywheel</em></div>
           </>
         ) : (
           <div className="launch-strip">
-            <span>USDG-BACKED MARKETS</span>
+            <span>USDG-BACKED STOCK MARKETS</span>
             <strong>{siteConfig.collateralSymbol}-backed finite-outcome pools.</strong>
             <em>1.5% BID creator fee → protocol flywheel</em>
           </div>
@@ -1438,11 +1438,11 @@ export default function Home() {
         <div className="section-heading">
           <div>
             <span className="section-kicker">THE BOARD</span>
-            <h2>Price the city.</h2>
+            <h2>Price the market.</h2>
           </div>
           <p>{siteConfig.isTradingEnabled
-            ? "One live beta market. Published Parcl housing data determines the outcome."
-            : "The first beta market is retired. The next housing market is being prepared."}</p>
+            ? "One live market. Published market data determines the outcome."
+            : "The previous beta is retired. BID's first stock market is now being prepared."}</p>
         </div>
 
         <div className="market-stats" aria-label="Live market statistics">
@@ -1460,10 +1460,10 @@ export default function Home() {
         </div>
 
         <div className="beta-market-banner" aria-label="Beta market availability">
-          <span><i />{siteConfig.isTradingEnabled ? "ONE MARKET LIVE" : "BETA MARKET RETIRED"}</span>
-          <strong>MIAMI HOME-PRICE DIRECTION</strong>
-          <small>{siteConfig.isTradingEnabled ? "$5 ORDERS · 50 USDG LIVE BACKING" : "LIQUIDITY RECOVERED · NEXT MARKET COMING SOON"}</small>
-          <em>{siteConfig.isTradingEnabled ? "PUBLIC BETA" : "TRADING CLOSED"}</em>
+          <span><i />{siteConfig.isTradingEnabled ? "ONE MARKET LIVE" : "STOCK MARKETS / PRELAUNCH"}</span>
+          <strong>FIRST MARKET IN REVIEW</strong>
+          <small>{siteConfig.isTradingEnabled ? "USDG-BACKED · LIVE QUOTES" : "CONTRACT + DATA ORACLE PENDING"}</small>
+          <em>{siteConfig.isTradingEnabled ? "PUBLIC BETA" : "COMING SOON"}</em>
         </div>
 
         <div className="filter-row" role="group" aria-label="Filter markets">
@@ -1505,24 +1505,24 @@ export default function Home() {
                   <span className="market-meta">
                     <span>{market.mode.replaceAll("-", " ")}</span>
                     {isBetaMarket && !siteConfig.isTradingEnabled
-                      ? <em>{betaMarketFunded ? "Retiring · Trading paused" : "Retired"}</em>
+                      ? <em>First market · In review</em>
                       : livePrices[market.id]
                       ? <em>Open · Beta</em>
                       : showSampleData
                         ? <em><SampleBadge compact /> {market.signal}</em>
                         : configuredAddress(market.contractAddress) && marketReadStatus === "error"
                           ? <em>Onchain read unavailable</em>
-                          : <em>{isBetaMarket ? "Beta · Awaiting liquidity" : "Coming soon"}</em>}
+                        : <em>{isBetaMarket ? "Prelaunch · Oracle pending" : "Coming soon"}</em>}
                   </span>
                   <strong>{market.question}</strong>
                   <small>{isBetaMarket
                     ? siteConfig.isTradingEnabled
-                      ? `Resolves ${liveCloseDates[market.id] ?? market.closes} · $5 per order · Parcl ID 5352987`
-                      : "Trading paused"
+                      ? `Resolves ${liveCloseDates[market.id] ?? market.closes} · ${market.signal}`
+                      : "Contract and resolution source pending"
                     : `Resolves ${market.closes} · Pool coming soon`}</small>
                   {!isMarketEnabled && (
                     <span className="market-lock">
-                      {isBetaMarket ? "TRADING PAUSED" : "LOCKED · COMING SOON"}
+                      {isBetaMarket ? "PRELAUNCH · COMING SOON" : "LOCKED · COMING SOON"}
                     </span>
                   )}
                 </span>
@@ -1536,13 +1536,13 @@ export default function Home() {
                   ) : (
                     <span className="outcome-quote locked-quote">
                       <LockedValue>
-                        {isBetaMarket ? siteConfig.isTradingEnabled ? "Awaiting liquidity" : "Trading paused" : "Coming soon"}
+                        {isBetaMarket ? siteConfig.isTradingEnabled ? "Awaiting liquidity" : "Coming soon" : "Coming soon"}
                       </LockedValue>
                     </span>
                   )}
-                  {market.mode === "field" && <small>+2 more cities</small>}
+                  {market.mode === "field" && <small>+2 more stocks</small>}
                 </span>
-                <span className="select-arrow">{isMarketEnabled ? "↗" : isBetaMarket ? "PAUSED" : "LOCKED"}</span>
+                <span className="select-arrow">{isMarketEnabled ? "↗" : "LOCKED"}</span>
               </button>
               );
             })}
@@ -1567,7 +1567,7 @@ export default function Home() {
             </div>
             {selected.id === betaMarketId && (
               <p className="ticket-resolution">
-                <strong>RESOLUTION</strong> Parcl Labs Miami City Sales Price Index · Parcl ID 5352987 · YES if Sep 30 is above Sep 6; otherwise NO.
+                <strong>PROPOSED RESOLUTION</strong> Official S&amp;P 500 closing level · YES if the Dec 31, 2026 close is above the final 2025 close. Final rule hash and oracle publication are pending.
               </p>
             )}
 
@@ -1630,7 +1630,7 @@ export default function Home() {
 
             <p className="ticket-note ticket-note-top">
               {!siteConfig.isTradingEnabled
-                ? "Trading is paused. BID is preparing shorter UP / DOWN markets with a $5–$50 target order range."
+                ? "The first stock market is in review. Order limits and liquidity will publish with the verified contract."
                 : orderType === "liquidity"
                 ? `Supply ${siteConfig.collateralSymbol} to deepen every outcome and receive withdrawable BID-LP shares in this wallet. LP rewards remain reserve-only.`
                 : tradeDirection === "sell"
@@ -1863,11 +1863,11 @@ export default function Home() {
               }
             >
               {!siteConfig.isTradingEnabled
-                ? "Trading paused · New beta in development"
+                ? "Stock markets · Coming soon"
                 : transactionPending
                 ? "Waiting for confirmation"
                 : !marketContractConfigured && !isDemo
-                  ? "Market activating"
+                  ? "Market pending"
                 : walletConnected
                   ? orderType === "liquidity"
                     ? liquidityAction === "add" ? "Add liquidity" : "Withdraw liquidity"
@@ -1887,7 +1887,7 @@ export default function Home() {
               </a>
             )}
             {!marketContractConfigured && (
-              <p className="integration-status">LIVE MARKET · QUOTE UPDATING</p>
+              <p className="integration-status">STOCK MARKET PRELAUNCH · CONTRACT NOT PUBLISHED</p>
             )}
             {marketContractConfigured && marketReadStatus === "error" && !selectedPrices && (
               <p className="integration-status">This pool is configured, but its onchain state is unavailable. Transactions stay disabled until the read succeeds.</p>
@@ -1901,9 +1901,13 @@ export default function Home() {
               <span className="section-kicker">ONCHAIN ACTIVITY</span>
               <h3>Market depth and points.</h3>
             </div>
-            <a href={`${siteConfig.explorerUrl}/address/${siteConfig.marketAddresses.miamiTampa}`} target="_blank" rel="noreferrer">VIEW MARKET ↗</a>
+            {siteConfig.isTradingEnabled
+              ? <a href={`${siteConfig.explorerUrl}/address/${siteConfig.marketAddresses.miamiTampa}`} target="_blank" rel="noreferrer">VIEW MARKET ↗</a>
+              : <span className="integration-status">PUBLIC CONTRACT PENDING</span>}
           </div>
-          {marketActivity ? (
+          {siteConfig.marketRetired ? (
+            <p className="activity-loading">Live stock-market depth, volume, positions and points will appear here only after the matching contract and resolution oracle are published.</p>
+          ) : marketActivity ? (
             <>
               <div className="activity-metrics">
                 <div><span>MARKET BACKING</span><strong>{displayTokenAmount(marketActivity.marketBacking, marketActivity.decimals)} <small>USDG</small></strong></div>
@@ -1944,13 +1948,13 @@ export default function Home() {
 
       <section className="how-section" id="how-it-works">
         <div className="how-intro">
-          <span className="section-kicker">NO DEEDS. NO DOWNTIME.</span>
-          <h2>Housing moves slow.<br />BID doesn’t.</h2>
+          <span className="section-kicker">EARNINGS. INDICES. MILESTONES.</span>
+          <h2>Markets move fast.<br />Price what happens next.</h2>
         </div>
         <div className="steps">
           <article>
             <span>01 / PICK</span>
-            <strong>Choose a housing market.</strong>
+            <strong>Choose a stock-market outcome.</strong>
           </article>
           <article>
             <span>02 / PRICE</span>
@@ -1958,13 +1962,13 @@ export default function Home() {
           </article>
           <article>
             <span>03 / SETTLE</span>
-            <strong>Published housing data determines the outcome.</strong>
+            <strong>Published exchange or issuer data determines the outcome.</strong>
           </article>
         </div>
         <div className="settlement-strip">
           <div className="settle-badge"><BrandMark /></div>
-          <p><span>VERIFIABLE BY DESIGN</span> Closing time is recorded onchain. Settlement is submitted by the configured resolution oracle after Parcl housing data is published.</p>
-          <div className="settle-flow"><span>Parcl housing data</span><i>→</i><span>BID oracle attestation</span><i>→</i><span>Robinhood Chain</span></div>
+          <p><span>VERIFIABLE BY DESIGN</span> Every market publishes its source, observation window and closing time before trading. The configured oracle submits the result after the source data is final.</p>
+          <div className="settle-flow"><span>Published market data</span><i>→</i><span>BID oracle attestation</span><i>→</i><span>Robinhood Chain</span></div>
         </div>
         <div className="revenue-panel" id="flywheel">
           <div className="revenue-copy">
@@ -2040,14 +2044,14 @@ export default function Home() {
         <span>TOKEN-GATED CREATOR MARKETS / COMING SOON</span>
         <h2>Launch a market. Earn from its activity.</h2>
         <p>
-          Qualified $BID holders will be able to burn to launch, seed a housing market in USDG and earn a capped royalty from legitimate activity in the pool they create. More markets expand housing coverage, while BID&apos;s flywheel is designed to reward LPs and deepen active markets over time.
+          Qualified $BID holders will be able to burn to launch, seed an approved stock-outcome market in USDG and earn a capped royalty from legitimate activity in the pool they create. BID&apos;s flywheel is designed to reward LPs and deepen active markets over time.
         </p>
         <a className="creator-link" href="/create">Preview creator markets →</a>
       </section>
 
       <footer>
         <a className="brand footer-brand" href="#top"><BrandMark /><span>BID</span></a>
-        <p>Real estate prediction markets on Robinhood Chain. {siteConfig.isTestnet
+        <p>Stock prediction markets on Robinhood Chain. {siteConfig.isTestnet
           ? "tBID test environment."
           : verifiedPonsLive ? "$BID verified on Pons." : "$BID token verification pending."}</p>
         <div>

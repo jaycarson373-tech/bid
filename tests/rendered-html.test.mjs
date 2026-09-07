@@ -23,7 +23,7 @@ async function render(pathname = "/") {
   );
 }
 
-test("server-renders the retired BID beta market board without fabricated telemetry", async () => {
+test("server-renders the BID stock-market board without fabricated telemetry", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -31,18 +31,18 @@ test("server-renders the retired BID beta market board without fabricated teleme
   const html = await response.text();
   assert.match(html, /<title>BID — BID the Block<\/title>/i);
   assert.match(html, /<link rel="canonical" href="https:\/\/www\.bidrh\.com"/i);
-  assert.match(html, /Real estate/);
-  assert.match(html, /Will Miami(?:&#x27;|')s home-price index rise by September 30/);
+  assert.match(html, /Trade the outcome/);
+  assert.match(html, /Will the S&amp;P 500 finish 2026 above its 2025 close/);
   assert.match(html, /Coming soon/);
   assert.match(html, /Beta/);
-  assert.match(html, /Mar 5, 2027/);
-  assert.match(html, /Which city posts the highest home-price growth from September 2026 to March 2027/);
-  assert.match(html, /Will Austin home prices finish 2026 positive year over year/);
+  assert.match(html, /Dec 31, 2026/);
+  assert.match(html, /Which stock delivers the higher return in Q4 2026/);
+  assert.match(html, /Which megacap stock leads Q4 2026/);
   assert.match(html, /Connect wallet/);
   assert.doesNotMatch(html, /CA AWAITING LAUNCH|class="ca-pill"/i);
   assert.match(html, /0% BID market fee/i);
-  assert.match(html, /USDG-BACKED MARKETS/);
-  assert.match(html, /first beta market is retired/i);
+  assert.match(html, /USDG-BACKED STOCK MARKETS/);
+  assert.match(html, /previous beta is retired/i);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
   assert.match(html, /Exit position/);
@@ -53,14 +53,14 @@ test("server-renders the retired BID beta market board without fabricated teleme
   assert.match(html, /BUYBACK \+ BURN/);
   assert.match(html, /CREATOR REWARDS/);
   assert.doesNotMatch(html, /Solana|pump\.fun/i);
-  assert.match(html, /HOUSING MARKETS/);
+  assert.match(html, /STOCK MARKETS/);
   assert.match(html, /MARKETS LIVE/);
-  assert.match(html, /BETA MARKET RETIRED/);
+  assert.match(html, /STOCK MARKETS \/ PRELAUNCH/);
   assert.match(html, /Market depth and points/);
-  assert.match(html, /LIQUIDITY RECOVERED/);
+  assert.match(html, /CONTRACT \+ DATA ORACLE PENDING/);
   assert.match(html, /LOCKED · COMING SOON/);
-  assert.match(html, /TRADING CLOSED/i);
-  assert.match(html, /Parcl ID 5352987/);
+  assert.match(html, /STOCK MARKET PRELAUNCH/i);
+  assert.match(html, /Official S&amp;P 500 closing level/);
   assert.match(html, /TOKEN-GATED CREATOR MARKETS/);
   assert.match(html, /earn a capped royalty/i);
   assert.match(html, /creator-skyline-network/);
@@ -79,7 +79,7 @@ test("server-renders professional protocol documentation with honest deployment 
   assert.match(html, /Keeper required/);
   assert.match(html, /creator-fee layer is 1\.5%/i);
   assert.match(html, /RESERVE ONLY/);
-  assert.match(html, /BID token and Pons launch are separate from the live prediction market/i);
+  assert.match(html, /BID token and Pons launch are separate from the stock-market deployment/i);
   assert.match(html, /Production requirements/);
   assert.match(html, /Funded Merkle reward epochs/);
   assert.match(html, /keeps the maximum order at or below 5%/i);
@@ -171,7 +171,7 @@ test("keeps the finished product free of starter-preview code", async () => {
   assert.match(siteConfig, /creatorRewardsShareBps/);
   assert.equal(Object.values(JSON.parse(feePolicy).allocations).reduce((sum, value) => sum + Number(value), 0), 10_000);
   assert.equal(JSON.parse(pointsPolicy).rewardEntitlement, false);
-  assert.match(packageJson, /"name": "bid-real-estate-markets"/);
+  assert.match(packageJson, /"name": "bid-stock-markets"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
