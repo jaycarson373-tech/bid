@@ -23,7 +23,7 @@ async function render(pathname = "/") {
   );
 }
 
-test("server-renders the live BID beta market board without fabricated telemetry", async () => {
+test("server-renders the retired BID beta market board without fabricated telemetry", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -42,7 +42,7 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.doesNotMatch(html, /CA AWAITING LAUNCH|class="ca-pill"/i);
   assert.match(html, /0% BID market fee/i);
   assert.match(html, /USDG-BACKED MARKETS/);
-  assert.match(html, /One live beta market/i);
+  assert.match(html, /first beta market is retired/i);
   assert.match(html, /Market/);
   assert.match(html, /Limit/);
   assert.match(html, /Exit position/);
@@ -55,11 +55,11 @@ test("server-renders the live BID beta market board without fabricated telemetry
   assert.doesNotMatch(html, /Solana|pump\.fun/i);
   assert.match(html, /HOUSING MARKETS/);
   assert.match(html, /MARKETS LIVE/);
-  assert.match(html, /ONE MARKET LIVE/);
+  assert.match(html, /BETA MARKET RETIRED/);
   assert.match(html, /Market depth and points/);
-  assert.match(html, /50 USDG LIVE BACKING/);
+  assert.match(html, /LIQUIDITY RECOVERED/);
   assert.match(html, /LOCKED · COMING SOON/);
-  assert.match(html, /\$5 per order/i);
+  assert.match(html, /TRADING CLOSED/i);
   assert.match(html, /Parcl ID 5352987/);
   assert.match(html, /TOKEN-GATED CREATOR MARKETS/);
   assert.match(html, /earn a capped royalty/i);

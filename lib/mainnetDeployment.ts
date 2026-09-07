@@ -1,4 +1,5 @@
 export const mainnetDeployment = {
+  marketRetired: true,
   deploymentBlock: "25920546",
   marketFactoryAddress: "0xD9da3C6F2272760a6AFcd6F2D95114231dF5D186",
   flywheelTreasuryAddress: "0xBcD5E6cc2b920ef593005a85b44dCa9eF34C5970",

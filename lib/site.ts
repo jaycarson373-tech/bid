@@ -37,7 +37,9 @@ function publicValue(name: keyof typeof publicEnvironment, fallback = "") {
 
 const isTestnet = publicValue("NEXT_PUBLIC_BID_NETWORK", "mainnet") === "testnet";
 const isPonsVerified = publicValue("NEXT_PUBLIC_PONS_VERIFIED") === "true";
-const isTradingEnabled = publicValue("NEXT_PUBLIC_BID_TRADING_ENABLED", isTestnet ? "false" : "true") === "true";
+const marketRetired = !isTestnet && mainnetDeployment.marketRetired;
+const isTradingEnabled = publicValue("NEXT_PUBLIC_BID_TRADING_ENABLED", isTestnet ? "false" : "true") === "true"
+  && !marketRetired;
 // The beta UI starts with this public range; the factory owner can update the
 // onchain ceiling and a matching UI release can follow.
 const maxTradeAmount = 5;
@@ -51,6 +53,7 @@ export const siteConfig = {
   isTestnet,
   isPonsVerified,
   isTradingEnabled,
+  marketRetired,
   networkName: isTestnet ? "Robinhood Chain Testnet" : "Robinhood Chain",
   robinhoodChainId: isTestnet ? 46630 : 4663,
   robinhoodChainHex: isTestnet ? "0xb626" : "0x1237",

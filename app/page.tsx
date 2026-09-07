@@ -1440,11 +1440,13 @@ export default function Home() {
             <span className="section-kicker">THE BOARD</span>
             <h2>Price the city.</h2>
           </div>
-          <p>One live beta market. Published Parcl housing data determines the outcome.</p>
+          <p>{siteConfig.isTradingEnabled
+            ? "One live beta market. Published Parcl housing data determines the outcome."
+            : "The first beta market is retired. The next housing market is being prepared."}</p>
         </div>
 
         <div className="market-stats" aria-label="Live market statistics">
-          <div><span>MARKETS LIVE</span><strong>1</strong></div>
+          <div><span>MARKETS LIVE</span><strong>{siteConfig.isTradingEnabled ? "1" : "0"}</strong></div>
           <div><span>FORMAT</span><strong>YES / NO</strong></div>
           <div>
             <span>USDG BACKING</span>
@@ -1458,10 +1460,10 @@ export default function Home() {
         </div>
 
         <div className="beta-market-banner" aria-label="Beta market availability">
-          <span><i />ONE MARKET LIVE</span>
+          <span><i />{siteConfig.isTradingEnabled ? "ONE MARKET LIVE" : "BETA MARKET RETIRED"}</span>
           <strong>MIAMI HOME-PRICE DIRECTION</strong>
-          <small>$5 ORDERS · 50 USDG LIVE BACKING</small>
-          <em>PUBLIC BETA</em>
+          <small>{siteConfig.isTradingEnabled ? "$5 ORDERS · 50 USDG LIVE BACKING" : "LIQUIDITY RECOVERED · NEXT MARKET COMING SOON"}</small>
+          <em>{siteConfig.isTradingEnabled ? "PUBLIC BETA" : "TRADING CLOSED"}</em>
         </div>
 
         <div className="filter-row" role="group" aria-label="Filter markets">

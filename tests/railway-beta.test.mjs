@@ -4,17 +4,18 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("retired Railway deployer cannot broadcast another market", async () => {
+test("Railway deployer is restricted to the one-time beta recovery", async () => {
   const config = JSON.parse(await read("railway.beta.json"));
   const dockerfile = await read("Dockerfile.beta");
 
   assert.equal(config.build.builder, "DOCKERFILE");
   assert.equal(config.build.dockerfilePath, "Dockerfile.beta");
   assert.equal(config.deploy.restartPolicyType, "NEVER");
-  assert.match(dockerfile, /deployer retired; no transaction submitted/);
-  assert.doesNotMatch(dockerfile, /--broadcast/);
+  assert.match(dockerfile, /RecoverPublicBetaLiquidity/);
+  assert.doesNotMatch(dockerfile, /DeployBidBeta/);
+  assert.match(dockerfile, /--broadcast/);
   assert.match(dockerfile, /RUN chown -R foundry:foundry/);
-  assert.match(dockerfile, /CMD \["sh"/);
+  assert.match(dockerfile, /CMD \["forge"/);
 });
 
 test("LP deployer and Pons creator keys remain separate", async () => {
