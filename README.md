@@ -1,101 +1,75 @@
-# BID
+# HOOD OPTIONS
 
-BID is a Robinhood Chain stock prediction-market prototype designed to
-connect a $BID token launched through Pons v2 with:
+HOOD Options is a prelaunch European-style stock options protocol for Solana,
+starting with the HOOD equity reference price. The MVP uses capped call and put
+spreads so every contract has a known maximum cash payout and can be fully
+collateralized by an LP vault.
 
-- binary YES/NO stock and index questions
-- security-vs-security relative-performance markets
-- finite multi-stock winner markets
-- USDG-backed fixed-product liquidity pools
-- market buys in the interface and onchain market buys/sells plus escrowed limit orders
-- slippage-protected LP deposits and USDG-first liquidity withdrawals
-- funded Merkle reward epochs with duplicate-safe wallet claims
-- a future hold-and-burn gate for community market creators
+The current product includes:
 
-The retired housing beta addresses remain versioned for audit history, and its
-50 USDG LP backing has been recovered. The stock-market release is prelaunch;
-no stock contract or production stock-data oracle is currently published.
+- an interactive HOOD option chain and order ticket;
+- clearly labeled Black-Scholes spread model values;
+- Solana Wallet Standard discovery and connection;
+- LP vault capacity and payoff modeling;
+- an Anchor 1.1.2 program scaffold for deposits, shares, purchases, settlement,
+  redemption, and permissionless release of expired claims;
+- protocol documentation at `/docs`.
 
-Protocol mechanics, deployment status, and production requirements are
-documented at `/docs` in the running application. `/rewards` verifies published
-reward manifests against the onchain epoch before preparing a wallet claim.
+The product is not live. The production Solana program, collateral mint, HOOD
+equity oracle, executable quote policy, and full devnet lifecycle still need to
+be bound and verified. The interface deliberately disables deposits and orders
+until those gates pass.
 
-## Run locally
+The generated program address is
+`E86s7fVfuaufjfwbKG6Nm7p8kNYStUrCFKkQH5kyubs4`. It is a public identifier only;
+the program has not been deployed to Solana.
 
-Requires Node.js `>=22.13.0`.
+## Local app
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open <http://localhost:3000>.
 
-## Deploy to Vercel
-
-[Import the GitHub repository into Vercel](https://vercel.com/new/clone?repository-url=https://github.com/jaycarson373-tech/bid).
-The repository includes a standard Next.js build, a clean lockfile, and
-`vercel.json` configuration.
-
-Set `NEXT_PUBLIC_SITE_URL` to the production URL if you attach a custom domain.
-Vercel's production URL is detected automatically otherwise.
-
-## Validate
+## Checks
 
 ```bash
-npm test
 npm run lint
-npm run test:contracts
-npm run test:vercel
-npm run env:check
-npm run costs:production
+npm test
+npm run build
+npm run test:solana
 ```
 
-`npm run setup:production` runs environment validation, lint, contract tests,
-and the Vercel production build. `npm run verify:production` is the read-only
-post-CA onchain and frontend verification gate. `npm run costs:production`
-reads the current Pons launch fee and Robinhood Chain gas price without sending
-a transaction, then shows the lean and recommended genesis-liquidity capital.
+## Solana program
 
-## Robinhood Chain + Pons
+The Anchor workspace is under `programs/hood-options`. It targets localnet by
+default and performs no deployment from the root scripts.
 
-The interface connects an injected EVM wallet and switches it to Robinhood Chain
-(chain ID `4663`). Add the factory and capped genesis market address from the
-deployment output to the matching `NEXT_PUBLIC_BID_MARKET_*` variables.
+```bash
+cd programs/hood-options
+anchor build
+cargo test
+```
 
-The target Pons v2 launch fixes the BID creator fee at `150` basis points (`1.5%`).
-The exact factory, escrow, token, curve, quote asset, and recipient are
-configuration values and must pass `npm run verify:production`; none is
-silently assumed. The creator-fee recipient must be the BID fee treasury, with
-claimed proceeds allocated under `BID_FEE_POLICY_V1`:
+No transaction is sent by these commands. Mainnet deployment must remain a
+separate, explicitly approved step after devnet lifecycle testing and audit.
 
-- `45%` to the LP rewards reserve;
-- `30%` to protocol-owned market liquidity;
-- `10%` to the buyback and burn reserve;
-- `10%` directly to the protocol treasury;
-- `5%` to the market creator rewards reserve.
+## Money flow
 
-Pons may charge separate protocol or base fees. BID does not publish an all-in
-trading fee until the current production Pons contracts have been verified.
+1. LP collateral enters a program-owned SPL token vault.
+2. A buyer pays premium into that vault.
+3. The complete maximum payout is locked before open interest increases.
+4. An approved oracle path records the expiry observation.
+5. The position owner redeems a deterministic cash payout.
+6. Unused collateral becomes available to LPs after liabilities are released.
 
-Pons creator fees first accrue on the launch curve or hook, then move to its fee
-escrow after a sweep. `BidFlywheelTreasury` calls both sweep paths as the
-registered creator recipient, claims its escrow balance, and permissionlessly
-splits it. Post-graduation conversions can still require the Pons protocol
-operator. Do not enable live mode until all addresses and ownership have been
-verified.
+Premiums increase vault net asset value and therefore LP share value. There are
+no creator markets and no token-emission reward promise.
 
-The repository includes a single-replica Railway keeper for limit-order fills,
-pre-graduation curve sweeps, post-graduation hook sweeps, escrow claims, treasury distribution, and
-deployment of the 30% collateral allocation into approved protocol-owned LP by
-actual depth deficit. It does not yet implement time-weighted LP reward scoring,
-buyback execution, creator-reward scoring, an indexer/history database, or the
-production stock-market oracle policy. Those allocations remain reserves. The funded
-reward epoch and wallet claim path is implemented. See `docs/PRODUCTION_RUNBOOK.md`.
+## Archived code
 
-## Contracts
-
-The Foundry package under `contracts/` implements 2-8 outcome markets, LP shares,
-market buys/sells, limit orders, oracle resolution, redemption, and the disabled
-community-creation gate. See `contracts/README.md` for deployment variables.
-These contracts are tested prototypes, not audited production contracts.
+The previous Robinhood Chain BID prototype remains under `contracts/` and in
+legacy service/config files for audit history. It is not used by the HOOD
+Options interface or Solana program.

@@ -28,19 +28,15 @@ test("beta recovery is replay-safe", () => {
   assert.match(source, /already recovered; no transaction submitted/);
 });
 
-test("legacy beta recovery remains read-only without its explicit execution gate", async () => {
-  const script = await read("scripts/recover-beta-liquidity.mjs");
+test("retired EVM deployment and recovery commands are not exposed", async () => {
   const manifest = JSON.parse(await read("package.json"));
 
-  assert.match(script, /Mode: \$\{execute \? "EXECUTE" : "READ-ONLY CHECK"\}/);
-  assert.match(script, /I_APPROVE_25_USDG_RECOVERY/);
-  assert.match(script, /trades\.length !== 0/);
-  assert.match(script, /limitOrders\.length !== 0/);
-  assert.match(script, /vaultShares !== totalShares/);
-  assert.match(script, /residualOutcomeTokens\.some/);
-  assert.match(script, /simulateContract/);
-  assert.equal(manifest.scripts["recover:beta:check"].includes("--execute"), false);
-  assert.equal(manifest.scripts["recover:beta"].endsWith("--execute"), true);
+  assert.equal(manifest.scripts["deploy:beta"], undefined);
+  assert.equal(manifest.scripts["verify:beta"], undefined);
+  assert.equal(manifest.scripts["recover:beta:check"], undefined);
+  assert.equal(manifest.scripts["recover:beta"], undefined);
+  assert.equal(manifest.scripts["rewards:build"], undefined);
+  assert.match(manifest.scripts["verify:production"], /verify-hood-options/);
 });
 
 test("v2 policy retains the requested 5 to 50 USDG order range", async () => {

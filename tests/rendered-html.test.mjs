@@ -2,177 +2,42 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render(pathname = "/") {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
-    new Request(`http://localhost${pathname}`, {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
-}
-
-test("server-renders the BID stock-market board without fabricated telemetry", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-
-  const html = await response.text();
-  assert.match(html, /<title>BID — BID the Block<\/title>/i);
-  assert.match(html, /<link rel="canonical" href="https:\/\/www\.bidrh\.com"/i);
-  assert.match(html, /Trade the outcome/);
-  assert.match(html, /Will the S&amp;P 500 finish 2026 above its 2025 close/);
-  assert.match(html, /Coming soon/);
-  assert.match(html, /Beta/);
-  assert.match(html, /Dec 31, 2026/);
-  assert.match(html, /Which stock delivers the higher return in Q4 2026/);
-  assert.match(html, /Which megacap stock leads Q4 2026/);
-  assert.match(html, /Connect wallet/);
-  assert.doesNotMatch(html, /CA AWAITING LAUNCH|class="ca-pill"/i);
-  assert.match(html, /0% BID market fee/i);
-  assert.match(html, /USDG-BACKED STOCK MARKETS/);
-  assert.match(html, /previous beta is retired/i);
-  assert.match(html, /Market/);
-  assert.match(html, /Limit/);
-  assert.match(html, /Exit position/);
-  assert.doesNotMatch(html, /Own an LP share|Add liquidity/);
-  assert.match(html, /1\.5%/);
-  assert.match(html, /45%/);
-  assert.match(html, /30%/);
-  assert.match(html, /BUYBACK \+ BURN/);
-  assert.match(html, /CREATOR REWARDS/);
-  assert.doesNotMatch(html, /Solana|pump\.fun/i);
-  assert.match(html, /STOCK MARKETS/);
-  assert.match(html, /MARKETS LIVE/);
-  assert.match(html, /STOCK MARKETS \/ PRELAUNCH/);
-  assert.match(html, /Market depth and points/);
-  assert.match(html, /CONTRACT \+ DATA ORACLE PENDING/);
-  assert.match(html, /LOCKED · COMING SOON/);
-  assert.match(html, /STOCK MARKET PRELAUNCH/i);
-  assert.match(html, /Official S&amp;P 500 closing level/);
-  assert.match(html, /TOKEN-GATED CREATOR MARKETS/);
-  assert.match(html, /earn a capped royalty/i);
-  assert.match(html, /creator-skyline-network/);
-  assert.doesNotMatch(html, /\$6\.4M|\$12\.8M|\$428K|\$482K|Balance \$2,840\.00|61%|39%|\+7 pts/);
-  assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
-});
-
-test("server-renders professional protocol documentation with honest deployment status", async () => {
-  const response = await render("/docs");
-  assert.equal(response.status, 200);
-
-  const html = await response.text();
-  assert.match(html, /BID Protocol Docs/);
-  assert.match(html, /Fixed-product pricing/);
-  assert.match(html, /Liquidity/);
-  assert.match(html, /Keeper required/);
-  assert.match(html, /creator-fee layer is 1\.5%/i);
-  assert.match(html, /RESERVE ONLY/);
-  assert.match(html, /BID token and Pons launch are separate from the stock-market deployment/i);
-  assert.match(html, /Production requirements/);
-  assert.match(html, /Funded Merkle reward epochs/);
-  assert.match(html, /keeps the maximum order at or below 5%/i);
-  assert.match(html, /BID_POINTS_POLICY_V1/);
-  assert.match(html, /0xD9da3C6F2272760a6AFcd6F2D95114231dF5D186/);
-});
-
-test("server-renders the rewards claim surface in an honest prelaunch state", async () => {
-  const response = await render("/rewards");
-  assert.equal(response.status, 200);
-
-  const html = await response.text();
-  assert.match(html, /BID Rewards/);
-  assert.match(html, /Claim rewards/);
-  assert.match(html, /LP rewards are reserve only/);
-  assert.match(html, /AWAITING PUBLICATION/);
-  assert.match(html, /Each wallet can claim once per epoch/);
-});
-
-test("server-renders creator markets as a disabled coming-soon workflow", async () => {
-  const response = await render("/create");
-  assert.equal(response.status, 200);
-
-  const html = await response.text();
-  assert.match(html, /Create a market/);
-  assert.match(html, /COMING SOON/);
-  assert.match(html, /POOL CREATOR ROYALTY/);
-  assert.match(html, /CAPPED AT 3%/);
-  assert.match(html, /RESOLUTION SOURCE/);
-  assert.match(html, /CREATION NOT YET ACTIVE/);
-  assert.match(html, /disabled/);
-});
-
-test("keeps the finished product free of starter-preview code", async () => {
-  const [page, layout, packageJson, launchState, siteConfig, feePolicy, pointsPolicy] = await Promise.all([
+test("public product is HOOD Options and does not expose fabricated live data", async () => {
+  const [page, layout] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../lib/launchState.ts", import.meta.url), "utf8"),
-    readFile(new URL("../lib/site.ts", import.meta.url), "utf8"),
-    readFile(new URL("../config/bid-fee-policy-v1.json", import.meta.url), "utf8"),
-    readFile(new URL("../config/bid-points-policy-v1.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /mode: "field"/);
-  assert.match(page, /mode: "yes-no"/);
-  assert.match(page, /no signature requested/i);
-  assert.match(page, /no transaction was built/);
-  assert.match(page, /Fill now or cancel/);
-  assert.match(page, /otherwise nothing is submitted/);
-  assert.match(page, /maximumSellQuote/);
-  assert.match(page, /Max position/);
-  assert.match(page, /functionName: "quoteSell"/);
-  assert.match(page, /functionName: "sell"/);
-  assert.match(page, /Position sold/);
-  assert.match(page, /addFunding/);
-  assert.match(page, /removeFundingToCollateral/);
-  assert.match(page, /Add liquidity/);
-  assert.match(page, /Withdraw liquidity/);
-  assert.match(page, /disabled={!isMarketEnabled}/);
-  assert.match(page, /waitForTransactionReceipt/);
-  assert.match(page, /0% BID market fee/i);
-  assert.match(page, /BID CREATOR FEE/);
-  assert.match(page, /Robinhood Chain/);
-  assert.match(page, /Pons/);
-  assert.match(page, /Sample data/);
-  assert.match(page, /Winning position redeemed/i);
-  assert.match(page, /event Trade/);
-  assert.match(page, /BETA ACTIVITY LEADERBOARD/);
-  assert.match(page, /Activity points are a beta score, not a reward entitlement/);
-  assert.match(page, /Disconnect wallet/);
-  assert.match(page, /eip6963:requestProvider/);
-  assert.match(page, /MetaMask/);
-  assert.match(page, /Rabby/);
-  assert.match(page, /Phantom/);
-  assert.match(page, /wallet_requestPermissions/);
-  assert.match(page, /wallet_revokePermissions/);
-  assert.match(page, /wallet_disconnect/);
-  assert.match(page, /const provider = activeProvider/);
-  assert.match(page, /marketDeploymentBlocks/);
-  assert.doesNotMatch(page, /href="\/create">Create<\/a>/);
-  assert.match(page, /\/docs/);
-  assert.match(layout, /title: "BID — BID the Block"/);
-  assert.match(launchState, /: "live"/);
-  assert.match(siteConfig, /feePolicy\.creatorFeeBps/);
-  assert.match(siteConfig, /PLACEHOLDER/);
-  assert.match(siteConfig, /lpRewardsShareBps/);
-  assert.match(siteConfig, /marketLiquidityShareBps/);
-  assert.match(siteConfig, /creatorRewardsShareBps/);
-  assert.equal(Object.values(JSON.parse(feePolicy).allocations).reduce((sum, value) => sum + Number(value), 0), 10_000);
-  assert.equal(JSON.parse(pointsPolicy).rewardEntitlement, false);
-  assert.match(packageJson, /"name": "bid-stock-markets"/);
-  assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+  assert.match(page, /HOOD OPTIONS/);
+  assert.match(page, /EUROPEAN OPTIONS/);
+  assert.match(page, /MODEL PREVIEW/);
+  assert.match(page, /not a live quote/i);
+  assert.match(page, /Fully funded maximum payout/i);
+  assert.match(page, /Trading activates after deployment/i);
+  assert.match(page, /Premiums remain inside the vault/i);
+  assert.match(page, /No production program, collateral vault, or equity settlement oracle is live yet/i);
+  assert.doesNotMatch(page, /creator market|creator rewards|Robinhood Chain|Pons|USDG/i);
+  assert.doesNotMatch(page, /\$\d+(?:\.\d+)?M|APR|APY/);
+  assert.match(layout, /HOOD OPTIONS — European Stock Options on Solana/);
+});
 
-  await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
+test("documentation states collateral lifecycle and production blockers", async () => {
+  const docs = await readFile(new URL("../app/docs/page.tsx", import.meta.url), "utf8");
+  assert.match(docs, /CALL PAYOUT/);
+  assert.match(docs, /PUT PAYOUT/);
+  assert.match(docs, /Maximum unresolved payout/);
+  assert.match(docs, /HOOD equity feed has not been bound/);
+  assert.match(docs, /End-to-end devnet lifecycle/);
+  assert.match(docs, /There is no separate emissions promise and no creator-market allocation/);
+});
+
+test("creator and legacy rewards routes are removed", async () => {
+  await assert.rejects(access(new URL("../app/create/page.tsx", import.meta.url)));
+  await assert.rejects(access(new URL("../app/rewards/page.tsx", import.meta.url)));
+});
+
+test("Solana secret stays server-only", async () => {
+  const envExample = await readFile(new URL("../.env.example", import.meta.url), "utf8");
+  assert.match(envExample, /ORACLE_OPERATOR_KEYPAIR_B64/);
+  assert.doesNotMatch(envExample, /NEXT_PUBLIC_.*(?:PRIVATE|SECRET|KEYPAIR)/i);
 });

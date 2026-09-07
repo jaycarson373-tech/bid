@@ -18,39 +18,39 @@ const productionHost =
     ? "https://www.bidrh.com"
     : "http://localhost:3000");
 const description =
-  "Stock prediction markets on Robinhood Chain. Trade views on earnings, benchmarks, relative performance, and market milestones settled against published data.";
+  "European-style, fully collateralized stock options on Solana. Starting with HOOD.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(productionHost),
-  title: "BID — BID the Block",
+  title: "HOOD OPTIONS — European Stock Options on Solana",
   description,
   icons: {
-    icon: "/favicon.jpg",
-    apple: "/brand/bid-logo.jpg",
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
   },
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "BID — BID the Block",
+    title: "HOOD OPTIONS",
     description,
     url: "/",
-    siteName: "BID",
+    siteName: "HOOD OPTIONS",
     type: "website",
     images: [
       {
-        url: "/brand/bid-stocks-banner.jpg",
-        width: 1280,
-        height: 426,
-        alt: "BID — BID the Block",
+        url: "/brand/hood-options-hero.png",
+        width: 2048,
+        height: 683,
+        alt: "HOOD OPTIONS on Solana",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "BID — BID the Block",
+    title: "HOOD OPTIONS",
     description,
-    images: ["/og-robinhood.jpg"],
+    images: ["/brand/hood-options-hero.png"],
   },
 };
 
