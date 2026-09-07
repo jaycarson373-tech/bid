@@ -9,5 +9,6 @@ RUN if [ ! -f lib/forge-std/src/Script.sol ]; then git clone https://github.com/
 RUN if [ ! -f lib/openzeppelin-contracts/contracts/access/Ownable.sol ]; then git clone https://github.com/OpenZeppelin/openzeppelin-contracts.git lib/openzeppelin-contracts && git -C lib/openzeppelin-contracts checkout c64a1edb67b6e3f4a15cca8909c9482ad33a02b0; fi
 RUN forge build
 
-# One-time, replay-safe withdrawal of both verified 25 USDG LP positions.
-CMD ["forge", "script", "script/RecoverPublicBetaLiquidity.s.sol:RecoverPublicBetaLiquidity", "--root", ".", "--rpc-url", "https://rpc.mainnet.chain.robinhood.com", "--broadcast", "--slow", "-vv"]
+# The one-shot recovery is retired after the confirmed 50 USDG withdrawal.
+# Keeping this service inert prevents future Git pushes from broadcasting.
+CMD ["sh", "-lc", "echo 'BID recovery retired; no transaction submitted'"]
